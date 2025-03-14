@@ -1,0 +1,14 @@
+name: ideiariginal
+description: A sample command-line application.
+version: 1.0.0
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  reflectable: ^3.0.0
+  postgres: ^3.5.0
+  dart_jsonwebtoken: ^3.1.1
+  
+assets:
+  - .env

@@ -7,47 +7,60 @@ abstract class RatelHandler {
   static final List<Route> routesList = [];
 
   RatelHandler() {
-    registerRoutes();
+    _registerRoutes();
   }
 
-  void registerRoutes() {
-    InstanceMirror instancia = reflect(this);
-    ClassMirror classeMirror = instancia.type;
+  void _registerRoutes() {
+    InstanceMirror instance = reflect(this);
+    ClassMirror classMirror = instance.type;
 
-    for (var method in classeMirror.declarations.values) {
-      if (method is MethodMirror && method.isRegularMethod) {
-        for (var metadata in method.metadata) {
-          if (metadata.reflectee is Get) {
-            var route = metadata.reflectee as Get;
-            routesList.add(router_add(route.path, "GET", instancia, method));
+    bool classProtected =
+        classMirror.metadata.any((m) => m.reflectee is Protected);
+
+    for (var declaration in classMirror.declarations.values) {
+      if (declaration is MethodMirror && declaration.isRegularMethod) {
+        bool methodPublic =
+            declaration.metadata.any((m) => m.reflectee is Public);
+        bool methodProtected =
+            declaration.metadata.any((m) => m.reflectee is Protected);
+        bool isProtected = (classProtected && !methodPublic) || methodProtected;
+        for (var metadata in declaration.metadata) {
+          String? httpMethod;
+          String? path;
+          var reflectee = metadata.reflectee;
+          if (reflectee is Get) {
+            httpMethod = "GET";
+            path = reflectee.path;
+          } else if (reflectee is Post) {
+            httpMethod = "POST";
+            path = reflectee.path;
+          } else if (reflectee is Put) {
+            httpMethod = "PUT";
+            path = reflectee.path;
+          } else if (reflectee is Delete) {
+            httpMethod = "DELETE";
+            path = reflectee.path;
           }
-          if (metadata.reflectee is Post) {
-            var route = metadata.reflectee as Post;
-            routesList.add(router_add(route.path, "POST", instancia, method));
-          }
-          if (metadata.reflectee is Put) {
-            var route = metadata.reflectee as Put;
-            routesList.add(router_add(route.path, "PUT", instancia, method));
-          }
-          if (metadata.reflectee is Delete) {
-            var route = metadata.reflectee as Delete;
-            routesList.add(router_add(route.path, "DELETE", instancia, method));
+          if (httpMethod != null && path != null) {
+            routes.add(_routerAdd(
+                path, httpMethod, instance, declaration, isProtected));
           }
         }
       }
     }
   }
 
-  Route router_add(String path, String typeMethod, InstanceMirror instancia,
-      MethodMirror method) {
+  Route _routerAdd(String path, String methodType, InstanceMirror instance,
+      MethodMirror method, bool isProtected) {
     return Route(
       path: path,
-      method: typeMethod,
+      method: methodType,
+      isProtected: isProtected,
+      methodMirror: method,
       handler: ([dynamic request]) async {
-        List<dynamic> argumentos = [];
-        String methodType = typeMethod.toUpperCase();
-
-        if (methodType == "GET") {
+        List<dynamic> args = [];
+        String mType = methodType.toUpperCase();
+        if (mType == "GET") {
           for (var param in method.parameters) {
             if (param.metadata.any((meta) => meta.reflectee is Param)) {
               String paramName = MirrorSystem.getName(param.simpleName);
@@ -55,24 +68,22 @@ abstract class RatelHandler {
                 String valueStr = request.uri.queryParameters[paramName]!;
                 Type paramType = param.type.reflectedType;
                 if (paramType == int) {
-                  argumentos.add(int.parse(valueStr));
+                  args.add(int.parse(valueStr));
                 } else if (paramType == double) {
-                  argumentos.add(double.parse(valueStr));
+                  args.add(double.parse(valueStr));
                 } else if (paramType == bool) {
-                  argumentos.add(valueStr.toLowerCase() == "true");
+                  args.add(valueStr.toLowerCase() == "true");
                 } else {
-                  argumentos.add(valueStr);
+                  args.add(valueStr);
                 }
               } else {
-                argumentos.add(null);
+                args.add(null);
               }
             } else {
-              argumentos.add(null);
+              args.add(null);
             }
           }
-        } else if (methodType == "POST" ||
-            methodType == "PUT" ||
-            methodType == "DELETE") {
+        } else if (mType == "POST" || mType == "PUT" || mType == "DELETE") {
           String bodyString = await utf8.decoder.bind(request).join();
           if (bodyString.isNotEmpty) {
             Map<String, dynamic> jsonMap = jsonDecode(bodyString);
@@ -85,10 +96,10 @@ abstract class RatelHandler {
                 bool hasJsonAnnotation =
                     typeMirror.metadata.any((m) => m.reflectee is Json);
                 if (hasJsonAnnotation) {
-                  var instance = _generateFromJson(typeMirror, jsonMap);
-                  argumentos.add(instance);
+                  var obj = _generateFromJson(typeMirror, jsonMap);
+                  args.add(obj);
                 } else {
-                  argumentos.add(null);
+                  args.add(null);
                 }
               } else if (param.metadata
                   .any((meta) => meta.reflectee is Param)) {
@@ -97,50 +108,28 @@ abstract class RatelHandler {
                   String valueStr = request.uri.queryParameters[paramName]!;
                   Type paramType = param.type.reflectedType;
                   if (paramType == int) {
-                    argumentos.add(int.parse(valueStr));
+                    args.add(int.parse(valueStr));
                   } else if (paramType == double) {
-                    argumentos.add(double.parse(valueStr));
+                    args.add(double.parse(valueStr));
                   } else if (paramType == bool) {
-                    argumentos.add(valueStr.toLowerCase() == "true");
+                    args.add(valueStr.toLowerCase() == "true");
                   } else {
-                    argumentos.add(valueStr);
+                    args.add(valueStr);
                   }
                 } else {
-                  argumentos.add(null);
+                  args.add(null);
                 }
               } else {
-                argumentos.add(null);
+                args.add(null);
               }
             }
           } else {
-            for (var param in method.parameters) {
-              if (param.metadata.any((meta) => meta.reflectee is Param)) {
-                String paramName = MirrorSystem.getName(param.simpleName);
-                if (request.uri.queryParameters.containsKey(paramName)) {
-                  String valueStr = request.uri.queryParameters[paramName]!;
-                  Type paramType = param.type.reflectedType;
-                  if (paramType == int) {
-                    argumentos.add(int.parse(valueStr));
-                  } else if (paramType == double) {
-                    argumentos.add(double.parse(valueStr));
-                  } else if (paramType == bool) {
-                    argumentos.add(valueStr.toLowerCase() == "true");
-                  } else {
-                    argumentos.add(valueStr);
-                  }
-                } else {
-                  argumentos.add(null);
-                }
-              } else {
-                argumentos.add(null);
-              }
-            }
+            args.addAll(List.filled(method.parameters.length, null));
           }
         } else {
-          argumentos = [];
+          args = [];
         }
-
-        return await instancia.invoke(method.simpleName, argumentos).reflectee;
+        return await instance.invoke(method.simpleName, args).reflectee;
       },
     );
   }
@@ -148,7 +137,6 @@ abstract class RatelHandler {
   dynamic _generateFromJson(
       ClassMirror typeMirror, Map<String, dynamic> jsonMap) {
     var instance = typeMirror.newInstance(Symbol(''), []);
-
     for (var field in typeMirror.declarations.values) {
       if (field is VariableMirror && !field.isStatic) {
         String fieldName = MirrorSystem.getName(field.simpleName);
@@ -157,7 +145,6 @@ abstract class RatelHandler {
         }
       }
     }
-
     return instance.reflectee;
   }
 

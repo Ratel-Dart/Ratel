@@ -1,22 +1,28 @@
 import 'dart:convert';
 import 'dart:io';
 
-class RatelClient {
+class ApiResponse {
+  final int statusCode;
+  final dynamic data;
+  final Map<String, List<String>> headers;
+  bool get isSuccessful => statusCode >= 200 && statusCode < 300;
+  ApiResponse(
+      {required this.statusCode, required this.data, required this.headers});
+}
+
+class Request {
   final Uri baseUri;
   final Map<String, String> defaultHeaders;
-
-  RatelClient(String baseUrl, {this.defaultHeaders = const {}})
+  Request(String baseUrl, {this.defaultHeaders = const {}})
       : baseUri = Uri.parse(baseUrl);
-
-  Future<dynamic> get(String path,
+  Future<ApiResponse> get(String path,
       {Map<String, dynamic>? queryParameters,
       Map<String, String>? headers}) async {
     Uri uri = baseUri.resolve(path);
     if (queryParameters != null && queryParameters.isNotEmpty) {
       uri = uri.replace(
-        queryParameters:
-            queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      );
+          queryParameters:
+              queryParameters.map((k, v) => MapEntry(k, v.toString())));
     }
     final httpClient = HttpClient();
     final request = await httpClient.getUrl(uri);
@@ -25,16 +31,15 @@ class RatelClient {
     return _processResponse(response);
   }
 
-  Future<dynamic> post(String path,
+  Future<ApiResponse> post(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
       Map<String, String>? headers}) async {
     Uri uri = baseUri.resolve(path);
     if (queryParameters != null && queryParameters.isNotEmpty) {
       uri = uri.replace(
-        queryParameters:
-            queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      );
+          queryParameters:
+              queryParameters.map((k, v) => MapEntry(k, v.toString())));
     }
     final httpClient = HttpClient();
     final request = await httpClient.postUrl(uri);
@@ -50,16 +55,15 @@ class RatelClient {
     return _processResponse(response);
   }
 
-  Future<dynamic> put(String path,
+  Future<ApiResponse> put(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
       Map<String, String>? headers}) async {
     Uri uri = baseUri.resolve(path);
     if (queryParameters != null && queryParameters.isNotEmpty) {
       uri = uri.replace(
-        queryParameters:
-            queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      );
+          queryParameters:
+              queryParameters.map((k, v) => MapEntry(k, v.toString())));
     }
     final httpClient = HttpClient();
     final request = await httpClient.putUrl(uri);
@@ -75,16 +79,15 @@ class RatelClient {
     return _processResponse(response);
   }
 
-  Future<dynamic> delete(String path,
+  Future<ApiResponse> delete(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
       Map<String, String>? headers}) async {
     Uri uri = baseUri.resolve(path);
     if (queryParameters != null && queryParameters.isNotEmpty) {
       uri = uri.replace(
-        queryParameters:
-            queryParameters.map((k, v) => MapEntry(k, v.toString())),
-      );
+          queryParameters:
+              queryParameters.map((k, v) => MapEntry(k, v.toString())));
     }
     final httpClient = HttpClient();
     final request = await httpClient.deleteUrl(uri);
@@ -101,31 +104,25 @@ class RatelClient {
   }
 
   void _applyHeaders(HttpClientRequest request, Map<String, String>? headers) {
-    defaultHeaders.forEach((key, value) {
-      request.headers.set(key, value);
-    });
+    defaultHeaders.forEach((key, value) => request.headers.set(key, value));
     if (headers != null) {
-      headers.forEach((key, value) {
-        request.headers.set(key, value);
-      });
+      headers.forEach((key, value) => request.headers.set(key, value));
     }
   }
 
-  Future<dynamic> _processResponse(HttpClientResponse response) async {
+  Future<ApiResponse> _processResponse(HttpClientResponse response) async {
     final body = await response.transform(utf8.decoder).join();
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      try {
-        return jsonDecode(body);
-      } catch (e) {
-        return body;
-      }
-    } else {
-      throw HttpException(
-        'Erro na requisição: ${response.statusCode} - $body',
-        uri: response.redirects.isNotEmpty
-            ? response.redirects.last.location
-            : null,
-      );
+    dynamic data;
+    try {
+      data = jsonDecode(body);
+    } catch (_) {
+      data = body;
     }
+    final headerMap = <String, List<String>>{};
+    response.headers.forEach((name, values) {
+      headerMap[name] = values;
+    });
+    return ApiResponse(
+        statusCode: response.statusCode, data: data, headers: headerMap);
   }
 }

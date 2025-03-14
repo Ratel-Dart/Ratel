@@ -17,11 +17,14 @@ abstract class RatelRepository<T> {
     return await dbConnection!.connect();
   }
 
-  Future<List<List<dynamic>>> execute(String sql,
+  Future<dynamic> execute(String sql,
       {Map<String, dynamic>? substitutionValues}) async {
     final conn = await connection;
     try {
-      return await conn.execute(Sql.named(sql), parameters: substitutionValues);
+      final result =
+          await conn.execute(Sql.named(sql), parameters: substitutionValues);
+      if (result.length == 1) return result.first;
+      return result;
     } catch (e) {
       print(e);
     }

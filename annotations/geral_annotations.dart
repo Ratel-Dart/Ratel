@@ -1,12 +1,20 @@
+import 'dart:mirrors';
+
+typedef RouteHandler = Future<dynamic> Function([dynamic request]);
+
 class Route {
   final String path;
   final String method;
-  final Function handler;
+  final RouteHandler handler;
+  final bool isProtected;
+  final MethodMirror? methodMirror;
 
   Route({
     required this.path,
     required this.method,
     required this.handler,
+    this.isProtected = false,
+    this.methodMirror,
   });
 }
 
@@ -48,10 +56,10 @@ class Param {
   const Param();
 }
 
-class Table {
-  final String? tableName;
-  const Table({this.tableName});
-}
+// class Table {
+//   final String? tableName;
+//   const Table({this.tableName});
+// }
 
 class Column {
   final String name;
@@ -59,4 +67,16 @@ class Column {
   const Column({
     required this.name,
   });
+}
+
+class Protected {
+  const Protected();
+}
+
+class Public {
+  const Public();
+}
+
+class Auth {
+  static String? jwtKey;
 }
