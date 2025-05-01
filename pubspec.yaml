@@ -2,11 +2,11 @@ name: ratel
 description: A back end framework with dart.
 version: 1.0.0
 homepage: https://github.com/Ratel-Dart/Ratel.git
+publish_to: https://pub.dev
 
 environment:
   sdk: ^3.5.4
 
-publish_to: none
 
 dependencies:
   reflectable: ^3.0.0
