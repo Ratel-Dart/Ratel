@@ -41,7 +41,7 @@ class Request {
       case 'DELETE':
         return client.deleteUrl(uri);
       default:
-        throw ArgumentError('Método inválido: $method');
+        throw ArgumentError('Invalid HTTP method: $method');
     }
   }
 
@@ -59,10 +59,10 @@ class Request {
     try {
       return await fn();
     } on SocketException {
-      throw HttpRequestException('Erro ao conectar ao servidor',
+      throw HttpRequestException('Error connecting to server',
           uri: uri, method: method);
     } on HttpException {
-      throw HttpRequestException('Erro na requisição HTTP',
+      throw HttpRequestException('Error during HTTP request',
           uri: uri, method: method);
     } catch (e) {
       throw HttpRequestException(e.toString(), uri: uri, method: method);
@@ -131,13 +131,13 @@ class Request {
     try {
       data = jsonDecode(body);
     } catch (_) {
-      throw JsonDecodingException('Erro ao decodificar JSON', body: body);
+      throw JsonDecodingException('Error decoding JSON', body: body);
     }
     final headerMap = <String, List<String>>{};
     response.headers.forEach((name, values) => headerMap[name] = values);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpResponseException(
-        'Erro na resposta HTTP',
+        'HTTP response error',
         statusCode: response.statusCode,
         uri: uri,
         method: method,
