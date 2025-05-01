@@ -56,11 +56,6 @@ class Param {
   const Param();
 }
 
-// class Table {
-//   final String? tableName;
-//   const Table({this.tableName});
-// }
-
 class Column {
   final String name;
 

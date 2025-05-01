@@ -8,6 +8,7 @@ class Response {
   final int statusCode;
   final dynamic data;
   final Map<String, String> headers;
+  final String contentType;
 
   Response({
     required this.statusCode,
@@ -15,11 +16,44 @@ class Response {
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'application/json',
     },
+    this.contentType = 'application/json',
   });
+
+  Response.json({
+    required this.statusCode,
+    this.data,
+    this.headers = const {
+      HttpHeaders.contentTypeHeader: 'application/json',
+    },
+  }) : contentType = 'application/json';
+
+  Response.text({
+    required this.statusCode,
+    this.data,
+    this.headers = const {
+      HttpHeaders.contentTypeHeader: 'text/plain',
+    },
+  }) : contentType = 'text/plain';
+
+  Response.html({
+    required this.statusCode,
+    this.data,
+    this.headers = const {
+      HttpHeaders.contentTypeHeader: 'text/html',
+    },
+  }) : contentType = 'text/html';
+
+  Response.bytes({
+    required this.statusCode,
+    this.data,
+    this.headers = const {
+      HttpHeaders.contentTypeHeader: 'application/octet-stream',
+    },
+  }) : contentType = 'application/octet-stream';
 
   static Response from(dynamic value) {
     if (value is Response) return value;
-    return Response(
+    return Response.json(
       statusCode: HttpStatus.ok,
       data: value,
     );
@@ -28,21 +62,26 @@ class Response {
   String toJson() {
     if (data == null) return '';
 
-    if (data is String) return data;
+    if (contentType == 'application/json') {
+      if (data is String) return data;
 
-    if (data is List) {
-      return jsonEncode(
-        (data as List).map((item) => convertToJson(item)).toList(),
-      );
+      if (data is List) {
+        return jsonEncode(
+          (data as List).map((item) => convertToJson(item)).toList(),
+        );
+      }
+
+      if (data is Map) {
+        return jsonEncode(
+          (data as Map)
+              .map((key, value) => MapEntry(key, convertToJson(value))),
+        );
+      }
+
+      return jsonEncode(convertToJson(data));
+    } else {
+      return data.toString();
     }
-
-    if (data is Map) {
-      return jsonEncode(
-        (data as Map).map((key, value) => MapEntry(key, convertToJson(value))),
-      );
-    }
-
-    return jsonEncode(convertToJson(data));
   }
 
   dynamic convertToJson(dynamic obj) {
@@ -103,10 +142,12 @@ class Response {
 
   void send(HttpResponse response) {
     response.statusCode = statusCode;
+    response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
-    final jsonResponse = toJson();
-    if (jsonResponse.isNotEmpty) {
-      response.write(jsonResponse);
+    final responseData =
+        contentType == 'application/json' ? toJson() : data.toString();
+    if (responseData.isNotEmpty) {
+      response.write(responseData);
     }
     response.close();
   }

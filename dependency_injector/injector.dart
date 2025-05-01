@@ -6,7 +6,7 @@ class Injector {
   final Map<Type, dynamic Function()> _factories = {};
   final Map<Type, dynamic> _instances = {};
 
-  void Put<T>(T Function() factory) {
+  void put<T>(T Function() factory) {
     _factories[T] = factory;
   }
 

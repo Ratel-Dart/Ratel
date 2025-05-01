@@ -4,7 +4,7 @@ import 'dart:mirrors';
 import '../dependency_injector/binding.dart';
 import '../database/database.dart';
 import '../annotations/geral_annotations.dart';
-import '../handler/handler.dart';
+import '../http/handler.dart';
 import '../jwt.dart';
 import 'response.dart';
 

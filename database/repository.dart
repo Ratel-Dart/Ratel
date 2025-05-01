@@ -2,8 +2,8 @@ import 'dart:mirrors';
 
 import 'package:postgres/postgres.dart';
 
-import 'database.dart';
 import '../annotations/geral_annotations.dart';
+import 'database.dart';
 
 abstract class RatelRepository<T> {
   static RatelDatabase? dbConnection;
@@ -17,53 +17,45 @@ abstract class RatelRepository<T> {
     return await dbConnection!.connect();
   }
 
-  Future<dynamic> execute(String sql,
-      {Map<String, dynamic>? substitutionValues}) async {
+  Future<List<T>?> execute(
+    String sql, {
+    Map<String, dynamic>? substitutionValues,
+  }) async {
     final conn = await connection;
     try {
-      final result =
-          await conn.execute(Sql.named(sql), parameters: substitutionValues);
-      if (result.length == 1) return result.first;
-      return result;
+      sql = sql.trim();
+      if (sql.endsWith(';')) {
+        sql = sql.substring(0, sql.length - 1);
+      }
+
+      final upperSql = sql.toUpperCase();
+
+      if (!upperSql.contains("RETURNING") &&
+          (upperSql.startsWith("INSERT") ||
+              upperSql.startsWith("UPDATE") ||
+              upperSql.startsWith("DELETE"))) {
+        sql += " RETURNING *";
+      }
+
+      final result = await conn.execute(
+        Sql.named(sql),
+        parameters: substitutionValues,
+      );
+
+      if (result.isEmpty) return null;
+
+      final List<T> list = [];
+      for (var row in result) {
+        final rowMap = row.toColumnMap();
+        list.add(_mapRow(rowMap));
+      }
+      return list;
     } catch (e) {
-      print(e);
+      print("Error on execute SQL: $e");
+      rethrow;
+    } finally {
+      await conn.close();
     }
-    return [];
-  }
-
-  Future<List<T>> query(String sql,
-      {Map<String, dynamic>? substitutionValues}) async {
-    List<List<dynamic>> results =
-        await execute(sql, substitutionValues: substitutionValues);
-    if (results.isEmpty) return <T>[];
-    List<String> columns = _extractColumns(sql);
-    return results.map((row) {
-      Map<String, dynamic> rowMap = _rowToMap(row, columns);
-      return _mapRow(rowMap);
-    }).toList();
-  }
-
-  List<String> _extractColumns(String sql) {
-    String upperSql = sql.toUpperCase();
-    int selectIndex = upperSql.indexOf("SELECT");
-    int fromIndex = upperSql.indexOf("FROM");
-    if (selectIndex == -1 || fromIndex == -1 || fromIndex <= selectIndex) {
-      throw Exception("SQL inválido para extração de colunas.");
-    }
-    String columnsPart = sql.substring(selectIndex + 6, fromIndex);
-    return columnsPart.split(',').map((s) {
-      s = s.trim();
-      var tokens = s.split(RegExp(r'\s+AS\s+', caseSensitive: false));
-      return tokens.last.toLowerCase();
-    }).toList();
-  }
-
-  Map<String, dynamic> _rowToMap(List<dynamic> row, List<String> columns) {
-    Map<String, dynamic> map = {};
-    for (int i = 0; i < columns.length && i < row.length; i++) {
-      map[columns[i]] = row[i];
-    }
-    return map;
   }
 
   T _mapRow(Map<String, dynamic> row) {

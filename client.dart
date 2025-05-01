@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'exceptions/exceptions.dart';
+
 class ApiResponse {
   final int statusCode;
   final dynamic data;
@@ -15,113 +17,132 @@ class Request {
   final Map<String, String> defaultHeaders;
   Request(String baseUrl, {this.defaultHeaders = const {}})
       : baseUri = Uri.parse(baseUrl);
-  Future<ApiResponse> get(String path,
-      {Map<String, dynamic>? queryParameters,
-      Map<String, String>? headers}) async {
-    Uri uri = baseUri.resolve(path);
+
+  Uri _buildUri(String path, Map<String, dynamic>? queryParameters) {
+    var uri = baseUri.resolve(path);
     if (queryParameters != null && queryParameters.isNotEmpty) {
       uri = uri.replace(
-          queryParameters:
-              queryParameters.map((k, v) => MapEntry(k, v.toString())));
+        queryParameters:
+            queryParameters.map((k, v) => MapEntry(k, v.toString())),
+      );
     }
-    final httpClient = HttpClient();
-    final request = await httpClient.getUrl(uri);
-    _applyHeaders(request, headers);
-    final response = await request.close();
-    return _processResponse(response);
+    return uri;
+  }
+
+  Future<HttpClientRequest> _openRequest(
+      HttpClient client, String method, Uri uri) {
+    switch (method) {
+      case 'GET':
+        return client.getUrl(uri);
+      case 'POST':
+        return client.postUrl(uri);
+      case 'PUT':
+        return client.putUrl(uri);
+      case 'DELETE':
+        return client.deleteUrl(uri);
+      default:
+        throw ArgumentError('Método inválido: $method');
+    }
+  }
+
+  void _writeBody(HttpClientRequest request, dynamic body) {
+    if (body == null) return;
+    if (body is String) {
+      request.write(body);
+    } else {
+      request.write(jsonEncode(body));
+    }
+  }
+
+  Future<T> _handleExceptions<T>(
+      Future<T> Function() fn, Uri uri, String method) async {
+    try {
+      return await fn();
+    } on SocketException {
+      throw HttpRequestException('Erro ao conectar ao servidor',
+          uri: uri, method: method);
+    } on HttpException {
+      throw HttpRequestException('Erro na requisição HTTP',
+          uri: uri, method: method);
+    } catch (e) {
+      throw HttpRequestException(e.toString(), uri: uri, method: method);
+    }
+  }
+
+  Future<ApiResponse> _sendRequest(
+    String method,
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    final uri = _buildUri(path, queryParameters);
+    final client = HttpClient();
+    final result = await _handleExceptions(() async {
+      final req = await _openRequest(client, method, uri);
+      _applyHeaders(req, headers);
+      _writeBody(req, body);
+      final resp = await req.close();
+      return _processResponse(resp, uri, method);
+    }, uri, method);
+    client.close();
+    return result;
+  }
+
+  Future<ApiResponse> get(String path,
+      {Map<String, dynamic>? queryParameters, Map<String, String>? headers}) {
+    return _sendRequest('GET', path,
+        queryParameters: queryParameters, headers: headers);
   }
 
   Future<ApiResponse> post(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
-      Map<String, String>? headers}) async {
-    Uri uri = baseUri.resolve(path);
-    if (queryParameters != null && queryParameters.isNotEmpty) {
-      uri = uri.replace(
-          queryParameters:
-              queryParameters.map((k, v) => MapEntry(k, v.toString())));
-    }
-    final httpClient = HttpClient();
-    final request = await httpClient.postUrl(uri);
-    _applyHeaders(request, headers);
-    if (body != null) {
-      if (body is String) {
-        request.write(body);
-      } else {
-        request.write(jsonEncode(body));
-      }
-    }
-    final response = await request.close();
-    return _processResponse(response);
+      Map<String, String>? headers}) {
+    return _sendRequest('POST', path,
+        body: body, queryParameters: queryParameters, headers: headers);
   }
 
   Future<ApiResponse> put(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
-      Map<String, String>? headers}) async {
-    Uri uri = baseUri.resolve(path);
-    if (queryParameters != null && queryParameters.isNotEmpty) {
-      uri = uri.replace(
-          queryParameters:
-              queryParameters.map((k, v) => MapEntry(k, v.toString())));
-    }
-    final httpClient = HttpClient();
-    final request = await httpClient.putUrl(uri);
-    _applyHeaders(request, headers);
-    if (body != null) {
-      if (body is String) {
-        request.write(body);
-      } else {
-        request.write(jsonEncode(body));
-      }
-    }
-    final response = await request.close();
-    return _processResponse(response);
+      Map<String, String>? headers}) {
+    return _sendRequest('PUT', path,
+        body: body, queryParameters: queryParameters, headers: headers);
   }
 
   Future<ApiResponse> delete(String path,
       {dynamic body,
       Map<String, dynamic>? queryParameters,
-      Map<String, String>? headers}) async {
-    Uri uri = baseUri.resolve(path);
-    if (queryParameters != null && queryParameters.isNotEmpty) {
-      uri = uri.replace(
-          queryParameters:
-              queryParameters.map((k, v) => MapEntry(k, v.toString())));
-    }
-    final httpClient = HttpClient();
-    final request = await httpClient.deleteUrl(uri);
-    _applyHeaders(request, headers);
-    if (body != null) {
-      if (body is String) {
-        request.write(body);
-      } else {
-        request.write(jsonEncode(body));
-      }
-    }
-    final response = await request.close();
-    return _processResponse(response);
+      Map<String, String>? headers}) {
+    return _sendRequest('DELETE', path,
+        body: body, queryParameters: queryParameters, headers: headers);
   }
 
   void _applyHeaders(HttpClientRequest request, Map<String, String>? headers) {
-    defaultHeaders.forEach((key, value) => request.headers.set(key, value));
-    if (headers != null) {
-      headers.forEach((key, value) => request.headers.set(key, value));
-    }
+    defaultHeaders.forEach((k, v) => request.headers.set(k, v));
+    headers?.forEach((k, v) => request.headers.set(k, v));
   }
 
-  Future<ApiResponse> _processResponse(HttpClientResponse response) async {
+  Future<ApiResponse> _processResponse(
+      HttpClientResponse response, Uri uri, String method) async {
     final body = await response.transform(utf8.decoder).join();
     dynamic data;
     try {
       data = jsonDecode(body);
     } catch (_) {
-      data = body;
+      throw JsonDecodingException('Erro ao decodificar JSON', body: body);
     }
     final headerMap = <String, List<String>>{};
-    response.headers.forEach((name, values) {
-      headerMap[name] = values;
-    });
+    response.headers.forEach((name, values) => headerMap[name] = values);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw HttpResponseException(
+        'Erro na resposta HTTP',
+        statusCode: response.statusCode,
+        uri: uri,
+        method: method,
+      );
+    }
     return ApiResponse(
         statusCode: response.statusCode, data: data, headers: headerMap);
   }
