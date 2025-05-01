@@ -398,13 +398,13 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "Ratel",
+      "name": "ratel",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2025-05-01T18:09:43.201070Z",
+  "generated": "2025-05-01T18:27:04.675140Z",
   "generator": "pub",
   "generatorVersion": "3.7.3",
   "pubCache": "file:///C:/Users/Daniel/AppData/Local/Pub/Cache"
