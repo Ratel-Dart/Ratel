@@ -12,13 +12,21 @@ check_dart() {
 }
 
 create_project() {
-  [[ -z "$1" ]] && { echo "Usage: ratel create <app_name>"; exit 1; }
-  check_dart
-  dart create --template console-simple "$1"
-  cd "$1" || exit
-  mkdir -p lib/src lib/models bin config
-  touch lib/app.dart bin/main.dart
-  echo "✅ Created $1 - cd $1 && dart run"
+  local name="$1"
+  if [[ -z "$name" ]]; then
+    echo "Uso: ratel create <nome_do_app>"
+    exit 1
+  fi
+
+  git clone --depth=1 --quiet https://github.com/Ratel-Dart/simple-brick.git "$name" > /dev/null 2>&1
+
+  rm -rf "$name/.git"
+
+  local pkg_name="${name//-/_}"
+  sed -i "s/^name: .*/name: $pkg_name/" "$name/pubspec.yaml"
+
+  echo "Project '$name' has been created!"
+  echo "cd $name && dart run"
 }
 
 version() { 
@@ -31,12 +39,11 @@ info() {
 }
 
 install() {
-  LOCAL_SCRIPT_PATH="$(realpath "$0")"
-
-  echo "Updating Ratel CLI..."
-  sudo cp "$LOCAL_SCRIPT_PATH" /usr/local/bin/ratel
+  local script_path
+  script_path="$(realpath "$0")"
+  sudo cp "$script_path" /usr/local/bin/ratel
   sudo chmod +x /usr/local/bin/ratel
-  echo "Ratel v$RATEL_VERSION installed. Run 'ratel' for help."
+  echo "Ratel $RATEL_VERSION has been installed"
 }
 
 case "$1" in
