@@ -93,6 +93,26 @@ final server = RatelServer(
 );
 ```
 
+## Middleware
+
+Cross-cutting concerns are composable middleware. Register global middleware on
+the server; the JWT auth middleware is appended automatically when `jwtKey` is
+set. Built-in middleware includes `corsMiddleware` and `securityHeadersMiddleware`.
+
+```dart
+final server = RatelServer(
+  port: 8080,
+  handlers: [AccountController],
+  jwtKey: 'your-secret',
+  middlewares: [corsMiddleware(), securityHeadersMiddleware()],
+  onStartup: () async => print('starting'),
+  onShutdown: () async => print('bye'),
+);
+```
+
+Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
+claim is checked, returning 403 when the role is missing.
+
 ## Database
 
 Configure a `RatelDatabase` and extend `RatelRepository<T>` for data access.

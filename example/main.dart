@@ -34,9 +34,10 @@ Future<void> main() async {
   final server = RatelServer(
     port: 8080,
     handlers: [HelloController],
+    middlewares: [corsMiddleware(), securityHeadersMiddleware()],
   );
 
+  await server.startServer();
   stdout.writeln('Ratel listening on http://localhost:8080');
   stdout.writeln('Try: curl "http://localhost:8080/hello?name=Ada"');
-  await server.startServer();
 }
