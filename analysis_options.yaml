@@ -1,0 +1,20 @@
+# Static analysis configuration for the Ratel framework.
+# Baseline is the official `lints` recommended set, plus a few high-signal rules
+# for the specific smells this codebase had (print as logging, empty catches,
+# missing braces). These three are promoted to warnings and the code is already
+# clean of them, so `dart analyze` stays green.
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    avoid_print: warning
+    empty_catches: warning
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.reflectable.dart"
+
+linter:
+  rules:
+    - avoid_print
+    - empty_catches
+    - curly_braces_in_flow_control_structures
