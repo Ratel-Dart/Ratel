@@ -2,9 +2,14 @@ import 'dart:mirrors';
 
 import 'package:postgres/postgres.dart';
 
-import '../annotations/geral_annotations.dart';
+import '../annotations/annotations.dart';
+import '../core/logger.dart';
 import 'database.dart';
 
+/// Base class for data-access repositories of entity type [T].
+///
+/// Subclasses call [execute] with a SQL statement; rows are mapped onto [T]
+/// using its [Column]-annotated fields.
 abstract class RatelRepository<T> {
   static RatelDatabase? dbConnection;
   static void configure(RatelDatabase connection) {
@@ -12,8 +17,9 @@ abstract class RatelRepository<T> {
   }
 
   Future<Connection> get connection async {
-    if (dbConnection == null)
-      throw Exception("Conexão com o banco não foi configurada.");
+    if (dbConnection == null) {
+      throw Exception('Database connection has not been configured.');
+    }
     return await dbConnection!.connect();
   }
 
@@ -50,8 +56,8 @@ abstract class RatelRepository<T> {
         list.add(_mapRow(rowMap));
       }
       return list;
-    } catch (e) {
-      print("Error on execute SQL: $e");
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Error executing SQL statement', e, stackTrace);
       rethrow;
     } finally {
       await conn.close();

@@ -2,8 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:mirrors';
 
-import '../annotations/geral_annotations.dart';
+import '../annotations/annotations.dart';
+import 'logger.dart';
 
+/// An HTTP response with a [statusCode], a [data] payload, and a content type.
+///
+/// Use the named constructors ([Response.json], [Response.text],
+/// [Response.html], [Response.bytes]) for a specific representation, or
+/// [Response.from] to wrap an arbitrary handler return value as JSON.
 class Response {
   final int statusCode;
   final dynamic data;
@@ -112,7 +118,13 @@ class Response {
         try {
           var value = instanceMirror.getField(symbol).reflectee;
           result[fieldName] = convertToJson(value);
-        } catch (e) {}
+        } catch (e, stackTrace) {
+          ratelLogger.warning(
+            'Failed to serialize field "$fieldName"',
+            e,
+            stackTrace,
+          );
+        }
       }
     });
 
@@ -127,7 +139,13 @@ class Response {
         try {
           var value = instanceMirror.getField(symbol).reflectee;
           result[getterName] = convertToJson(value);
-        } catch (e) {}
+        } catch (e, stackTrace) {
+          ratelLogger.warning(
+            'Failed to serialize getter "$getterName"',
+            e,
+            stackTrace,
+          );
+        }
       }
     });
 
