@@ -4,6 +4,8 @@ export 'annotations/annotations.dart';
 export 'core/server.dart';
 export 'core/response.dart';
 export 'core/logger.dart';
+export 'core/request_context.dart';
+export 'core/middleware.dart';
 export 'database/database.dart';
 export 'database/repository.dart';
 export 'dependency_injector/binding.dart';

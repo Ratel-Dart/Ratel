@@ -65,6 +65,18 @@ class Response {
     );
   }
 
+  /// Returns a copy of this response with [extra] headers merged in (extra
+  /// values win on conflict). Useful for middleware that decorates responses,
+  /// e.g. CORS or security headers.
+  Response withHeaders(Map<String, String> extra) {
+    return Response(
+      statusCode: statusCode,
+      data: data,
+      headers: {...headers, ...extra},
+      contentType: contentType,
+    );
+  }
+
   String toJson() {
     if (data == null) return '';
 

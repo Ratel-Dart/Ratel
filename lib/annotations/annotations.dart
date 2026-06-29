@@ -26,16 +26,20 @@ class Route {
   /// Whether this route requires a valid authentication token.
   final bool isProtected;
 
+  /// Roles the caller must hold (any one is sufficient) when [isProtected]. An
+  /// empty list means authentication is enough, with no role check.
+  final List<String> requiredRoles;
+
   /// Reflective handle on the controller method, used for parameter binding.
   final MethodMirror? methodMirror;
 
-  /// Creates a route. All fields except [isProtected] and [methodMirror] are
-  /// required.
+  /// Creates a route. Only [path], [method] and [handler] are required.
   Route({
     required this.path,
     required this.method,
     required this.handler,
     this.isProtected = false,
+    this.requiredRoles = const [],
     this.methodMirror,
   });
 }
@@ -111,9 +115,17 @@ class Column {
 
 /// Requires a valid authentication token to reach the annotated controller or
 /// method. See [Public] to opt a single method out of a protected controller.
+///
+/// Pass [roles] to additionally require the caller to hold at least one of the
+/// listed roles (a 403 is returned otherwise).
 class Protected {
-  /// Marks the controller or method as authentication-protected.
-  const Protected();
+  /// Roles the caller must hold (any one suffices). Empty means "any
+  /// authenticated caller".
+  final List<String> roles;
+
+  /// Marks the controller or method as authentication-protected, optionally
+  /// restricted to [roles].
+  const Protected({this.roles = const []});
 }
 
 /// Opts a single method out of authentication on an otherwise [Protected]

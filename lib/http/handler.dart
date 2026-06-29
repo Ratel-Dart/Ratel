@@ -17,23 +17,25 @@ abstract class RatelHandler {
   }
 
   void _registerRoutes() {
-    InstanceMirror instance = reflect(this);
-    ClassMirror classMirror = instance.type;
+    final instance = reflect(this);
+    final classMirror = instance.type;
 
-    bool classProtected =
-        classMirror.metadata.any((m) => m.reflectee is Protected);
+    final classProtected = _firstProtected(classMirror.metadata);
 
-    for (var declaration in classMirror.declarations.values) {
+    for (final declaration in classMirror.declarations.values) {
       if (declaration is MethodMirror && declaration.isRegularMethod) {
-        bool methodPublic =
+        final methodProtected = _firstProtected(declaration.metadata);
+        final methodPublic =
             declaration.metadata.any((m) => m.reflectee is Public);
-        bool methodProtected =
-            declaration.metadata.any((m) => m.reflectee is Protected);
-        bool isProtected = (classProtected && !methodPublic) || methodProtected;
-        for (var metadata in declaration.metadata) {
+        final effective =
+            methodProtected ?? (methodPublic ? null : classProtected);
+        final isProtected = effective != null;
+        final roles = effective?.roles ?? const <String>[];
+
+        for (final metadata in declaration.metadata) {
           String? httpMethod;
           String? path;
-          var reflectee = metadata.reflectee;
+          final reflectee = metadata.reflectee;
           if (reflectee is Get) {
             httpMethod = "GET";
             path = reflectee.path;
@@ -49,20 +51,37 @@ abstract class RatelHandler {
           }
 
           if (httpMethod != null && path != null) {
+            _ensureUnique(path, httpMethod);
             routes.add(_routerAdd(
-                path, httpMethod, instance, declaration, isProtected));
+                path, httpMethod, instance, declaration, isProtected, roles));
           }
         }
       }
     }
   }
 
+  Protected? _firstProtected(Iterable<InstanceMirror> metadata) {
+    for (final m in metadata) {
+      final reflectee = m.reflectee;
+      if (reflectee is Protected) return reflectee;
+    }
+    return null;
+  }
+
+  void _ensureUnique(String path, String method) {
+    final clash = routes.any((r) => r.path == path && r.method == method);
+    if (clash) {
+      throw StateError('Duplicate route registered: $method $path');
+    }
+  }
+
   Route _routerAdd(String path, String methodType, InstanceMirror instance,
-      MethodMirror method, bool isProtected) {
+      MethodMirror method, bool isProtected, List<String> roles) {
     return Route(
       path: path,
       method: methodType,
       isProtected: isProtected,
+      requiredRoles: roles,
       methodMirror: method,
       handler: ([dynamic request]) async {
         List<dynamic> args = [];

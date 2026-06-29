@@ -1,25 +1,28 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:mirrors';
 
-import '../annotations/annotations.dart';
 import '../database/database.dart';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../http/handler.dart';
 import '../jwt.dart';
 import 'logger.dart';
+import 'middleware.dart';
+import 'request_context.dart';
 import 'response.dart';
 
 /// The application entry point: binds an HTTP server, wires dependency
 /// [bindings], registers the annotated [handlers], and dispatches each request
-/// to its matching route (enforcing JWT auth on protected routes when [jwtKey]
-/// is set).
+/// through the [middlewares] pipeline to its matching route.
 ///
-/// Provide a [securityContext] to serve over HTTPS. Unexpected errors are logged
-/// server-side and answered with a generic 500 (plus a correlation id) so no
-/// internal detail leaks to clients.
+/// JWT auth is added automatically as the innermost middleware when [jwtKey] is
+/// set, enforcing protection and roles on routes. Provide a [securityContext]
+/// to serve over HTTPS. Unexpected errors are logged server-side and answered
+/// with a generic 500 (plus a correlation id) so no internal detail leaks.
 class RatelServer {
-  /// Port to listen on.
+  /// Port to listen on. Use `0` to let the OS pick a free port (handy in tests;
+  /// read the chosen port via [boundPort]).
   final int port;
 
   /// Optional database configuration (registers repositories when constructed).
@@ -37,6 +40,18 @@ class RatelServer {
   /// When provided, the server listens over TLS via `bindSecure`.
   final SecurityContext? securityContext;
 
+  /// Global middleware run, in order, around every request (e.g. CORS, security
+  /// headers). The auth middleware is appended after these automatically.
+  final List<Middleware> middlewares;
+
+  /// Run once after binding, before serving begins.
+  final Future<void> Function()? onStartup;
+
+  /// Run once during [stop], after the socket is closed.
+  final Future<void> Function()? onShutdown;
+
+  HttpServer? _server;
+  final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
   static int _errorCounter = 0;
 
   /// Creates a server. [maxRequestBodyBytes] caps request body size (413 when
@@ -48,6 +63,9 @@ class RatelServer {
     this.jwtKey,
     this.bindings,
     this.securityContext,
+    this.middlewares = const [],
+    this.onStartup,
+    this.onShutdown,
     int maxRequestBodyBytes = 1024 * 1024,
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
@@ -55,19 +73,27 @@ class RatelServer {
     _initializeHandlers();
   }
 
+  /// The port the server is actually bound to, or null before [startServer].
+  int? get boundPort => _server?.port;
+
   void _initializeHandlers() {
     for (var handlerType in handlers) {
       reflectClass(handlerType).newInstance(Symbol(''), []);
     }
   }
 
-  /// Binds the socket and serves requests until the process exits.
+  /// Binds the socket and starts serving in the background. Completes once the
+  /// server is listening; the process stays alive via the active socket until
+  /// [stop] is called.
   Future<void> startServer() async {
+    await onStartup?.call();
+
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
     final server = securityContext != null
         ? await HttpServer.bindSecure(
             InternetAddress.anyIPv4, port, securityContext!)
         : await HttpServer.bind(InternetAddress.anyIPv4, port);
+    _server = server;
 
     if (securityContext == null && jwtKey != null) {
       ratelLogger.warning(
@@ -77,12 +103,33 @@ class RatelServer {
       );
     }
 
+    _installSignalHandlers();
+
+    final chain = <Middleware>[
+      ...middlewares,
+      if (jwtMiddleware != null) jwtAuthMiddleware(jwtMiddleware),
+    ];
+
+    unawaited(_serve(server, chain));
+  }
+
+  /// Stops accepting connections and runs [onShutdown]. With [force] true,
+  /// in-flight requests are aborted instead of drained.
+  Future<void> stop({bool force = false}) async {
+    for (final sub in _signalSubs) {
+      await sub.cancel();
+    }
+    _signalSubs.clear();
+    await _server?.close(force: force);
+    _server = null;
+    await onShutdown?.call();
+  }
+
+  Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
       try {
-        await _handleRequest(request, jwtMiddleware);
+        await _handleRequest(request, chain);
       } catch (e, stackTrace) {
-        // Last-resort guard so a failure while sending a response can never
-        // tear down the accept loop.
         ratelLogger.severe('Failed to handle request', e, stackTrace);
       }
     }
@@ -90,63 +137,70 @@ class RatelServer {
 
   Future<void> _handleRequest(
     HttpRequest request,
-    JwtAuthMiddleware? jwtMiddleware,
+    List<Middleware> chain,
   ) async {
-    final path = request.uri.path;
-    final method = request.method;
+    final ctx = RequestContext(request);
+    for (final r in RatelHandler.routes) {
+      if (r.path == ctx.path && r.method == ctx.method) {
+        ctx.route = r;
+        break;
+      }
+    }
+    final response = await _runChain(ctx, chain);
+    response.send(request.response);
+  }
+
+  Future<Response> _runChain(
+    RequestContext ctx,
+    List<Middleware> chain,
+  ) async {
+    Next next = () => _terminal(ctx);
+    for (final middleware in chain.reversed) {
+      final downstream = next;
+      next = () => middleware(ctx, downstream);
+    }
     try {
-      Route? route;
-      for (final r in RatelHandler.routes) {
-        if (r.path == path && r.method == method) {
-          route = r;
-          break;
-        }
-      }
-      if (route == null) {
-        _sendError(request, HttpStatus.notFound, 'Not Found');
-        return;
-      }
-
-      if (jwtMiddleware != null && route.isProtected) {
-        final payload = await jwtMiddleware.validate(request);
-        if (payload == null) {
-          _sendError(
-              request, HttpStatus.unauthorized, 'Invalid or missing token');
-          return;
-        }
-      }
-
-      final responseData = await route.handler(request);
-      Response.from(responseData).send(request.response);
+      return await next();
     } on HttpStatusException catch (e) {
-      _sendError(request, e.statusCode, e.message);
+      return Response(statusCode: e.statusCode, data: {'error': e.message});
     } catch (e, stackTrace) {
       final correlationId = _nextCorrelationId();
       ratelLogger.severe(
-        'Unhandled error [$correlationId] $method $path',
+        'Unhandled error [$correlationId] ${ctx.method} ${ctx.path}',
         e,
         stackTrace,
       );
-      _sendError(
-        request,
-        HttpStatus.internalServerError,
-        'Internal Server Error',
-        correlationId: correlationId,
+      return Response(
+        statusCode: HttpStatus.internalServerError,
+        data: {
+          'error': 'Internal Server Error',
+          'correlationId': correlationId
+        },
       );
     }
   }
 
-  void _sendError(
-    HttpRequest request,
-    int statusCode,
-    String message, {
-    String? correlationId,
-  }) {
-    final data = <String, dynamic>{'error': message};
-    if (correlationId != null) {
-      data['correlationId'] = correlationId;
+  Future<Response> _terminal(RequestContext ctx) async {
+    final route = ctx.route;
+    if (route == null) {
+      throw const NotFoundException();
     }
-    Response(statusCode: statusCode, data: data).send(request.response);
+    final result = await route.handler(ctx.request);
+    return Response.from(result);
+  }
+
+  void _installSignalHandlers() {
+    void handle(ProcessSignal signal) {
+      _signalSubs.add(signal.watch().listen((_) async {
+        ratelLogger.info('Received $signal, shutting down');
+        await stop();
+      }));
+    }
+
+    handle(ProcessSignal.sigint);
+    if (!Platform.isWindows) {
+      handle(ProcessSignal.sigterm);
+    }
   }
 
   String _nextCorrelationId() {
