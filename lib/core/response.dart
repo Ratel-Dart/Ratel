@@ -16,6 +16,9 @@ class Response {
   final Map<String, String> headers;
   final String contentType;
 
+  /// Cookies emitted as `Set-Cookie` headers. Add one with [withCookie].
+  List<Cookie> cookies = const [];
+
   Response({
     required this.statusCode,
     this.data,
@@ -83,7 +86,19 @@ class Response {
       data: data,
       headers: {...headers, ...extra},
       contentType: contentType,
-    );
+    )..cookies = cookies;
+  }
+
+  /// Returns a copy of this response with [cookie] added as a `Set-Cookie`
+  /// header. Build the [Cookie] (from `dart:io`) with the flags you need
+  /// (`httpOnly`, `secure`, `sameSite`, ...).
+  Response withCookie(Cookie cookie) {
+    return Response(
+      statusCode: statusCode,
+      data: data,
+      headers: headers,
+      contentType: contentType,
+    )..cookies = [...cookies, cookie];
   }
 
   String toJson() {
@@ -184,6 +199,9 @@ class Response {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
+    for (final cookie in cookies) {
+      response.cookies.add(cookie);
+    }
     final body = data;
     if (body is List<int>) {
       response.add(body);

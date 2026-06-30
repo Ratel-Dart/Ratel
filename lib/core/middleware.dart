@@ -140,3 +140,62 @@ class _RateWindow {
   int count;
   _RateWindow(this.resetAt, this.count);
 }
+
+/// Serves files from [directory] for requests whose path starts with
+/// [urlPrefix]. Non-GET requests, non-matching paths, and missing files fall
+/// through to the next handler. Path traversal is blocked by resolving the real
+/// file path and ensuring it stays inside [directory].
+Middleware staticFiles({
+  required String directory,
+  String urlPrefix = '/',
+}) {
+  final root = Directory(directory);
+  String? rootReal;
+  return (ctx, next) async {
+    if (ctx.method != 'GET' || !ctx.path.startsWith(urlPrefix)) {
+      return next();
+    }
+    rootReal ??= await root.resolveSymbolicLinks();
+
+    var relative = ctx.path.substring(urlPrefix.length);
+    if (relative.startsWith('/')) relative = relative.substring(1);
+    if (relative.isEmpty) return next();
+
+    final file = File('${root.path}/$relative');
+    if (!await file.exists()) return next();
+
+    final real = await file.resolveSymbolicLinks();
+    final sep = Platform.pathSeparator;
+    if (real != rootReal && !real.startsWith('$rootReal$sep')) {
+      throw const NotFoundException();
+    }
+
+    final bytes = await file.readAsBytes();
+    return Response.bytes(statusCode: 200, data: bytes).withHeaders(
+      {HttpHeaders.contentTypeHeader: _mimeType(file.path)},
+    );
+  };
+}
+
+String _mimeType(String path) {
+  final dot = path.lastIndexOf('.');
+  final ext = dot == -1 ? '' : path.substring(dot + 1).toLowerCase();
+  return _mimeTypes[ext] ?? 'application/octet-stream';
+}
+
+const _mimeTypes = <String, String>{
+  'html': 'text/html; charset=utf-8',
+  'css': 'text/css; charset=utf-8',
+  'js': 'application/javascript; charset=utf-8',
+  'json': 'application/json; charset=utf-8',
+  'txt': 'text/plain; charset=utf-8',
+  'svg': 'image/svg+xml',
+  'png': 'image/png',
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'gif': 'image/gif',
+  'webp': 'image/webp',
+  'ico': 'image/x-icon',
+  'pdf': 'application/pdf',
+  'wasm': 'application/wasm',
+};
