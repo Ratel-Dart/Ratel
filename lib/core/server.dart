@@ -11,6 +11,7 @@ import 'logger.dart';
 import 'middleware.dart';
 import 'request_context.dart';
 import 'response.dart';
+import 'router.dart';
 
 /// The application entry point: binds an HTTP server, wires dependency
 /// [bindings], registers the annotated [handlers], and dispatches each request
@@ -51,6 +52,7 @@ class RatelServer {
   final Future<void> Function()? onShutdown;
 
   HttpServer? _server;
+  Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
   static int _errorCounter = 0;
 
@@ -104,6 +106,7 @@ class RatelServer {
     }
 
     _installSignalHandlers();
+    _router = Router(RatelHandler.routes);
 
     final chain = <Middleware>[
       ...middlewares,
@@ -140,11 +143,10 @@ class RatelServer {
     List<Middleware> chain,
   ) async {
     final ctx = RequestContext(request);
-    for (final r in RatelHandler.routes) {
-      if (r.path == ctx.path && r.method == ctx.method) {
-        ctx.route = r;
-        break;
-      }
+    final match = _router!.match(ctx.method, ctx.path);
+    if (match != null) {
+      ctx.route = match.route;
+      ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
     response.send(request.response);
@@ -162,7 +164,11 @@ class RatelServer {
     try {
       return await next();
     } on HttpStatusException catch (e) {
-      return Response(statusCode: e.statusCode, data: {'error': e.message});
+      return Response(
+        statusCode: e.statusCode,
+        data: {'error': e.message},
+        headers: e.headers,
+      );
     } catch (e, stackTrace) {
       final correlationId = _nextCorrelationId();
       ratelLogger.severe(
@@ -183,9 +189,13 @@ class RatelServer {
   Future<Response> _terminal(RequestContext ctx) async {
     final route = ctx.route;
     if (route == null) {
+      final allowed = _router!.allowedMethods(ctx.path);
+      if (allowed.isNotEmpty) {
+        throw MethodNotAllowedException(allowed);
+      }
       throw const NotFoundException();
     }
-    final result = await route.handler(ctx.request);
+    final result = await route.handler(ctx);
     return Response.from(result);
   }
 

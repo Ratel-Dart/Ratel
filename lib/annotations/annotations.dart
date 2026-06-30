@@ -80,6 +80,33 @@ class Put {
   const Put(this.path);
 }
 
+/// Binds the annotated method to HTTP `PATCH` requests on [path].
+class Patch {
+  /// The URL path to match.
+  final String path;
+
+  /// Binds the method to `PATCH [path]`.
+  const Patch(this.path);
+}
+
+/// Binds the annotated method to HTTP `HEAD` requests on [path].
+class Head {
+  /// The URL path to match.
+  final String path;
+
+  /// Binds the method to `HEAD [path]`.
+  const Head(this.path);
+}
+
+/// Binds the annotated method to HTTP `OPTIONS` requests on [path].
+class Options {
+  /// The URL path to match.
+  final String path;
+
+  /// Binds the method to `OPTIONS [path]`.
+  const Options(this.path);
+}
+
 /// Marks a handler parameter as the deserialized request body.
 ///
 /// The parameter type must be a class annotated with [Json].
@@ -100,6 +127,26 @@ class Json {
 class Param {
   /// Marks the parameter as a query-string parameter.
   const Param();
+}
+
+/// Marks a handler parameter as bound to a path parameter named [name], i.e. a
+/// `:name` segment in the route path (e.g. `/users/:id` with `@PathParam('id')`).
+class PathParam {
+  /// The path segment name this parameter binds to.
+  final String name;
+
+  /// Binds the parameter to the `:[name]` path segment.
+  const PathParam(this.name);
+}
+
+/// Class-level annotation that prefixes every route in a controller with
+/// [prefix] (e.g. `@Controller('/api/v1')`).
+class Controller {
+  /// The base path prepended to each route in the controller.
+  final String prefix;
+
+  /// Prefixes the controller's routes with [prefix].
+  const Controller(this.prefix);
 }
 
 /// Maps a model field to a database column named [name].

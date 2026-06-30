@@ -2,8 +2,12 @@ import 'dart:convert';
 import 'dart:mirrors';
 
 import '../annotations/annotations.dart';
+import '../core/request_context.dart';
 import '../exceptions/exceptions.dart';
 
+/// Base class for controllers. Subclasses annotate methods with `@Get`, `@Post`,
+/// etc.; constructing one scans those annotations (via reflection) and registers
+/// the routes. A class-level `@Controller('/prefix')` prefixes every route.
 abstract class RatelHandler {
   static final List<Route> routesList = [];
 
@@ -20,11 +24,12 @@ abstract class RatelHandler {
     final instance = reflect(this);
     final classMirror = instance.type;
 
-    final classProtected = _firstProtected(classMirror.metadata);
+    final prefix = _firstMeta<Controller>(classMirror.metadata)?.prefix ?? '';
+    final classProtected = _firstMeta<Protected>(classMirror.metadata);
 
     for (final declaration in classMirror.declarations.values) {
       if (declaration is MethodMirror && declaration.isRegularMethod) {
-        final methodProtected = _firstProtected(declaration.metadata);
+        final methodProtected = _firstMeta<Protected>(declaration.metadata);
         final methodPublic =
             declaration.metadata.any((m) => m.reflectee is Public);
         final effective =
@@ -33,39 +38,17 @@ abstract class RatelHandler {
         final roles = effective?.roles ?? const <String>[];
 
         for (final metadata in declaration.metadata) {
-          String? httpMethod;
-          String? path;
-          final reflectee = metadata.reflectee;
-          if (reflectee is Get) {
-            httpMethod = "GET";
-            path = reflectee.path;
-          } else if (reflectee is Post) {
-            httpMethod = "POST";
-            path = reflectee.path;
-          } else if (reflectee is Put) {
-            httpMethod = "PUT";
-            path = reflectee.path;
-          } else if (reflectee is Delete) {
-            httpMethod = "DELETE";
-            path = reflectee.path;
-          }
-
-          if (httpMethod != null && path != null) {
-            _ensureUnique(path, httpMethod);
-            routes.add(_routerAdd(
-                path, httpMethod, instance, declaration, isProtected, roles));
+          final httpMethod = _methodOf(metadata.reflectee);
+          final routePath = _pathOf(metadata.reflectee);
+          if (httpMethod != null && routePath != null) {
+            final fullPath = _joinPath(prefix, routePath);
+            _ensureUnique(fullPath, httpMethod);
+            routes.add(_routerAdd(fullPath, httpMethod, instance, declaration,
+                isProtected, roles));
           }
         }
       }
     }
-  }
-
-  Protected? _firstProtected(Iterable<InstanceMirror> metadata) {
-    for (final m in metadata) {
-      final reflectee = m.reflectee;
-      if (reflectee is Protected) return reflectee;
-    }
-    return null;
   }
 
   void _ensureUnique(String path, String method) {
@@ -77,106 +60,142 @@ abstract class RatelHandler {
 
   Route _routerAdd(String path, String methodType, InstanceMirror instance,
       MethodMirror method, bool isProtected, List<String> roles) {
+    final verb = methodType.toUpperCase();
+    final hasBody =
+        verb == 'POST' || verb == 'PUT' || verb == 'DELETE' || verb == 'PATCH';
     return Route(
       path: path,
       method: methodType,
       isProtected: isProtected,
       requiredRoles: roles,
       methodMirror: method,
-      handler: ([dynamic request]) async {
-        List<dynamic> args = [];
-        String mType = methodType.toUpperCase();
-        if (mType == "GET") {
-          for (var param in method.parameters) {
-            if (param.metadata.any((meta) => meta.reflectee is Param)) {
-              String paramName = MirrorSystem.getName(param.simpleName);
-              if (request.uri.queryParameters.containsKey(paramName)) {
-                String valueStr = request.uri.queryParameters[paramName]!;
-                Type paramType = param.type.reflectedType;
-                args.add(coerceParam(paramName, valueStr, paramType));
-              } else {
-                args.add(null);
-              }
+      handler: ([dynamic ctxArg]) async {
+        final ctx = ctxArg as RequestContext;
+        final args = <dynamic>[];
+        if (hasBody) {
+          final body = await readBodyLimited(ctx.request, maxRequestBodyBytes);
+          final jsonMap = body.isNotEmpty
+              ? decodeJsonObject(body)
+              : const <String, dynamic>{};
+          for (final param in method.parameters) {
+            if (param.metadata.any((m) => m.reflectee is Body)) {
+              args.add(_deserializeBody(param, jsonMap));
             } else {
-              args.add(null);
+              args.add(_resolveParam(param, ctx));
             }
-          }
-        } else if (mType == "POST" || mType == "PUT" || mType == "DELETE") {
-          String bodyString =
-              await readBodyLimited(request, maxRequestBodyBytes);
-          if (bodyString.isNotEmpty) {
-            final Map<String, dynamic> jsonMap = decodeJsonObject(bodyString);
-            for (var param in method.parameters) {
-              bool isBody =
-                  param.metadata.any((meta) => meta.reflectee is Body);
-              if (isBody) {
-                Type paramType = param.type.reflectedType;
-                ClassMirror typeMirror = reflectClass(paramType);
-                bool hasJsonAnnotation =
-                    typeMirror.metadata.any((m) => m.reflectee is Json);
-                if (hasJsonAnnotation) {
-                  var obj = _generateFromJson(typeMirror, jsonMap);
-                  args.add(obj);
-                } else {
-                  args.add(null);
-                }
-              } else if (param.metadata
-                  .any((meta) => meta.reflectee is Param)) {
-                String paramName = MirrorSystem.getName(param.simpleName);
-                if (request.uri.queryParameters.containsKey(paramName)) {
-                  String valueStr = request.uri.queryParameters[paramName]!;
-                  Type paramType = param.type.reflectedType;
-                  args.add(coerceParam(paramName, valueStr, paramType));
-                } else {
-                  args.add(null);
-                }
-              } else {
-                args.add(null);
-              }
-            }
-          } else {
-            args.addAll(List.filled(method.parameters.length, null));
           }
         } else {
-          args = [];
+          for (final param in method.parameters) {
+            args.add(_resolveParam(param, ctx));
+          }
         }
         return await instance.invoke(method.simpleName, args).reflectee;
       },
     );
   }
 
-  dynamic _generateFromJson(
-      ClassMirror typeMirror, Map<String, dynamic> jsonMap) {
-    var instance = typeMirror.newInstance(Symbol(''), []);
-    for (var field in typeMirror.declarations.values) {
-      if (field is VariableMirror && !field.isStatic) {
-        String fieldName = MirrorSystem.getName(field.simpleName);
-        if (jsonMap.containsKey(fieldName)) {
-          instance.setField(field.simpleName, jsonMap[fieldName]);
-        }
-      }
-    }
-    return instance.reflectee;
-  }
-
   static List<Route> get routes => routesList;
 }
 
-/// Parses a query-string [value] into [targetType] (`int`, `double`, `bool` or
+T? _firstMeta<T>(Iterable<InstanceMirror> metadata) {
+  for (final m in metadata) {
+    final reflectee = m.reflectee;
+    if (reflectee is T) return reflectee;
+  }
+  return null;
+}
+
+String? _methodOf(dynamic annotation) {
+  if (annotation is Get) return 'GET';
+  if (annotation is Post) return 'POST';
+  if (annotation is Put) return 'PUT';
+  if (annotation is Delete) return 'DELETE';
+  if (annotation is Patch) return 'PATCH';
+  if (annotation is Head) return 'HEAD';
+  if (annotation is Options) return 'OPTIONS';
+  return null;
+}
+
+String? _pathOf(dynamic annotation) {
+  if (annotation is Get) return annotation.path;
+  if (annotation is Post) return annotation.path;
+  if (annotation is Put) return annotation.path;
+  if (annotation is Delete) return annotation.path;
+  if (annotation is Patch) return annotation.path;
+  if (annotation is Head) return annotation.path;
+  if (annotation is Options) return annotation.path;
+  return null;
+}
+
+/// Joins a controller [prefix] with a route [path], collapsing slashes.
+String _joinPath(String prefix, String path) {
+  if (prefix.isEmpty) return path;
+  var base =
+      prefix.endsWith('/') ? prefix.substring(0, prefix.length - 1) : prefix;
+  if (!base.startsWith('/')) base = '/$base';
+  final tail = path.startsWith('/') ? path : '/$path';
+  var joined = '$base$tail';
+  if (joined.length > 1 && joined.endsWith('/')) {
+    joined = joined.substring(0, joined.length - 1);
+  }
+  return joined;
+}
+
+/// Resolves a `@PathParam` or `@Param` handler argument from [ctx], coercing the
+/// string value to the parameter's declared type. Returns null when absent.
+dynamic _resolveParam(ParameterMirror param, RequestContext ctx) {
+  final type = param.type.reflectedType;
+  for (final meta in param.metadata) {
+    final reflectee = meta.reflectee;
+    if (reflectee is PathParam) {
+      final value = ctx.pathParams[reflectee.name];
+      return value == null ? null : coerceParam(reflectee.name, value, type);
+    }
+    if (reflectee is Param) {
+      final name = MirrorSystem.getName(param.simpleName);
+      final value = ctx.request.uri.queryParameters[name];
+      return value == null ? null : coerceParam(name, value, type);
+    }
+  }
+  return null;
+}
+
+dynamic _deserializeBody(ParameterMirror param, Map<String, dynamic> jsonMap) {
+  final typeMirror = reflectClass(param.type.reflectedType);
+  final hasJson = typeMirror.metadata.any((m) => m.reflectee is Json);
+  if (!hasJson) return null;
+  return _generateFromJson(typeMirror, jsonMap);
+}
+
+dynamic _generateFromJson(
+    ClassMirror typeMirror, Map<String, dynamic> jsonMap) {
+  final instance = typeMirror.newInstance(Symbol(''), []);
+  for (final field in typeMirror.declarations.values) {
+    if (field is VariableMirror && !field.isStatic) {
+      final fieldName = MirrorSystem.getName(field.simpleName);
+      if (jsonMap.containsKey(fieldName)) {
+        instance.setField(field.simpleName, jsonMap[fieldName]);
+      }
+    }
+  }
+  return instance.reflectee;
+}
+
+/// Parses a query/path [value] into [targetType] (`int`, `double`, `bool` or
 /// `String`), throwing [BadRequestException] when the value is not valid for the
 /// requested type. Invalid client input becomes a 400, never a 500.
 dynamic coerceParam(String name, String value, Type targetType) {
   if (targetType == int) {
     final parsed = int.tryParse(value);
     if (parsed == null) {
-      throw BadRequestException('Query parameter "$name" must be an integer');
+      throw BadRequestException('Parameter "$name" must be an integer');
     }
     return parsed;
   }
   if (targetType == double) {
     final parsed = double.tryParse(value);
     if (parsed == null) {
-      throw BadRequestException('Query parameter "$name" must be a number');
+      throw BadRequestException('Parameter "$name" must be a number');
     }
     return parsed;
   }

@@ -58,9 +58,16 @@ class HttpStatusException implements Exception {
   /// A client-safe error message.
   final String message;
 
+  /// Extra response headers to attach (e.g. `Allow` for a 405).
+  final Map<String, String> headers;
+
   /// Creates an exception that maps to [statusCode] with a client-safe
-  /// [message].
-  const HttpStatusException(this.statusCode, this.message);
+  /// [message] and optional response [headers].
+  const HttpStatusException(
+    this.statusCode,
+    this.message, {
+    this.headers = const {},
+  });
 
   @override
   String toString() => 'HttpStatusException($statusCode): $message';
@@ -91,6 +98,18 @@ class ForbiddenException extends HttpStatusException {
 class NotFoundException extends HttpStatusException {
   /// Creates a 404 response with an optional [message].
   const NotFoundException([String message = 'Not Found']) : super(404, message);
+}
+
+/// A 405 Method Not Allowed — the path exists but not for this HTTP method. The
+/// `Allow` header lists the methods that are accepted.
+class MethodNotAllowedException extends HttpStatusException {
+  /// Creates a 405 response whose `Allow` header lists [allowed] methods.
+  MethodNotAllowedException(Iterable<String> allowed)
+      : super(
+          405,
+          'Method Not Allowed',
+          headers: {'Allow': allowed.join(', ')},
+        );
 }
 
 /// A 413 Payload Too Large — the request body exceeded the configured limit.

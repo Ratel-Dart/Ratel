@@ -14,9 +14,8 @@ class RequestContext {
   /// The route matched for this request, or null when none matched.
   Route? route;
 
-  /// Path parameters extracted from the URL (populated once routing supports
-  /// them; empty today).
-  final Map<String, String> pathParams;
+  /// Path parameters captured from `:name` segments of the matched route.
+  Map<String, String> pathParams;
 
   /// Authenticated JWT claims, set by the auth middleware on protected routes.
   Map<String, dynamic>? claims;
