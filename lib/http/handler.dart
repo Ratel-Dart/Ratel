@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:mirrors';
 
 import '../annotations/annotations.dart';
@@ -75,7 +76,7 @@ abstract class RatelHandler {
         if (hasBody) {
           final body = await readBodyLimited(ctx.request, maxRequestBodyBytes);
           final jsonMap = body.isNotEmpty
-              ? decodeJsonObject(body)
+              ? decodeBody(ctx.request, body)
               : const <String, dynamic>{};
           for (final param in method.parameters) {
             if (param.metadata.any((m) => m.reflectee is Body)) {
@@ -222,6 +223,17 @@ Future<String> readBodyLimited(Stream<List<int>> stream, int maxBytes) async {
     bytes.addAll(chunk);
   }
   return utf8.decode(bytes);
+}
+
+/// Decodes a request [body] into a map based on its `Content-Type`: JSON
+/// objects (the default) or `application/x-www-form-urlencoded` form fields
+/// (whose values are always strings).
+Map<String, dynamic> decodeBody(HttpRequest request, String body) {
+  final mimeType = request.headers.contentType?.mimeType;
+  if (mimeType == 'application/x-www-form-urlencoded') {
+    return Map<String, dynamic>.from(Uri.splitQueryString(body));
+  }
+  return decodeJsonObject(body);
 }
 
 /// Decodes [body] as a JSON object, throwing [BadRequestException] (400) for

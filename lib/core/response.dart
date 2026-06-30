@@ -65,6 +65,15 @@ class Response {
     );
   }
 
+  /// Builds a redirect response to [location] (default `302 Found`; use `301`
+  /// for a permanent redirect).
+  factory Response.redirect(String location, {int statusCode = 302}) {
+    return Response(
+      statusCode: statusCode,
+      headers: {HttpHeaders.locationHeader: location},
+    );
+  }
+
   /// Returns a copy of this response with [extra] headers merged in (extra
   /// values win on conflict). Useful for middleware that decorates responses,
   /// e.g. CORS or security headers.
