@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.7 (unreleased)
+
+### Added
+- `staticFiles` middleware to serve files from a directory, with path-traversal
+  protection and content-type detection.
+- `Response.withCookie` to emit `Set-Cookie` headers (with `dart:io` `Cookie`
+  flags).
+
 ## 2.0.0-dev.6 (unreleased)
 
 ### Added
