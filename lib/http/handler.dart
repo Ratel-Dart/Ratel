@@ -142,8 +142,9 @@ String _joinPath(String prefix, String path) {
   return joined;
 }
 
-/// Resolves a `@PathParam` or `@Param` handler argument from [ctx], coercing the
-/// string value to the parameter's declared type. Returns null when absent.
+/// Resolves a `@PathParam`, `@Param`, `@Header` or `@CookieParam` handler
+/// argument from [ctx], coercing the string value to the parameter's declared
+/// type. Returns null when absent.
 dynamic _resolveParam(ParameterMirror param, RequestContext ctx) {
   final type = param.type.reflectedType;
   for (final meta in param.metadata) {
@@ -157,6 +158,21 @@ dynamic _resolveParam(ParameterMirror param, RequestContext ctx) {
       final value = ctx.request.uri.queryParameters[name];
       return value == null ? null : coerceParam(name, value, type);
     }
+    if (reflectee is Header) {
+      final value = ctx.request.headers.value(reflectee.name);
+      return value == null ? null : coerceParam(reflectee.name, value, type);
+    }
+    if (reflectee is CookieParam) {
+      final value = _cookieValue(ctx.request.cookies, reflectee.name);
+      return value == null ? null : coerceParam(reflectee.name, value, type);
+    }
+  }
+  return null;
+}
+
+String? _cookieValue(List<Cookie> cookies, String name) {
+  for (final cookie in cookies) {
+    if (cookie.name == name) return cookie.value;
   }
   return null;
 }
