@@ -59,6 +59,11 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// Optional hook to turn an unexpected error into a custom [Response] (e.g. to
+  /// map domain exceptions). When null, unexpected errors become a generic 500.
+  final Response Function(
+      Object error, StackTrace stackTrace, RequestContext ctx)? onError;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
@@ -78,6 +83,7 @@ class RatelServer {
     this.onShutdown,
     this.gzip = true,
     this.idleTimeout,
+    this.onError,
     int maxRequestBodyBytes = 1024 * 1024,
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
@@ -209,6 +215,17 @@ class RatelServer {
         e,
         stackTrace,
       );
+      if (onError != null) {
+        try {
+          return onError!(e, stackTrace, ctx);
+        } catch (handlerError, handlerStack) {
+          ratelLogger.severe(
+            'Custom error handler threw',
+            handlerError,
+            handlerStack,
+          );
+        }
+      }
       return Response(
         statusCode: HttpStatus.internalServerError,
         data: {

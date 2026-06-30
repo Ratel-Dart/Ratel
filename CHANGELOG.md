@@ -18,6 +18,8 @@ All notable changes to this project are documented here. This project follows
 - `Response.sse` to stream Server-Sent Events (`text/event-stream`).
 - WebSocket support: `@Socket('/path')` methods receive the upgraded
   `WebSocket` (and optional `RequestContext`).
+- `RatelServer(onError: ...)` hook to map unexpected errors to a custom
+  `Response`.
 
 ## 2.0.0-dev.6 (unreleased)
 
