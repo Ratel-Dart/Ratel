@@ -118,3 +118,17 @@ class PayloadTooLargeException extends HttpStatusException {
   const PayloadTooLargeException([String message = 'Payload Too Large'])
       : super(413, message);
 }
+
+/// A 429 Too Many Requests — the client exceeded the rate limit. When known, a
+/// `Retry-After` header (in seconds) tells the client when to retry.
+class TooManyRequestsException extends HttpStatusException {
+  /// Creates a 429 response, optionally advertising [retryAfterSeconds].
+  TooManyRequestsException({int? retryAfterSeconds})
+      : super(
+          429,
+          'Too Many Requests',
+          headers: retryAfterSeconds == null
+              ? const {}
+              : {'Retry-After': '$retryAfterSeconds'},
+        );
+}

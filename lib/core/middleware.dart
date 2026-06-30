@@ -100,3 +100,43 @@ Middleware securityHeadersMiddleware({
     return response.withHeaders(headers);
   };
 }
+
+/// Fixed-window rate limiting per client IP: at most [maxRequests] requests per
+/// [window]. Once exceeded, requests get a `429` with a `Retry-After` header
+/// until the window rolls over. Useful to blunt brute-force and flood attacks;
+/// place it early in the pipeline (before auth).
+Middleware rateLimitMiddleware({
+  int maxRequests = 100,
+  Duration window = const Duration(minutes: 1),
+}) {
+  final windows = <String, _RateWindow>{};
+  return (ctx, next) async {
+    final ip = ctx.request.connectionInfo?.remoteAddress.address ?? 'unknown';
+    final now = DateTime.now();
+
+    // Opportunistically evict expired windows so the map cannot grow forever.
+    if (windows.length > 10000) {
+      windows.removeWhere((_, w) => now.isAfter(w.resetAt));
+    }
+
+    final current = windows[ip];
+    if (current == null || now.isAfter(current.resetAt)) {
+      windows[ip] = _RateWindow(now.add(window), 1);
+    } else {
+      current.count++;
+      if (current.count > maxRequests) {
+        final retryAfter = current.resetAt.difference(now).inSeconds;
+        throw TooManyRequestsException(
+          retryAfterSeconds: retryAfter < 1 ? 1 : retryAfter,
+        );
+      }
+    }
+    return next();
+  };
+}
+
+class _RateWindow {
+  final DateTime resetAt;
+  int count;
+  _RateWindow(this.resetAt, this.count);
+}
