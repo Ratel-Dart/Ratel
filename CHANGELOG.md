@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.3 (unreleased)
+
+### Added
+- Dynamic path parameters: `@PathParam('id')` binds `:id` segments (e.g.
+  `/users/:id`), with type coercion and a 400 on invalid values.
+- `@Controller('/prefix')` to prefix every route in a controller.
+- `@Patch`, `@Head` and `@Options` method annotations.
+- `405 Method Not Allowed` with an `Allow` header when the path exists for other
+  methods (previously a 404).
+- A `Router` (exported) that resolves `(method, path)` with path parameters and
+  reports allowed methods.
+
+### Changed
+- Route handlers now receive the `RequestContext` (exposing `pathParams` and
+  the authenticated `claims`).
+
 ## 2.0.0-dev.2 (unreleased)
 
 ### Added

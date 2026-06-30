@@ -23,6 +23,15 @@ class HelloController extends RatelHandler {
     );
   }
 
+  /// GET /greet/Ada  ->  {"message":"Hi, Ada!"}
+  @Get('/greet/:name')
+  Future<Response> greet(@PathParam('name') String name) async {
+    return Response.json(
+      statusCode: HttpStatus.ok,
+      data: Greeting(message: 'Hi, $name!'),
+    );
+  }
+
   /// POST /echo  with body {"message":"hi"}  ->  {"message":"hi"}
   @Post('/echo')
   Future<Response> echo(@Body() Greeting body) async {

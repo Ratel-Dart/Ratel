@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RATEL_VERSION="2.0.0-dev.2"
+RATEL_VERSION="2.0.0-dev.3"
 RATEL_AUTHOR="Daniel"
 RATEL_GITHUB="https://github.com/Ratel-Dart/Ratel"
 

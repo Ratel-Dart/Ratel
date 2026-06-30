@@ -10,7 +10,9 @@
 Ratel is a lightweight, annotation-driven backend framework for Dart. It provides
 a clean way to build RESTful APIs, with built-in support for:
 
-- **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` annotations
+- **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` / `@Patch` /
+  `@Head` / `@Options`, with path parameters (`/users/:id`) and `@Controller`
+  prefixes
 - **PostgreSQL** repositories
 - **Dependency injection**
 - **JWT authentication**
@@ -69,6 +71,22 @@ curl "http://localhost:8080/hello?name=Ada"   # {"message":"Hello, Ada!"}
 ```
 
 A complete runnable version lives in [`example/main.dart`](example/main.dart).
+
+## Routing
+
+Routes are declared by annotating controller methods. A class-level
+`@Controller` adds a shared prefix, `:name` segments become path parameters
+(bound with `@PathParam`), and `@Param` reads the query string. A request to a
+known path with an unsupported method returns `405` with an `Allow` header.
+
+```dart
+@Controller('/api/v1')
+class UserController extends RatelHandler {
+  @Get('/users/:id')
+  Future<Response> byId(@PathParam('id') int id) async =>
+      Response.json(statusCode: 200, data: {'id': id});
+}
+```
 
 ## Authentication
 
