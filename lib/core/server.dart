@@ -51,6 +51,14 @@ class RatelServer {
   /// Run once during [stop], after the socket is closed.
   final Future<void> Function()? onShutdown;
 
+  /// Whether to gzip responses when the client advertises `Accept-Encoding:
+  /// gzip` (HttpServer auto-compression). Defaults to true.
+  final bool gzip;
+
+  /// Idle keep-alive timeout for connections. When null, the `dart:io` default
+  /// applies.
+  final Duration? idleTimeout;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
@@ -68,6 +76,8 @@ class RatelServer {
     this.middlewares = const [],
     this.onStartup,
     this.onShutdown,
+    this.gzip = true,
+    this.idleTimeout,
     int maxRequestBodyBytes = 1024 * 1024,
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
@@ -96,6 +106,10 @@ class RatelServer {
             InternetAddress.anyIPv4, port, securityContext!)
         : await HttpServer.bind(InternetAddress.anyIPv4, port);
     _server = server;
+    server.autoCompress = gzip;
+    if (idleTimeout != null) {
+      server.idleTimeout = idleTimeout!;
+    }
 
     if (securityContext == null && jwtKey != null) {
       ratelLogger.warning(
