@@ -181,3 +181,23 @@ class Public {
   /// Marks the method as publicly accessible.
   const Public();
 }
+
+/// Marks a handler parameter as bound to the request header named [name].
+class Header {
+  /// The request header name this parameter binds to.
+  final String name;
+
+  /// Binds the parameter to the `[name]` request header.
+  const Header(this.name);
+}
+
+/// Marks a handler parameter as bound to the request cookie named [name].
+///
+/// Named `CookieParam` to avoid colliding with `dart:io`'s `Cookie`.
+class CookieParam {
+  /// The cookie name this parameter binds to.
+  final String name;
+
+  /// Binds the parameter to the `[name]` request cookie.
+  const CookieParam(this.name);
+}

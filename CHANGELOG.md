@@ -9,6 +9,10 @@ All notable changes to this project are documented here. This project follows
 - Response gzip compression (`RatelServer(gzip: ...)`, on by default) when the
   client advertises `Accept-Encoding: gzip`.
 - Configurable connection `idleTimeout` on `RatelServer`.
+- `@Header('Name')` and `@CookieParam('name')` handler parameter injection.
+
+### Fixed
+- `null` values now serialize as JSON `null` instead of the string `"null"`.
 
 ## 2.0.0-dev.5 (unreleased)
 

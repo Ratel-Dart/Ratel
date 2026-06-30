@@ -112,6 +112,7 @@ class Response {
   }
 
   dynamic convertToJson(dynamic obj) {
+    if (obj == null) return null;
     if (obj is Map ||
         obj is List ||
         obj is String ||
