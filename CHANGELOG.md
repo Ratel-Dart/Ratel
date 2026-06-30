@@ -13,6 +13,7 @@ All notable changes to this project are documented here. This project follows
 
 ### Fixed
 - `null` values now serialize as JSON `null` instead of the string `"null"`.
+- `Response.bytes` now writes a raw binary body instead of `data.toString()`.
 
 ## 2.0.0-dev.5 (unreleased)
 

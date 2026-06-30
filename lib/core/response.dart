@@ -184,10 +184,15 @@ class Response {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
-    final responseData =
-        contentType == 'application/json' ? toJson() : data.toString();
-    if (responseData.isNotEmpty) {
-      response.write(responseData);
+    final body = data;
+    if (body is List<int>) {
+      response.add(body);
+    } else {
+      final responseData =
+          contentType == 'application/json' ? toJson() : body.toString();
+      if (responseData.isNotEmpty) {
+        response.write(responseData);
+      }
     }
     response.close();
   }
