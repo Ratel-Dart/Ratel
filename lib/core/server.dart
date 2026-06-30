@@ -157,7 +157,9 @@ class RatelServer {
     List<Middleware> chain,
   ) async {
     final ctx = RequestContext(request);
-    final match = _router!.match(ctx.method, ctx.path);
+    var match = _router!.match(ctx.method, ctx.path);
+    // Auto-HEAD: fall back to the GET route (the body is dropped in _terminal).
+    match ??= ctx.method == 'HEAD' ? _router!.match('GET', ctx.path) : null;
     if (match != null) {
       ctx.route = match.route;
       ctx.pathParams = match.params;
@@ -210,7 +212,16 @@ class RatelServer {
       throw const NotFoundException();
     }
     final result = await route.handler(ctx);
-    return Response.from(result);
+    final response = Response.from(result);
+    if (ctx.method == 'HEAD') {
+      // HEAD must mirror GET's status/headers but carry no body.
+      return Response(
+        statusCode: response.statusCode,
+        headers: response.headers,
+        contentType: response.contentType,
+      )..cookies = response.cookies;
+    }
+    return response;
   }
 
   void _installSignalHandlers() {

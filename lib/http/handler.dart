@@ -142,11 +142,13 @@ String _joinPath(String prefix, String path) {
   return joined;
 }
 
-/// Resolves a `@PathParam`, `@Param`, `@Header` or `@CookieParam` handler
-/// argument from [ctx], coercing the string value to the parameter's declared
-/// type. Returns null when absent.
+/// Resolves a handler argument from [ctx]: a `RequestContext`-typed parameter
+/// receives the context itself; otherwise binds `@PathParam`, `@Param`,
+/// `@Header` or `@CookieParam`, coercing the string value to the parameter's
+/// declared type. Returns null when absent.
 dynamic _resolveParam(ParameterMirror param, RequestContext ctx) {
   final type = param.type.reflectedType;
+  if (type == RequestContext) return ctx;
   for (final meta in param.metadata) {
     final reflectee = meta.reflectee;
     if (reflectee is PathParam) {

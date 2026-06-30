@@ -12,6 +12,9 @@ All notable changes to this project are documented here. This project follows
   flags).
 - `openApiSpec` to generate an OpenAPI 3 document from the registered routes
   (path/query/header params, request bodies, and bearer security).
+- `RequestContext` injection: a handler parameter typed `RequestContext`
+  receives the context (path params, JWT claims, per-request state).
+- Automatic `HEAD` handling for `GET` routes (runs the handler, omits the body).
 
 ## 2.0.0-dev.6 (unreleased)
 
