@@ -115,7 +115,8 @@ final server = RatelServer(
 
 Cross-cutting concerns are composable middleware. Register global middleware on
 the server; the JWT auth middleware is appended automatically when `jwtKey` is
-set. Built-in middleware includes `corsMiddleware` and `securityHeadersMiddleware`.
+set. Built-in middleware includes `corsMiddleware`, `securityHeadersMiddleware`
+and `rateLimitMiddleware`.
 
 ```dart
 final server = RatelServer(
