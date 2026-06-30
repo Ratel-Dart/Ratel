@@ -5,6 +5,7 @@ import 'dart:mirrors';
 import '../annotations/annotations.dart';
 import '../core/request_context.dart';
 import '../exceptions/exceptions.dart';
+import 'multipart.dart';
 
 /// Signature of a WebSocket handler registered via `@Socket`: it receives the
 /// upgraded [socket] and the request [ctx].
@@ -88,12 +89,26 @@ abstract class RatelHandler {
         final ctx = ctxArg as RequestContext;
         final args = <dynamic>[];
         if (hasBody) {
-          final body = await readBodyLimited(ctx.request, maxRequestBodyBytes);
-          final jsonMap = body.isNotEmpty
-              ? decodeBody(ctx.request, body)
-              : const <String, dynamic>{};
+          final reqContentType = ctx.request.headers.contentType;
+          final isMultipart = reqContentType?.mimeType == 'multipart/form-data';
+          MultipartData? multipart;
+          var jsonMap = const <String, dynamic>{};
+          if (isMultipart) {
+            multipart = await parseMultipart(
+                ctx.request, reqContentType!, maxRequestBodyBytes);
+            jsonMap = Map<String, dynamic>.from(multipart.fields);
+          } else {
+            final body =
+                await readBodyLimited(ctx.request, maxRequestBodyBytes);
+            jsonMap = body.isNotEmpty
+                ? decodeBody(ctx.request, body)
+                : const <String, dynamic>{};
+          }
           for (final param in method.parameters) {
-            if (param.metadata.any((m) => m.reflectee is Body)) {
+            if (multipart != null &&
+                param.type.reflectedType == MultipartData) {
+              args.add(multipart);
+            } else if (param.metadata.any((m) => m.reflectee is Body)) {
               args.add(_deserializeBody(param, jsonMap));
             } else {
               args.add(_resolveParam(param, ctx));

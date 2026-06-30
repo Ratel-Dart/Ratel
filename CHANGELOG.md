@@ -20,6 +20,8 @@ All notable changes to this project are documented here. This project follows
   `WebSocket` (and optional `RequestContext`).
 - `RatelServer(onError: ...)` hook to map unexpected errors to a custom
   `Response`.
+- `multipart/form-data` parsing (via `package:mime`): inject `MultipartData`
+  (fields + `UploadedFile`s) into a handler.
 
 ## 2.0.0-dev.6 (unreleased)
 

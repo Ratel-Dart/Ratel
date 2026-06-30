@@ -14,5 +14,6 @@ export 'dependency_injector/binding.dart';
 export 'dependency_injector/injector.dart';
 export 'exceptions/exceptions.dart';
 export 'http/handler.dart';
+export 'http/multipart.dart';
 export 'client.dart';
 export 'jwt.dart';
