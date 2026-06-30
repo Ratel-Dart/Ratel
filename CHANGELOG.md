@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.6 (unreleased)
+
+### Added
+- Response gzip compression (`RatelServer(gzip: ...)`, on by default) when the
+  client advertises `Accept-Encoding: gzip`.
+- Configurable connection `idleTimeout` on `RatelServer`.
+
 ## 2.0.0-dev.5 (unreleased)
 
 ### Added
