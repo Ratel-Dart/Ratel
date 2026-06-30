@@ -145,11 +145,28 @@ class RatelServer {
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
       try {
-        await _handleRequest(request, chain);
+        if (WebSocketTransformer.isUpgradeRequest(request)) {
+          await _handleWebSocket(request);
+        } else {
+          await _handleRequest(request, chain);
+        }
       } catch (e, stackTrace) {
         ratelLogger.severe('Failed to handle request', e, stackTrace);
       }
     }
+  }
+
+  Future<void> _handleWebSocket(HttpRequest request) async {
+    final handler = RatelHandler.socketRoutes[request.uri.path];
+    if (handler == null) {
+      await Response(
+        statusCode: HttpStatus.notFound,
+        data: {'error': 'Not Found'},
+      ).send(request.response);
+      return;
+    }
+    final socket = await WebSocketTransformer.upgrade(request);
+    await handler(socket, RequestContext(request));
   }
 
   Future<void> _handleRequest(

@@ -6,11 +6,19 @@ import '../annotations/annotations.dart';
 import '../core/request_context.dart';
 import '../exceptions/exceptions.dart';
 
+/// Signature of a WebSocket handler registered via `@Socket`: it receives the
+/// upgraded [socket] and the request [ctx].
+typedef SocketHandler = Future<void> Function(
+    WebSocket socket, RequestContext ctx);
+
 /// Base class for controllers. Subclasses annotate methods with `@Get`, `@Post`,
 /// etc.; constructing one scans those annotations (via reflection) and registers
 /// the routes. A class-level `@Controller('/prefix')` prefixes every route.
 abstract class RatelHandler {
   static final List<Route> routesList = [];
+
+  /// WebSocket handlers keyed by exact path, registered from `@Socket` methods.
+  static final Map<String, SocketHandler> socketRoutes = {};
 
   /// Maximum accepted request body size, in bytes. Bodies larger than this are
   /// rejected with `413 Payload Too Large`. Configured via
@@ -47,6 +55,12 @@ abstract class RatelHandler {
             routes.add(_routerAdd(fullPath, httpMethod, instance, declaration,
                 isProtected, roles));
           }
+        }
+
+        final socket = _firstMeta<Socket>(declaration.metadata);
+        if (socket != null) {
+          socketRoutes[_joinPath(prefix, socket.path)] =
+              _socketAdd(instance, declaration);
         }
       }
     }
@@ -177,6 +191,18 @@ String? _cookieValue(List<Cookie> cookies, String name) {
     if (cookie.name == name) return cookie.value;
   }
   return null;
+}
+
+SocketHandler _socketAdd(InstanceMirror instance, MethodMirror method) {
+  return (socket, ctx) async {
+    final args = method.parameters.map<dynamic>((param) {
+      final type = param.type.reflectedType;
+      if (type == WebSocket) return socket;
+      if (type == RequestContext) return ctx;
+      return null;
+    }).toList();
+    await instance.invoke(method.simpleName, args).reflectee;
+  };
 }
 
 dynamic _deserializeBody(ParameterMirror param, Map<String, dynamic> jsonMap) {

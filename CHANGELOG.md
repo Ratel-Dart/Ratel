@@ -16,6 +16,8 @@ All notable changes to this project are documented here. This project follows
   receives the context (path params, JWT claims, per-request state).
 - Automatic `HEAD` handling for `GET` routes (runs the handler, omits the body).
 - `Response.sse` to stream Server-Sent Events (`text/event-stream`).
+- WebSocket support: `@Socket('/path')` methods receive the upgraded
+  `WebSocket` (and optional `RequestContext`).
 
 ## 2.0.0-dev.6 (unreleased)
 

@@ -201,3 +201,13 @@ class CookieParam {
   /// Binds the parameter to the `[name]` request cookie.
   const CookieParam(this.name);
 }
+
+/// Binds the annotated method to WebSocket upgrade requests on [path]. The
+/// method receives the upgraded `WebSocket` (and optionally a `RequestContext`).
+class Socket {
+  /// The URL path to accept WebSocket connections on.
+  final String path;
+
+  /// Handles WebSocket connections at `[path]`.
+  const Socket(this.path);
+}
