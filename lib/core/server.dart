@@ -165,7 +165,7 @@ class RatelServer {
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    response.send(request.response);
+    await response.send(request.response);
   }
 
   Future<Response> _runChain(

@@ -19,6 +19,10 @@ class Response {
   /// Cookies emitted as `Set-Cookie` headers. Add one with [withCookie].
   List<Cookie> cookies = const [];
 
+  /// When set (via [Response.sse]), the body is streamed as Server-Sent Events
+  /// rather than buffered.
+  Stream<String>? sseEvents;
+
   Response({
     required this.statusCode,
     this.data,
@@ -77,6 +81,20 @@ class Response {
     );
   }
 
+  /// Streams the response body as `text/event-stream` Server-Sent Events; each
+  /// value of [events] is emitted as a `data:` event. The connection stays open
+  /// until [events] closes.
+  factory Response.sse(Stream<String> events) {
+    return Response(
+      statusCode: HttpStatus.ok,
+      contentType: 'text/event-stream',
+      headers: const {
+        HttpHeaders.contentTypeHeader: 'text/event-stream',
+        HttpHeaders.cacheControlHeader: 'no-cache',
+      },
+    )..sseEvents = events;
+  }
+
   /// Returns a copy of this response with [extra] headers merged in (extra
   /// values win on conflict). Useful for middleware that decorates responses,
   /// e.g. CORS or security headers.
@@ -86,7 +104,9 @@ class Response {
       data: data,
       headers: {...headers, ...extra},
       contentType: contentType,
-    )..cookies = cookies;
+    )
+      ..cookies = cookies
+      ..sseEvents = sseEvents;
   }
 
   /// Returns a copy of this response with [cookie] added as a `Set-Cookie`
@@ -98,7 +118,9 @@ class Response {
       data: data,
       headers: headers,
       contentType: contentType,
-    )..cookies = [...cookies, cookie];
+    )
+      ..cookies = [...cookies, cookie]
+      ..sseEvents = sseEvents;
   }
 
   String toJson() {
@@ -195,13 +217,24 @@ class Response {
         .any((annotation) => annotation.reflectee is Json);
   }
 
-  void send(HttpResponse response) {
+  Future<void> send(HttpResponse response) async {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
     for (final cookie in cookies) {
       response.cookies.add(cookie);
     }
+
+    final events = sseEvents;
+    if (events != null) {
+      await for (final event in events) {
+        response.write('data: $event\n\n');
+        await response.flush();
+      }
+      await response.close();
+      return;
+    }
+
     final body = data;
     if (body is List<int>) {
       response.add(body);
@@ -212,6 +245,6 @@ class Response {
         response.write(responseData);
       }
     }
-    response.close();
+    await response.close();
   }
 }
