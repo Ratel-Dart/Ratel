@@ -1,3 +1,7 @@
+/// A minimal process-wide service locator.
+///
+/// Register a factory with [put]; the first [get] for a type builds and caches a
+/// single instance (lazy singleton) that subsequent calls reuse.
 class Injector {
   static final Injector _instance = Injector._internal();
   factory Injector() => _instance;
@@ -18,7 +22,7 @@ class Injector {
       _instances[T] = instance;
       return instance;
     } else {
-      throw Exception("Dependência do tipo $T não foi registrada.");
+      throw Exception('No dependency of type $T has been registered.');
     }
   }
 }

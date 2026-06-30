@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'exceptions/exceptions.dart';
 
+/// The result of an outbound HTTP call made with [Request]: the [statusCode],
+/// the decoded [data], and the response [headers].
 class ApiResponse {
   final int statusCode;
   final dynamic data;
@@ -12,6 +14,10 @@ class ApiResponse {
       {required this.statusCode, required this.data, required this.headers});
 }
 
+/// A small JSON HTTP client for outbound calls, bound to a base URL.
+///
+/// Exposes [get], [post], [put] and [delete]; responses are decoded as JSON and
+/// non-2xx statuses raise an [HttpResponseException].
 class Request {
   final Uri baseUri;
   final Map<String, String> defaultHeaders;
