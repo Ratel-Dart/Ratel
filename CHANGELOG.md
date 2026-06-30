@@ -10,6 +10,8 @@ All notable changes to this project are documented here. This project follows
   protection and content-type detection.
 - `Response.withCookie` to emit `Set-Cookie` headers (with `dart:io` `Cookie`
   flags).
+- `openApiSpec` to generate an OpenAPI 3 document from the registered routes
+  (path/query/header params, request bodies, and bearer security).
 
 ## 2.0.0-dev.6 (unreleased)
 
