@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.5 (unreleased)
+
+### Added
+- `rateLimitMiddleware` — fixed-window per-IP rate limiting that returns `429`
+  with a `Retry-After` header once the limit is exceeded.
+
 ## 2.0.0-dev.4 (unreleased)
 
 ### Added
