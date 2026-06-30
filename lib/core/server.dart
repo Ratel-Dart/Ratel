@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:mirrors';
 
 import '../database/database.dart';
@@ -59,6 +60,10 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// When true, binds the port with `shared: true` so multiple isolates can
+  /// listen on it and the OS load-balances connections. Use with [runCluster].
+  final bool shared;
+
   /// Optional hook to turn an unexpected error into a custom [Response] (e.g. to
   /// map domain exceptions). When null, unexpected errors become a generic 500.
   final Response Function(
@@ -84,6 +89,7 @@ class RatelServer {
     this.gzip = true,
     this.idleTimeout,
     this.onError,
+    this.shared = false,
     int maxRequestBodyBytes = 1024 * 1024,
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
@@ -109,8 +115,9 @@ class RatelServer {
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
     final server = securityContext != null
         ? await HttpServer.bindSecure(
-            InternetAddress.anyIPv4, port, securityContext!)
-        : await HttpServer.bind(InternetAddress.anyIPv4, port);
+            InternetAddress.anyIPv4, port, securityContext!,
+            shared: shared)
+        : await HttpServer.bind(InternetAddress.anyIPv4, port, shared: shared);
     _server = server;
     server.autoCompress = gzip;
     if (idleTimeout != null) {
@@ -276,4 +283,32 @@ class RatelServer {
     final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     return '$stamp-${_errorCounter++}';
   }
+}
+
+/// Runs [entryPoint] across multiple isolates to use more than one CPU core.
+///
+/// Spawns `isolates - 1` extra isolates (defaulting to
+/// `Platform.numberOfProcessors`) and runs [entryPoint] on each plus the current
+/// isolate. [entryPoint] must be a top-level or static function that creates a
+/// `RatelServer(shared: true, ...)` and calls `startServer()`; [args] is passed
+/// to every invocation. Example:
+///
+/// ```dart
+/// void main() => runCluster(_boot);
+/// void _boot(List<String> args) {
+///   RatelServer(port: 8080, shared: true, handlers: [...]).startServer();
+/// }
+/// ```
+Future<void> runCluster(
+  void Function(List<String>) entryPoint, {
+  int? isolates,
+  List<String> args = const [],
+}) async {
+  final count = (isolates == null || isolates <= 0)
+      ? Platform.numberOfProcessors
+      : isolates;
+  for (var i = 1; i < count; i++) {
+    await Isolate.spawn(entryPoint, args);
+  }
+  entryPoint(args);
 }

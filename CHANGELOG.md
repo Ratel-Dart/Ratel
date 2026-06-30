@@ -22,6 +22,8 @@ All notable changes to this project are documented here. This project follows
   `Response`.
 - `multipart/form-data` parsing (via `package:mime`): inject `MultipartData`
   (fields + `UploadedFile`s) into a handler.
+- Multi-isolate scaling: `RatelServer(shared: true)` plus a `runCluster` helper
+  to serve across CPU cores.
 
 ## 2.0.0-dev.6 (unreleased)
 
