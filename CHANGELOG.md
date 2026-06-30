@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.4 (unreleased)
+
+### Added
+- `application/x-www-form-urlencoded` request body parsing (selected by
+  `Content-Type`, in addition to JSON).
+- `Response.redirect(location, {statusCode})` helper.
+
 ## 2.0.0-dev.3 (unreleased)
 
 ### Added
