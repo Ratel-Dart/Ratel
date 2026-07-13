@@ -42,7 +42,8 @@ class ControllerGenerator extends Generator {
 
   String _routes(ClassElement controller) {
     final name = controller.name;
-    final prefix = _readString(_controller.firstAnnotationOf(controller), 'prefix') ?? '';
+    final prefix =
+        _readString(_controller.firstAnnotationOf(controller), 'prefix') ?? '';
     final classProtected = _protected.firstAnnotationOf(controller);
 
     final registrations = <String>[];
@@ -73,8 +74,7 @@ class ControllerGenerator extends Generator {
   ) {
     final methodProtected = _protected.firstAnnotationOf(method);
     final methodPublic = _public.hasAnnotationOf(method);
-    final effective =
-        methodProtected ?? (methodPublic ? null : classProtected);
+    final effective = methodProtected ?? (methodPublic ? null : classProtected);
     final isProtected = effective != null;
     final roles = _readRoles(effective).map((r) => "'$r'").join(', ');
 
