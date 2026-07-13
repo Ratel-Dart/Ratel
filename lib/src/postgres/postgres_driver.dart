@@ -2,19 +2,17 @@ import 'dart:io';
 
 import 'package:postgres/postgres.dart';
 import 'package:ratel/ratel.dart'
-    show
-        DatabaseException,
-        QueryExecutionException,
-        QueryResult,
-        RatelDriver,
-        RatelSession;
+    show DatabaseException, QueryExecutionException, QueryResult, RatelSession;
 
-/// A [RatelDriver] backed by `package:postgres`.
+import '../dialect.dart';
+import '../orm_driver.dart';
+
+/// An [OrmDriver] backed by `package:postgres`.
 ///
 /// This is the only place in the ecosystem that imports `package:postgres`.
 /// SQL is executed verbatim: named-parameter parsing (`@name`) is applied only
 /// when [parameters] are supplied.
-class PostgresDriver extends RatelDriver {
+class PostgresDriver extends OrmDriver {
   /// Database host name.
   final String host;
 
@@ -33,6 +31,12 @@ class PostgresDriver extends RatelDriver {
   /// TLS mode for the connection. Defaults to [SslMode.require].
   final SslMode sslMode;
 
+  /// Maximum number of pooled connections. Defaults to 10. With multi-isolate
+  /// serving the real total is `maxConnections * isolates`.
+  final int maxConnections;
+
+  Pool? _pool;
+
   /// Creates a Postgres driver.
   PostgresDriver({
     required this.host,
@@ -41,11 +45,13 @@ class PostgresDriver extends RatelDriver {
     required this.username,
     required this.password,
     this.sslMode = SslMode.require,
+    this.maxConnections = 10,
   });
 
   /// Builds the driver from environment variables: `DB_HOST`, `DB_PORT`
-  /// (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSL_MODE`
-  /// (`require` | `verify_full` | `disable`, default `require`).
+  /// (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL_MODE`
+  /// (`require` | `verify_full` | `disable`, default `require`) and
+  /// `DB_POOL_MAX` (default `10`).
   factory PostgresDriver.fromEnv() {
     final env = Platform.environment;
 
@@ -62,6 +68,11 @@ class PostgresDriver extends RatelDriver {
       throw StateError('Invalid DB_PORT: "${env['DB_PORT']}"');
     }
 
+    final poolMax = int.tryParse(env['DB_POOL_MAX'] ?? '10');
+    if (poolMax == null) {
+      throw StateError('Invalid DB_POOL_MAX: "${env['DB_POOL_MAX']}"');
+    }
+
     return PostgresDriver(
       host: required('DB_HOST'),
       port: port,
@@ -69,6 +80,7 @@ class PostgresDriver extends RatelDriver {
       username: required('DB_USER'),
       password: required('DB_PASSWORD'),
       sslMode: _parseSslMode(env['DB_SSL_MODE']),
+      maxConnections: poolMax,
     );
   }
 
@@ -80,30 +92,43 @@ class PostgresDriver extends RatelDriver {
         port: port,
       );
 
-  ConnectionSettings get _settings => ConnectionSettings(sslMode: sslMode);
+  PoolSettings get _poolSettings => PoolSettings(
+        sslMode: sslMode,
+        maxConnectionCount: maxConnections,
+      );
 
   @override
-  Future<void> open() async {}
+  SqlDialect get dialect => const PostgresDialect();
 
   @override
-  Future<void> close() async {}
+  Future<void> open() async =>
+      _pool ??= Pool.withEndpoints([_endpoint], settings: _poolSettings);
+
+  @override
+  Future<void> close() async {
+    await _pool?.close();
+    _pool = null;
+  }
+
+  Future<Pool> get _openPool async {
+    await open();
+    return _pool!;
+  }
 
   @override
   Future<QueryResult> query(String sql,
       {Map<String, Object?>? parameters}) async {
-    final connection = await Connection.open(_endpoint, settings: _settings);
+    final pool = await _openPool;
     try {
       final result = (parameters == null || parameters.isEmpty)
-          ? await connection.execute(sql)
-          : await connection.execute(Sql.named(sql), parameters: parameters);
+          ? await pool.execute(sql)
+          : await pool.execute(Sql.named(sql), parameters: parameters);
       return _toQueryResult(result);
     } on DatabaseException {
       rethrow;
     } catch (e) {
       throw QueryExecutionException('Postgres query failed',
           sql: sql, cause: e);
-    } finally {
-      await connection.close();
     }
   }
 
@@ -111,9 +136,9 @@ class PostgresDriver extends RatelDriver {
   Future<T> transaction<T>(
     Future<T> Function(RatelSession session) action,
   ) async {
-    final connection = await Connection.open(_endpoint, settings: _settings);
+    final pool = await _openPool;
     try {
-      return await connection.runTx((tx) => action(_PostgresSession(tx)));
+      return await pool.runTx((tx) => action(_PostgresSession(tx)));
     } on DatabaseException {
       rethrow;
     } catch (e) {
@@ -122,8 +147,6 @@ class PostgresDriver extends RatelDriver {
         sql: '',
         cause: e,
       );
-    } finally {
-      await connection.close();
     }
   }
 }
@@ -164,20 +187,8 @@ SslMode _parseSslMode(String? value) {
 
 /// Opt-in helper that appends `RETURNING *` to a write statement.
 ///
-/// Trims a trailing `;` and adds `RETURNING *` to an INSERT/UPDATE/DELETE that
-/// does not already have a RETURNING clause. Not applied automatically by
-/// [PostgresDriver.query], which runs SQL verbatim.
-String applyReturningClause(String sql) {
-  var statement = sql.trim();
-  if (statement.endsWith(';')) {
-    statement = statement.substring(0, statement.length - 1);
-  }
-  final upper = statement.toUpperCase();
-  final isWrite = upper.startsWith('INSERT') ||
-      upper.startsWith('UPDATE') ||
-      upper.startsWith('DELETE');
-  if (isWrite && !upper.contains('RETURNING')) {
-    statement += ' RETURNING *';
-  }
-  return statement;
-}
+/// Not applied automatically by [PostgresDriver.query], which runs SQL
+/// verbatim. Delegates to [PostgresDialect.applyReturning]; prefer the
+/// `returning:` option on `RatelRepository.execute`.
+String applyReturningClause(String sql) =>
+    const PostgresDialect().applyReturning(sql, returning: true);

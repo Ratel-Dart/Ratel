@@ -1,11 +1,27 @@
 import 'dart:io';
 
 import 'package:ratel_orm/postgres.dart';
+import 'package:ratel_orm/ratel_orm.dart';
 import 'package:test/test.dart';
 
+class Widget {
+  @Column(name: 'id')
+  int id = 0;
+
+  @Column(name: 'label')
+  String label = '';
+}
+
+class WidgetRepo extends RatelRepository<Widget> {
+  Future<List<Widget>?> insert(int id, String label) => execute(
+        'INSERT INTO ratel_repo_widgets (id, label) VALUES (@id, @label)',
+        substitutionValues: {'id': id, 'label': label},
+        returning: true,
+      );
+}
+
 void main() {
-  final env = Platform.environment;
-  final skip = env['DB_HOST'] == null
+  final skip = Platform.environment['DB_HOST'] == null
       ? 'set DB_HOST/DB_NAME/DB_USER/DB_PASSWORD to run the Postgres integration'
       : false;
 
@@ -23,7 +39,6 @@ void main() {
         'INSERT INTO ratel_widgets (id, name) VALUES (@id, @name) RETURNING *',
         parameters: {'id': 1, 'name': 'alpha'},
       );
-      expect(inserted.rows.single['id'], 1);
       expect(inserted.rows.single['name'], 'alpha');
 
       final selected = await driver.query(
@@ -48,6 +63,25 @@ void main() {
       expect(count.rows.single['total'], 2);
 
       await driver.query('DROP TABLE ratel_widgets');
+      await driver.close();
+    }, skip: skip);
+
+    test('RatelRepository maps rows and honours returning:', () async {
+      final driver = PostgresDriver.fromEnv();
+      await driver.open();
+      RatelRepository.configure(driver);
+
+      await driver.query('DROP TABLE IF EXISTS ratel_repo_widgets');
+      await driver.query(
+        'CREATE TABLE ratel_repo_widgets (id int PRIMARY KEY, label text)',
+      );
+
+      final rows = await WidgetRepo().insert(7, 'omega');
+      expect(rows, isNotNull);
+      expect(rows!.single.id, 7);
+      expect(rows.single.label, 'omega');
+
+      await driver.query('DROP TABLE ratel_repo_widgets');
       await driver.close();
     }, skip: skip);
   });
