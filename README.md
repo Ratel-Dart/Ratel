@@ -13,7 +13,9 @@ a clean way to build RESTful APIs, with built-in support for:
 - **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` / `@Patch` /
   `@Head` / `@Options`, with path parameters (`/users/:id`) and `@Controller`
   prefixes
-- **PostgreSQL** repositories
+- **Database-agnostic** access: a pluggable driver contract and raw SQL in the
+  core (the ORM and the Postgres driver ship in
+  [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm))
 - **Dependency injection**
 - **JWT authentication**
 
@@ -134,11 +136,34 @@ claim is checked, returning 403 when the role is missing.
 
 ## Database
 
-Configure a `RatelDatabase` and extend `RatelRepository<T>` for data access.
-Map model fields to columns with `@Column`:
+The core is database-agnostic: it defines the `RatelDriver` contract and runs
+**raw SQL** through it, with no database dependency of its own. Pass a driver to
+the server and reach it via `server.db`. Concrete drivers (and the ORM) live in
+the [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) package:
 
 ```dart
-@Json()
+import 'package:ratel/ratel.dart';
+import 'package:ratel_orm/postgres.dart'; // PostgresDriver
+
+final server = RatelServer(
+  database: PostgresDriver.fromEnv(),
+  handlers: [UserController],
+);
+await server.startServer();
+
+final users = await server.db.query(
+  'SELECT id, name FROM users WHERE id = @id',
+  parameters: {'id': 1},
+);
+// users.rows / users.affectedRows
+```
+
+For entity mapping, add `ratel_orm` and extend `RatelRepository<T>`, mapping
+fields with `@Column` (both imported from `package:ratel_orm/ratel_orm.dart`):
+
+```dart
+import 'package:ratel_orm/ratel_orm.dart';
+
 class User {
   @Column(name: 'id')
   int id = 0;
@@ -149,14 +174,10 @@ class User {
 class UserRepository extends RatelRepository<User> {
   Future<List<User>?> all() => execute('SELECT id, name FROM users');
 }
-
-RatelDatabase(
-  host: 'localhost',
-  databaseName: 'app',
-  username: 'postgres',
-  password: 'postgres',
-);
 ```
+
+Migrating from `RatelDatabase`? See
+[`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).
 
 ## Logging
 

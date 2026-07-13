@@ -25,3 +25,6 @@ pubspec.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# SDD specs (local-only, never committed)
+specs/

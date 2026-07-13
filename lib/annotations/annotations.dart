@@ -149,17 +149,6 @@ class Controller {
   const Controller(this.prefix);
 }
 
-/// Maps a model field to a database column named [name].
-class Column {
-  /// The database column name this field maps to.
-  final String name;
-
-  /// Maps the annotated field to the column [name].
-  const Column({
-    required this.name,
-  });
-}
-
 /// Requires a valid authentication token to reach the annotated controller or
 /// method. See [Public] to opt a single method out of a protected controller.
 ///
