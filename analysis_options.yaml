@@ -1,0 +1,15 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    avoid_print: warning
+    empty_catches: warning
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.reflectable.dart"
+
+linter:
+  rules:
+    - avoid_print
+    - empty_catches
+    - curly_braces_in_flow_control_structures

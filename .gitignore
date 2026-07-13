@@ -1,0 +1,27 @@
+# Dart / Pub
+.dart_tool/
+.packages
+build/
+coverage/
+doc/api/
+
+# Library packages do not commit the lockfile
+pubspec.lock
+
+# Generated code (build_runner) — kept out until the codegen milestone lands
+*.g.dart
+*.reflectable.dart
+
+# Environment & secrets
+.env
+*.env
+!.env.example
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

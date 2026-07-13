@@ -1,0 +1,28 @@
+name: ratel_orm
+description: >-
+  Database ORM layer for the Ratel framework: a repository and row mapper over
+  the ratel driver contract, with the Postgres driver bundled as a sub-library.
+version: 0.1.0-dev.1
+repository: https://github.com/Ratel-Dart/ratel_orm
+issue_tracker: https://github.com/Ratel-Dart/ratel_orm/issues
+homepage: https://github.com/Ratel-Dart/ratel_orm
+topics:
+  - database
+  - orm
+  - sql
+  - backend
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  ratel: ^2.0.0
+  postgres: ^3.5.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+dependency_overrides:
+  ratel:
+    path: ../Ratel
