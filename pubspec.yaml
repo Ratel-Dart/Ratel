@@ -1,0 +1,19 @@
+name: ratel_generator
+description: >-
+  build_runner code generators for the Ratel framework: replaces the runtime
+  dart:mirrors reflection with generated JSON serialization, controller
+  factories and route tables.
+version: 0.1.0-dev.1
+repository: https://github.com/Ratel-Dart/ratel_generator
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  analyzer: ">=6.0.0 <8.0.0"
+  build: ^2.4.0
+  source_gen: ">=1.5.0 <3.0.0"
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  lints: ^4.0.0
+  test: ^1.25.0
