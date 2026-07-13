@@ -4,6 +4,7 @@ import 'package:ratel/ratel.dart' show Db, QueryResult, RatelDriver;
 
 import 'annotations.dart';
 import 'exceptions.dart';
+import 'orm_driver.dart';
 
 /// Base class for data-access repositories of entity type [T].
 ///
@@ -19,15 +20,24 @@ abstract class RatelRepository<T> {
 
   /// Runs [sql] with optional [substitutionValues] and maps the rows onto [T].
   ///
+  /// Set [returning] to append the engine's returning clause (e.g. Postgres
+  /// `RETURNING *`) so a write echoes the affected rows back; it is a no-op on
+  /// engines that do not support it.
+  ///
   /// Returns null when the statement produces no rows. Driver errors
   /// ([DatabaseException]) propagate unchanged; a row that cannot be mapped
   /// raises a [MappingException].
   Future<List<T>?> execute(
     String sql, {
     Map<String, Object?>? substitutionValues,
+    bool returning = false,
   }) async {
+    final driver = Db.driver;
+    final finalSql = driver is OrmDriver
+        ? driver.dialect.applyReturning(sql, returning: returning)
+        : sql;
     final QueryResult result =
-        await Db.driver.query(sql, parameters: substitutionValues);
+        await driver.query(finalSql, parameters: substitutionValues);
     if (result.rows.isEmpty) return null;
     return [for (final row in result.rows) _mapRow(row)];
   }
