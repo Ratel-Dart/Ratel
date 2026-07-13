@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:mirrors';
 
 import '../database/db.dart';
 import '../database/driver.dart';
@@ -32,8 +31,9 @@ class RatelServer {
   /// shutdown). Raw SQL is then available through [db].
   final RatelDriver? database;
 
-  /// Controller types to instantiate and scan for routes.
-  final List<Type> handlers;
+  /// Controller instances. Constructing a controller registers its annotated
+  /// routes, so passing them here is enough to serve them.
+  final List<RatelHandler> handlers;
 
   /// HMAC secret enabling JWT auth; when null, no routes are protected.
   final String? jwtKey;
@@ -85,7 +85,6 @@ class RatelServer {
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
     bindings?.dependencies();
-    _initializeHandlers();
   }
 
   /// The port the server is actually bound to, or null before [startServer].
@@ -96,12 +95,6 @@ class RatelServer {
   /// SQL passes through verbatim. Throws `DatabaseNotConfiguredException` when
   /// no [database] was provided.
   Db get db => const Db();
-
-  void _initializeHandlers() {
-    for (var handlerType in handlers) {
-      reflectClass(handlerType).newInstance(Symbol(''), []);
-    }
-  }
 
   /// Binds the socket and starts serving in the background. Completes once the
   /// server is listening; the process stays alive via the active socket until

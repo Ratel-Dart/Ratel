@@ -3,7 +3,12 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
+part 'compression_test.g.dart';
+
 class _DataController extends RatelHandler {
+  @override
+  void registerRoutes() => _$_DataControllerRoutes(this);
+
   @Get('/data')
   Future<Response> data() async => Response.json(
         statusCode: 200,
@@ -12,7 +17,7 @@ class _DataController extends RatelHandler {
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_DataController]);
+  final server = RatelServer(port: 0, handlers: [_DataController()]);
   final client = HttpClient()..autoUncompress = false;
   late int port;
 

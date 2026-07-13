@@ -1,9 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:mirrors';
-
-import '../annotations/annotations.dart';
-import 'logger.dart';
 
 /// An HTTP response with a [statusCode], a [data] payload, and a content type.
 ///
@@ -86,98 +82,25 @@ class Response {
     );
   }
 
+  /// Serializes [data] to a JSON string.
+  ///
+  /// Primitives, `List`s and `Map`s encode natively; other objects are expected
+  /// to provide a `toJson()` method (generated for `@Json` classes) and fall
+  /// back to `toString()` otherwise.
   String toJson() {
     if (data == null) return '';
-
-    if (contentType == 'application/json') {
-      if (data is String) return data;
-
-      if (data is List) {
-        return jsonEncode(
-          (data as List).map((item) => convertToJson(item)).toList(),
-        );
-      }
-
-      if (data is Map) {
-        return jsonEncode(
-          (data as Map)
-              .map((key, value) => MapEntry(key, convertToJson(value))),
-        );
-      }
-
-      return jsonEncode(convertToJson(data));
-    } else {
-      return data.toString();
-    }
+    if (contentType != 'application/json') return data.toString();
+    final payload = data;
+    if (payload is String) return payload;
+    return jsonEncode(payload, toEncodable: _toEncodable);
   }
 
-  dynamic convertToJson(dynamic obj) {
-    if (obj == null) return null;
-    if (obj is Map ||
-        obj is List ||
-        obj is String ||
-        obj is num ||
-        obj is bool) {
-      return obj;
+  static Object? _toEncodable(dynamic object) {
+    try {
+      return object.toJson();
+    } on NoSuchMethodError {
+      return object.toString();
     }
-
-    if (obj != null && isSerializable(obj)) {
-      return _objectToJson(obj);
-    }
-
-    return obj.toString();
-  }
-
-  dynamic _objectToJson(dynamic obj) {
-    final instanceMirror = reflect(obj);
-    final classMirror = instanceMirror.type;
-    final Map<String, dynamic> result = {};
-
-    classMirror.declarations.forEach((symbol, decl) {
-      if (decl is VariableMirror && !decl.isStatic) {
-        final fieldName = MirrorSystem.getName(symbol);
-        if (fieldName.startsWith('_')) return;
-        try {
-          var value = instanceMirror.getField(symbol).reflectee;
-          result[fieldName] = convertToJson(value);
-        } catch (e, stackTrace) {
-          ratelLogger.warning(
-            'Failed to serialize field "$fieldName"',
-            e,
-            stackTrace,
-          );
-        }
-      }
-    });
-
-    classMirror.instanceMembers.forEach((symbol, methodMirror) {
-      if (methodMirror.isGetter &&
-          methodMirror.owner == classMirror &&
-          !['hashCode', 'runtimeType', 'toString']
-              .contains(MirrorSystem.getName(symbol))) {
-        final getterName = MirrorSystem.getName(symbol);
-        if (result.containsKey(getterName)) return;
-        if (getterName.startsWith('_')) return;
-        try {
-          var value = instanceMirror.getField(symbol).reflectee;
-          result[getterName] = convertToJson(value);
-        } catch (e, stackTrace) {
-          ratelLogger.warning(
-            'Failed to serialize getter "$getterName"',
-            e,
-            stackTrace,
-          );
-        }
-      }
-    });
-
-    return result;
-  }
-
-  bool isSerializable(Object obj) {
-    final classMirror = reflectClass(obj.runtimeType);
-    return classMirror.metadata
-        .any((annotation) => annotation.reflectee is Json);
   }
 
   void send(HttpResponse response) {

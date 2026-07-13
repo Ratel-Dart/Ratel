@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:ratel/ratel.dart';
 
+part 'main.g.dart';
+
 /// A JSON-serializable model. The [Json] annotation lets Ratel deserialize it
 /// from a request body and serialize it back into a response.
 @Json()
@@ -9,11 +11,19 @@ class Greeting {
   String message;
 
   Greeting({this.message = ''});
+
+  factory Greeting.fromJson(Map<String, dynamic> json) =>
+      _$GreetingFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GreetingToJson(this);
 }
 
 /// A controller exposes routes by annotating methods. Each method returns a
 /// [Response] (or any value, which is wrapped as JSON).
 class HelloController extends RatelHandler {
+  @override
+  void registerRoutes() => _$HelloControllerRoutes(this);
+
   /// GET /hello?name=Ada  ->  {"message":"Hello, Ada!"}
   @Get('/hello')
   Future<Response> hello(@Param() String? name) async {
@@ -42,7 +52,7 @@ class HelloController extends RatelHandler {
 Future<void> main() async {
   final server = RatelServer(
     port: 8080,
-    handlers: [HelloController],
+    handlers: [HelloController()],
     middlewares: [corsMiddleware(), securityHeadersMiddleware()],
   );
 

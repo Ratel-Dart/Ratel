@@ -4,13 +4,24 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
+part 'routing_integration_test.g.dart';
+
 @Json()
 class _PatchBody {
   String name = '';
+
+  factory _PatchBody.fromJson(Map<String, dynamic> json) =>
+      _$_PatchBodyFromJson(json);
+  _PatchBody();
+
+  Map<String, dynamic> toJson() => _$_PatchBodyToJson(this);
 }
 
 @Controller('/api')
 class _UsersController extends RatelHandler {
+  @override
+  void registerRoutes() => _$_UsersControllerRoutes(this);
+
   @Get('/users/:id')
   Future<Response> getUser(@PathParam('id') int id) async =>
       Response.json(statusCode: 200, data: {'id': id});
@@ -28,7 +39,7 @@ class _UsersController extends RatelHandler {
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_UsersController]);
+  final server = RatelServer(port: 0, handlers: [_UsersController()]);
   final client = HttpClient();
   late int port;
 
