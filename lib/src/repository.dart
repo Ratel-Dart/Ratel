@@ -3,8 +3,10 @@ import 'dart:mirrors';
 import 'package:ratel/ratel.dart' show Db, QueryResult, RatelDriver;
 
 import 'annotations.dart';
+import 'dialect.dart';
 import 'exceptions.dart';
 import 'orm_driver.dart';
+import 'query.dart';
 
 /// Base class for data-access repositories of entity type [T].
 ///
@@ -40,6 +42,16 @@ abstract class RatelRepository<T> {
         await driver.query(finalSql, parameters: substitutionValues);
     if (result.rows.isEmpty) return null;
     return [for (final row in result.rows) _mapRow(row)];
+  }
+
+  /// Builds [query] for the configured driver's dialect, runs it and maps the
+  /// rows onto [T].
+  Future<List<T>?> find(Query query) {
+    final driver = Db.driver;
+    final dialect =
+        driver is OrmDriver ? driver.dialect : const StandardDialect();
+    final built = query.build(dialect);
+    return execute(built.sql, substitutionValues: built.parameters);
   }
 
   T _mapRow(Map<String, Object?> row) =>
