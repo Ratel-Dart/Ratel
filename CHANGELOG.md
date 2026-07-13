@@ -22,6 +22,15 @@ All notable changes to this project are documented here. This project follows
   raw SQL via `server.db` (`server.db.query(sql, parameters: ...)`, run
   verbatim). The driver contract — `RatelDriver`, `QueryResult`, `RatelSession`,
   `transaction`, and the `DatabaseException` hierarchy — now lives in the core.
+- **`dart:mirrors` is gone; the framework is now AOT-compilable** (breaking).
+  Routing, controller instantiation and JSON serialization are generated at
+  build time by the new `ratel_generator` package, so an app compiles with
+  `dart compile exe`. This changes the developer workflow:
+  - Run `dart run build_runner build` before `dart run` / `dart compile`.
+  - Pass controller **instances**: `RatelServer(handlers: [MyController()])`.
+  - Controllers declare `@override void registerRoutes() => _$MyControllerRoutes(this);`.
+  - `@Json` classes declare `part '<file>.g.dart';` and a `toJson()` (plus a
+    `fromJson` factory when used as a request body).
 
 ### Removed
 - **`package:postgres` is no longer a dependency of `ratel`** (breaking).
