@@ -5,6 +5,8 @@ import 'package:ratel_orm/sqlite.dart';
 import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 
+part 'query_test.g.dart';
+
 class Person {
   @Column(name: 'id')
   int id = 0;
@@ -16,7 +18,9 @@ class Person {
   int age = 0;
 }
 
-class PersonRepo extends RatelRepository<Person> {}
+class PersonRepo extends RatelRepository<Person> {
+  PersonRepo() : super(_$PersonFromRow);
+}
 
 void main() {
   setUpAll(() {

@@ -7,6 +7,8 @@ import 'package:test/test.dart';
 
 import 'support/conformance.dart';
 
+part 'sqlite_driver_test.g.dart';
+
 class Note {
   @Column(name: 'id')
   int id = 0;
@@ -16,6 +18,8 @@ class Note {
 }
 
 class NoteRepo extends RatelRepository<Note> {
+  NoteRepo() : super(_$NoteFromRow);
+
   Future<List<Note>?> insert(int id, String body) => execute(
         'INSERT INTO notes (id, body) VALUES (@id, @body)',
         substitutionValues: {'id': id, 'body': body},

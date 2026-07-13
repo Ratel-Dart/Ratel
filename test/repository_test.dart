@@ -3,6 +3,8 @@ import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/testing.dart';
 import 'package:test/test.dart';
 
+part 'repository_test.g.dart';
+
 class Widget {
   @Column(name: 'id')
   int id = 0;
@@ -12,6 +14,8 @@ class Widget {
 }
 
 class WidgetRepo extends RatelRepository<Widget> {
+  WidgetRepo() : super(_$WidgetFromRow);
+
   Future<List<Widget>?> all() => execute('SELECT * FROM widgets');
 
   Future<List<Widget>?> byId(int id) => execute(

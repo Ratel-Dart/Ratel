@@ -1,8 +1,5 @@
-import 'dart:mirrors';
-
 import 'package:ratel/ratel.dart' show Db, QueryResult, RatelDriver;
 
-import 'annotations.dart';
 import 'dialect.dart';
 import 'exceptions.dart';
 import 'orm_driver.dart';
@@ -10,10 +7,17 @@ import 'query.dart';
 
 /// Base class for data-access repositories of entity type [T].
 ///
-/// Subclasses call [execute] with a SQL statement; result rows are mapped onto
-/// [T] using its [Column]-annotated fields. The driver is read from the core
-/// [Db] registry, the single source of truth shared with the raw-SQL facade.
+/// Subclasses pass a generated `fromRow` mapper (`_$<Name>FromRow`) to the
+/// constructor; [execute] runs a SQL statement and maps each result row onto
+/// [T] with it. The driver is read from the core [Db] registry, the single
+/// source of truth shared with the raw-SQL facade.
 abstract class RatelRepository<T> {
+  final T Function(Map<String, Object?> row) _fromRow;
+
+  /// Creates a repository that maps rows with [fromRow] (generated from the
+  /// entity's `@Column` fields).
+  RatelRepository(this._fromRow);
+
   /// Registers [driver] for standalone use (without a running server).
   ///
   /// Delegates to the core registry so repositories and the raw-SQL facade
@@ -54,33 +58,11 @@ abstract class RatelRepository<T> {
     return execute(built.sql, substitutionValues: built.parameters);
   }
 
-  T _mapRow(Map<String, Object?> row) =>
-      _generateFromRow(reflectClass(T), row) as T;
-}
-
-dynamic _generateFromRow(ClassMirror typeMirror, Map<String, Object?> row) {
-  final instance = typeMirror.newInstance(const Symbol(''), const []);
-  typeMirror.declarations.forEach((symbol, decl) {
-    if (decl is VariableMirror && !decl.isStatic) {
-      final columns = decl.metadata.where((meta) => meta.reflectee is Column);
-      if (columns.isNotEmpty) {
-        final column = columns.first.reflectee as Column;
-        final field = MirrorSystem.getName(symbol);
-        final key = column.name.isNotEmpty
-            ? column.name.toLowerCase()
-            : field.toLowerCase();
-        if (row.containsKey(key)) {
-          try {
-            instance.setField(symbol, row[key]);
-          } catch (e) {
-            final entity = MirrorSystem.getName(typeMirror.simpleName);
-            throw MappingException(
-              'Cannot map column "$key" onto $entity.$field: $e',
-            );
-          }
-        }
-      }
+  T _mapRow(Map<String, Object?> row) {
+    try {
+      return _fromRow(row);
+    } catch (e) {
+      throw MappingException('Failed to map a row onto $T: $e');
     }
-  });
-  return instance.reflectee;
+  }
 }

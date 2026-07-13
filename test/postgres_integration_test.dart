@@ -4,6 +4,8 @@ import 'package:ratel_orm/postgres.dart';
 import 'package:ratel_orm/ratel_orm.dart';
 import 'package:test/test.dart';
 
+part 'postgres_integration_test.g.dart';
+
 class Widget {
   @Column(name: 'id')
   int id = 0;
@@ -13,6 +15,8 @@ class Widget {
 }
 
 class WidgetRepo extends RatelRepository<Widget> {
+  WidgetRepo() : super(_$WidgetFromRow);
+
   Future<List<Widget>?> insert(int id, String label) => execute(
         'INSERT INTO ratel_repo_widgets (id, label) VALUES (@id, @label)',
         substitutionValues: {'id': id, 'label': label},
