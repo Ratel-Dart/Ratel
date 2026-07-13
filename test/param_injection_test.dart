@@ -4,7 +4,12 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
+part 'param_injection_test.g.dart';
+
 class _CtxController extends RatelHandler {
+  @override
+  void registerRoutes() => _$_CtxControllerRoutes(this);
+
   @Get('/header')
   Future<Response> header(@Header('X-User') String? user) async =>
       Response.json(statusCode: 200, data: {'user': user});
@@ -15,7 +20,7 @@ class _CtxController extends RatelHandler {
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_CtxController]);
+  final server = RatelServer(port: 0, handlers: [_CtxController()]);
   final client = HttpClient();
   late int port;
 

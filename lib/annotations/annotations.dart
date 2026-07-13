@@ -1,5 +1,3 @@
-import 'dart:mirrors';
-
 /// Signature of a compiled route handler.
 ///
 /// The optional [request] is the incoming `HttpRequest`. It is declared
@@ -8,11 +6,10 @@ typedef RouteHandler = Future<dynamic> Function([dynamic request]);
 
 /// A single registered HTTP route.
 ///
-/// Created by [RatelHandler] while scanning a controller for method
-/// annotations. It holds the matched [path] and HTTP [method], the compiled
-/// [handler] that binds parameters and invokes the user's method, whether the
-/// route [isProtected] by authentication, and the [methodMirror] used for
-/// reflective parameter binding.
+/// Created by generated controller code. It holds the matched [path] and HTTP
+/// [method], the compiled [handler] that binds parameters and invokes the
+/// user's method, whether the route [isProtected] by authentication, and the
+/// [requiredRoles] the caller must hold.
 class Route {
   /// The URL path this route matches (e.g. `/users`).
   final String path;
@@ -30,9 +27,6 @@ class Route {
   /// empty list means authentication is enough, with no role check.
   final List<String> requiredRoles;
 
-  /// Reflective handle on the controller method, used for parameter binding.
-  final MethodMirror? methodMirror;
-
   /// Creates a route. Only [path], [method] and [handler] are required.
   Route({
     required this.path,
@@ -40,7 +34,6 @@ class Route {
     required this.handler,
     this.isProtected = false,
     this.requiredRoles = const [],
-    this.methodMirror,
   });
 }
 
@@ -147,17 +140,6 @@ class Controller {
 
   /// Prefixes the controller's routes with [prefix].
   const Controller(this.prefix);
-}
-
-/// Maps a model field to a database column named [name].
-class Column {
-  /// The database column name this field maps to.
-  final String name;
-
-  /// Maps the annotated field to the column [name].
-  const Column({
-    required this.name,
-  });
 }
 
 /// Requires a valid authentication token to reach the annotated controller or

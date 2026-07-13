@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:mirrors';
 
-import '../database/database.dart';
+import '../database/db.dart';
+import '../database/driver.dart';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../http/handler.dart';
@@ -26,11 +26,14 @@ class RatelServer {
   /// read the chosen port via [boundPort]).
   final int port;
 
-  /// Optional database configuration (registers repositories when constructed).
-  final RatelDatabase? database;
+  /// Optional database driver. When provided, the server configures it as the
+  /// active driver and manages its lifecycle (`open` at startup, `close` at
+  /// shutdown). Raw SQL is then available through [db].
+  final RatelDriver? database;
 
-  /// Controller types to instantiate and scan for routes.
-  final List<Type> handlers;
+  /// Controller instances. Constructing a controller registers its annotated
+  /// routes, so passing them here is enough to serve them.
+  final List<RatelHandler> handlers;
 
   /// HMAC secret enabling JWT auth; when null, no routes are protected.
   final String? jwtKey;
@@ -82,22 +85,27 @@ class RatelServer {
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
     bindings?.dependencies();
-    _initializeHandlers();
   }
 
   /// The port the server is actually bound to, or null before [startServer].
   int? get boundPort => _server?.port;
 
-  void _initializeHandlers() {
-    for (var handlerType in handlers) {
-      reflectClass(handlerType).newInstance(Symbol(''), []);
-    }
-  }
+  /// Raw-SQL access to the configured [database] driver.
+  ///
+  /// SQL passes through verbatim. Throws `DatabaseNotConfiguredException` when
+  /// no [database] was provided.
+  Db get db => const Db();
 
   /// Binds the socket and starts serving in the background. Completes once the
   /// server is listening; the process stays alive via the active socket until
   /// [stop] is called.
   Future<void> startServer() async {
+    final driver = database;
+    if (driver != null) {
+      Db.configure(driver);
+      await driver.open();
+    }
+
     await onStartup?.call();
 
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
@@ -140,6 +148,7 @@ class RatelServer {
     await _server?.close(force: force);
     _server = null;
     await onShutdown?.call();
+    await database?.close();
   }
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {

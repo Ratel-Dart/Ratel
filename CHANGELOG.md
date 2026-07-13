@@ -15,6 +15,31 @@ All notable changes to this project are documented here. This project follows
 - `null` values now serialize as JSON `null` instead of the string `"null"`.
 - `Response.bytes` now writes a raw binary body instead of `data.toString()`.
 
+### Changed
+- **The database layer is now driver-based and database-agnostic** (breaking).
+  `RatelServer(database: ...)` accepts a `RatelDriver` instead of a
+  `RatelDatabase`, opens and closes it with the server lifecycle, and exposes
+  raw SQL via `server.db` (`server.db.query(sql, parameters: ...)`, run
+  verbatim). The driver contract — `RatelDriver`, `QueryResult`, `RatelSession`,
+  `transaction`, and the `DatabaseException` hierarchy — now lives in the core.
+- **`dart:mirrors` is gone; the framework is now AOT-compilable** (breaking).
+  Routing, controller instantiation and JSON serialization are generated at
+  build time by the new `ratel_generator` package, so an app compiles with
+  `dart compile exe`. This changes the developer workflow:
+  - Run `dart run build_runner build` before `dart run` / `dart compile`.
+  - Pass controller **instances**: `RatelServer(handlers: [MyController()])`.
+  - Controllers declare `@override void registerRoutes() => _$MyControllerRoutes(this);`.
+  - `@Json` classes declare `part '<file>.g.dart';` and a `toJson()` (plus a
+    `fromJson` factory when used as a request body).
+
+### Removed
+- **`package:postgres` is no longer a dependency of `ratel`** (breaking).
+  `RatelDatabase`, `RatelRepository` and `@Column` were removed from the core;
+  the ORM and the Postgres driver moved to the separate `ratel_orm` package
+  (`PostgresDriver` from `package:ratel_orm/postgres.dart`). Repository writes no
+  longer auto-append `RETURNING *`; add it explicitly. See
+  [`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).
+
 ## 2.0.0-dev.5 (unreleased)
 
 ### Added

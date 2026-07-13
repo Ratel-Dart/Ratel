@@ -1,8 +1,13 @@
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
+part 'routing_test.g.dart';
+
 @Protected()
 class _GreetController extends RatelHandler {
+  @override
+  void registerRoutes() => _$_GreetControllerRoutes(this);
+
   @Get('/ping')
   @Public()
   Future<Response> ping() async =>
