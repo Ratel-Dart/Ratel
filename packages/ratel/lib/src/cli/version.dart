@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import 'pubspec.dart';
 
-const _fallbackVersion = '2.0.0-dev.7';
+const _fallbackVersion = '2.0.0-dev.8';
 
 /// Version constraint the scaffold pins for `ratel_generator`. It versions
 /// independently of `ratel`, so it cannot reuse [ratelVersion].

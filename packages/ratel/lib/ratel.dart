@@ -5,6 +5,7 @@ export 'core/server.dart';
 export 'core/response.dart';
 export 'core/controllers.dart';
 export 'core/serialization.dart';
+export 'core/static_files.dart';
 export 'core/logger.dart';
 export 'core/request_context.dart';
 export 'core/middleware.dart';

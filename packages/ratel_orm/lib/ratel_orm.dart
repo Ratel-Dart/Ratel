@@ -1,4 +1,4 @@
-export 'src/annotations.dart';
+export 'annotations.dart';
 export 'src/dialect.dart';
 export 'src/exceptions.dart';
 export 'src/migration.dart';
