@@ -104,7 +104,19 @@ class RatelGenerator extends Generator {
       declarations
         ..writeln(_routes(element, ctx))
         ..writeln();
-      registrations.add('  \$${element.name}Routes(${element.name}.new);');
+      // The route table resolves its controller through RatelControllers so an
+      // application can supply one built with its own dependencies. Only
+      // controllers that can actually be constructed get a default.
+      if (_canConstruct(element)) {
+        registrations.add(
+          '  _r.RatelControllers.registerDefault<${element.name}>'
+          '(${element.name}.new);',
+        );
+      }
+      registrations.add(
+        '  \$${element.name}Routes'
+        '(() => _r.RatelControllers.create<${element.name}>());',
+      );
     }
 
     final source = buildStep.inputId.pathSegments.last;

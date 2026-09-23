@@ -3,6 +3,7 @@ library ratel;
 export 'annotations/annotations.dart';
 export 'core/server.dart';
 export 'core/response.dart';
+export 'core/controllers.dart';
 export 'core/serialization.dart';
 export 'core/logger.dart';
 export 'core/request_context.dart';
