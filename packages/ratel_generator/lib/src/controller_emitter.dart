@@ -4,6 +4,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'annotation_checkers.dart';
 import 'constant_values.dart';
 import 'generation_context.dart';
+import 'injected_types.dart';
 import 'parameter_emitter.dart';
 import 'route_path.dart';
 
@@ -55,6 +56,8 @@ String _emitRegistration(
 
   final hasBody =
       method.formalParameters.any((p) => bodyChecker.hasAnnotationOf(p));
+  final hasMultipart = method.formalParameters
+      .any((p) => multipartChecker.isExactlyType(p.type));
   final args = method.formalParameters
       .map((param) => emitArgument(param, ctx))
       .join(', ');
@@ -67,7 +70,17 @@ String _emitRegistration(
     ..writeln('    requiredRoles: const [$roles],')
     ..writeln('    handler: ([ctxArg]) async {')
     ..writeln('      final ctx = ctxArg as _r.RequestContext;');
-  if (hasBody) {
+  if (hasMultipart) {
+    buffer
+      ..writeln('      final multipart = await _r.readMultipart(')
+      ..writeln('          ctx.request, _r.RatelHandler.maxRequestBodyBytes);');
+  }
+  if (hasBody && hasMultipart) {
+    buffer.writeln(
+      '      final jsonBody = '
+      'Map<String, dynamic>.from(multipart.fields);',
+    );
+  } else if (hasBody) {
     buffer
       ..writeln('      final requestBody = await _r.readBodyLimited(')
       ..writeln('          ctx.request, _r.RatelHandler.maxRequestBodyBytes);')

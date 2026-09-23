@@ -15,6 +15,16 @@ All notable changes to this project are documented here. This project follows
   Future<Response> me(RequestContext ctx) async =>
       Response.json(data: {'sub': ctx.claims?['sub']});
   ```
+- **`multipart/form-data` parsing.** A handler parameter typed `MultipartData`
+  receives the parsed body — text `fields` and uploaded `files` — with the
+  request size limit enforced across every part:
+  ```dart
+  @Post('/avatar')
+  Future<Response> avatar(MultipartData form) async {
+    final file = form.file('avatar');
+    return Response.json(data: {'bytes': file?.bytes.length});
+  }
+  ```
 - **Automatic `HEAD` handling.** A `HEAD` request with no `@Head` route of its
   own falls back to the `GET` route for the same path and answers with its
   status and headers but no body. An explicit `@Head` route still wins.

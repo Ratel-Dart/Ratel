@@ -9,6 +9,7 @@ import 'type_display.dart';
 
 String emitArgument(FormalParameterElement param, GenerationContext ctx) {
   if (requestContextChecker.isExactlyType(param.type)) return 'ctx';
+  if (multipartChecker.isExactlyType(param.type)) return 'multipart';
 
   final full = nullableDisplay(param.type);
   final base = nonNullableDisplay(param.type);

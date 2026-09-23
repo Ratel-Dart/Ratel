@@ -157,4 +157,55 @@ class ContextController extends RatelHandler {
 
     expect(output, contains('return await controller().me(ctx);'));
   });
+
+  test('reads a multipart body for a MultipartData parameter', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/http/multipart_data.dart';
+
+class UploadController extends RatelHandler {
+  @Post('/upload')
+  Future<String> upload(MultipartData data) async => '';
+}
+''',
+    });
+
+    expect(
+      output,
+      stringContainsInOrder([
+        'final multipart = await _r.readMultipart(',
+        '_r.RatelHandler.maxRequestBodyBytes',
+        'controller().upload(multipart)',
+      ]),
+    );
+  });
+
+  test('feeds a @Body alongside multipart from the form fields', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/http/multipart_data.dart';
+
+@Json()
+class Profile {
+  String name = '';
+}
+
+class ProfileController extends RatelHandler {
+  @Post('/profile')
+  Future<String> save(MultipartData files, @Body() Profile profile) async => '';
+}
+''',
+    });
+
+    expect(
+      output,
+      stringContainsInOrder([
+        'final multipart = await _r.readMultipart(',
+        'final jsonBody = Map<String, dynamic>.from(multipart.fields);',
+        r'controller().save(multipart, $ProfileFromJson(jsonBody))',
+      ]),
+    );
+  });
 }

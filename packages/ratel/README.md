@@ -120,6 +120,19 @@ Future<Response> me(RequestContext ctx) async =>
 A `HEAD` request with no `@Head` route of its own is answered from the `GET`
 route for the same path, with its status and headers but no body.
 
+A `multipart/form-data` upload is parsed into a `MultipartData` parameter, which
+carries the text `fields` and the uploaded `files`. The server's
+`maxRequestBodyBytes` limit applies across every part together.
+
+```dart
+@Post('/avatar')
+Future<Response> avatar(MultipartData form) async {
+  final file = form.file('avatar');
+  await File('uploads/${file!.filename}').writeAsBytes(file.bytes);
+  return Response.json(data: {'saved': file.filename});
+}
+```
+
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.
