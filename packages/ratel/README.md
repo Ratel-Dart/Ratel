@@ -124,6 +124,35 @@ Future<Response> signIn() async => Response.json(data: {'ok': true}).withCookie(
     );
 ```
 
+A handler streams Server-Sent Events by returning `Response.sse`. Each value of
+the stream is sent as one `data:` frame and the connection stays open until the
+stream closes.
+
+```dart
+@Get('/prices')
+Future<Response> prices() async => Response.sse(priceTicks.map(jsonEncode));
+```
+
+## Errors
+
+Throwing an `HttpStatusException` — `BadRequestException`, `NotFoundException`,
+`ForbiddenException` and the rest — answers with that status and message. Any
+other error is logged with a correlation id and answered with a generic `500`,
+so internal detail never reaches the client.
+
+`onError` maps those unexpected errors onto a response of your own, which is
+where a domain exception becomes an HTTP status. The error is still logged
+first, and a hook that throws falls back to the generic `500`.
+
+```dart
+final server = RatelServer(
+  port: 8080,
+  onError: (error, stackTrace, ctx) => error is PaymentDeclined
+      ? Response(statusCode: 402, data: {'error': error.reason})
+      : Response(statusCode: 500, data: {'error': 'Internal Server Error'}),
+);
+```
+
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.

@@ -7,6 +7,7 @@ import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../http/handler.dart';
 import '../jwt.dart';
+import 'error_handler.dart';
 import 'logger.dart';
 import 'middleware.dart';
 import 'request_context.dart';
@@ -61,6 +62,11 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// Maps an error no route handled onto a [Response], e.g. to translate a
+  /// domain exception. Errors are still logged with their correlation id before
+  /// the hook runs, and a hook that throws falls back to the generic 500.
+  final ErrorHandler? onError;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
@@ -79,6 +85,7 @@ class RatelServer {
     this.onShutdown,
     this.gzip = true,
     this.idleTimeout,
+    this.onError,
     int maxRequestBodyBytes = 1024 * 1024,
   }) {
     RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
@@ -151,11 +158,15 @@ class RatelServer {
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
-      try {
-        await _handleRequest(request, chain);
-      } catch (e, stackTrace) {
-        ratelLogger.severe('Failed to handle request', e, stackTrace);
-      }
+      unawaited(_dispatch(request, chain));
+    }
+  }
+
+  Future<void> _dispatch(HttpRequest request, List<Middleware> chain) async {
+    try {
+      await _handleRequest(request, chain);
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Failed to handle request', e, stackTrace);
     }
   }
 
@@ -170,7 +181,7 @@ class RatelServer {
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    response.send(request.response);
+    await response.send(request.response);
   }
 
   Future<Response> _runChain(
@@ -197,13 +208,29 @@ class RatelServer {
         e,
         stackTrace,
       );
-      return Response(
-        statusCode: HttpStatus.internalServerError,
-        data: {
-          'error': 'Internal Server Error',
-          'correlationId': correlationId
-        },
-      );
+      return await _handleError(e, stackTrace, ctx) ??
+          Response(
+            statusCode: HttpStatus.internalServerError,
+            data: {
+              'error': 'Internal Server Error',
+              'correlationId': correlationId
+            },
+          );
+    }
+  }
+
+  Future<Response?> _handleError(
+    Object error,
+    StackTrace stackTrace,
+    RequestContext ctx,
+  ) async {
+    final hook = onError;
+    if (hook == null) return null;
+    try {
+      return await hook(error, stackTrace, ctx);
+    } catch (hookError, hookStack) {
+      ratelLogger.severe('onError hook threw', hookError, hookStack);
+      return null;
     }
   }
 
