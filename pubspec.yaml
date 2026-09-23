@@ -1,0 +1,13 @@
+# Workspace root. Not published — it exists so pub resolves every package in
+# this repository against a single lockfile, which is what lets `ratel` depend
+# on `ratel_generator` (and `ratel_orm` on `ratel`) without path dependencies.
+name: ratel_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - packages/ratel
+  - packages/ratel_generator
+  - packages/ratel_orm
