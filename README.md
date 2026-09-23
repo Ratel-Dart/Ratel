@@ -1,174 +1,60 @@
 <h1 align="center">Ratel</h1>
 
 <p align="center">
-    <img 
+    <img
     align="center"
-    height="200" 
-    src="./assets/Ratel.png"/>
+    height="200"
+    src="./packages/ratel/assets/Ratel.png"/>
 </p>
 
-Ratel is a lightweight, annotation-driven backend framework for Dart. It provides
-a clean way to build RESTful APIs, with built-in support for:
+<p align="center">
+  A lightweight, annotation-driven backend framework for Dart — and the
+  packages built around it.
+</p>
 
-- **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` / `@Patch` /
-  `@Head` / `@Options`, with path parameters (`/users/:id`) and `@Controller`
-  prefixes
-- **PostgreSQL** repositories
-- **Dependency injection**
-- **JWT authentication**
+> **Status:** the `2.0.0-dev` line is an active hardening effort. APIs are
+> changing. For the stable API use `ratel` `1.0.3`.
 
-> **Status:** the `2.0.0-dev` line is an active hardening effort (routing,
-> performance, security and tooling). APIs are changing — see the
-> [CHANGELOG](CHANGELOG.md). For the stable API use `1.0.2`.
+## Packages
 
-## Install
+| Package | Version | What it is |
+|---|---|---|
+| [`ratel`](packages/ratel) | `2.0.0-dev.7` | The HTTP framework: routing, DI, JWT, middleware, the database driver contract, and the `ratel` CLI. Depends on no database package. |
+| [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | Repository, row mapping, query builder, dialects, migrations, and the Postgres and SQLite drivers. Optional — add it only if you want the data layer. |
+| [`ratel_generator`](packages/ratel_generator) | `0.1.0-dev.1` | The `build_runner` generator that replaces `dart:mirrors`, so applications compile with `dart compile exe`. Wired in for you by the CLI. |
 
-```sh
-dart pub add ratel
-```
+The core owns the database **contract** and the ORM implements it, so the
+framework never pulls a database driver into an application that does not ask
+for one — the `database/sql`, JDBC and PDO arrangement.
 
 ## Quick start
 
-Define a JSON model and a controller, then start the server:
-
-```dart
-import 'dart:io';
-
-import 'package:ratel/ratel.dart';
-
-@Json()
-class Greeting {
-  String message;
-  Greeting({this.message = ''});
-}
-
-class HelloController extends RatelHandler {
-  @Get('/hello')
-  Future<Response> hello(@Param() String? name) async {
-    return Response.json(
-      statusCode: HttpStatus.ok,
-      data: Greeting(message: 'Hello, ${name ?? 'world'}!'),
-    );
-  }
-
-  @Post('/echo')
-  Future<Response> echo(@Body() Greeting body) async {
-    return Response.json(statusCode: HttpStatus.ok, data: body);
-  }
-}
-
-Future<void> main() async {
-  final server = RatelServer(port: 8080, handlers: [HelloController]);
-  await server.startServer();
-}
+```sh
+dart pub global activate ratel
+ratel create my_api
+cd my_api
+ratel dev
 ```
 
-Run it:
+See [`packages/ratel/README.md`](packages/ratel/README.md) for routing,
+authentication, middleware and database usage.
+
+## Working on this repository
+
+The three packages form a single [pub workspace](https://dart.dev/tools/pub/workspaces),
+so one resolve covers all of them and they see each other without path
+dependencies:
 
 ```sh
-dart run example/main.dart
-curl "http://localhost:8080/hello?name=Ada"   # {"message":"Hello, Ada!"}
+dart pub get                                                    # once, at the root
+cd packages/ratel && dart run build_runner build --delete-conflicting-outputs
+dart analyze                                                    # whole workspace
+dart test                                                       # per package
 ```
 
-A complete runnable version lives in [`example/main.dart`](example/main.dart).
-
-## Routing
-
-Routes are declared by annotating controller methods. A class-level
-`@Controller` adds a shared prefix, `:name` segments become path parameters
-(bound with `@PathParam`), and `@Param` reads the query string. A request to a
-known path with an unsupported method returns `405` with an `Allow` header.
-
-```dart
-@Controller('/api/v1')
-class UserController extends RatelHandler {
-  @Get('/users/:id')
-  Future<Response> byId(@PathParam('id') int id) async =>
-      Response.json(statusCode: 200, data: {'id': id});
-}
-```
-
-## Authentication
-
-Mark a controller or method `@Protected` and pass a `jwtKey` to the server.
-Protected routes require an `Authorization: Bearer <token>` header.
-
-```dart
-@Protected()
-class AccountController extends RatelHandler {
-  @Get('/me')
-  Future<Response> me() async => Response.json(statusCode: 200, data: {});
-
-  @Public() // opt a single route out of protection
-  @Get('/health')
-  Future<Response> health() async => Response.json(statusCode: 200, data: {});
-}
-
-final server = RatelServer(
-  port: 8080,
-  handlers: [AccountController],
-  jwtKey: 'your-secret',
-);
-```
-
-## Middleware
-
-Cross-cutting concerns are composable middleware. Register global middleware on
-the server; the JWT auth middleware is appended automatically when `jwtKey` is
-set. Built-in middleware includes `corsMiddleware`, `securityHeadersMiddleware`
-and `rateLimitMiddleware`.
-
-```dart
-final server = RatelServer(
-  port: 8080,
-  handlers: [AccountController],
-  jwtKey: 'your-secret',
-  middlewares: [corsMiddleware(), securityHeadersMiddleware()],
-  onStartup: () async => print('starting'),
-  onShutdown: () async => print('bye'),
-);
-```
-
-Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
-claim is checked, returning 403 when the role is missing.
-
-## Database
-
-Configure a `RatelDatabase` and extend `RatelRepository<T>` for data access.
-Map model fields to columns with `@Column`:
-
-```dart
-@Json()
-class User {
-  @Column(name: 'id')
-  int id = 0;
-  @Column(name: 'name')
-  String name = '';
-}
-
-class UserRepository extends RatelRepository<User> {
-  Future<List<User>?> all() => execute('SELECT id, name FROM users');
-}
-
-RatelDatabase(
-  host: 'localhost',
-  databaseName: 'app',
-  username: 'postgres',
-  password: 'postgres',
-);
-```
-
-## Logging
-
-Ratel logs through the [`logging`](https://pub.dev/packages/logging) package.
-Attach a handler to receive its output:
-
-```dart
-import 'package:logging/logging.dart';
-
-Logger.root.level = Level.INFO;
-Logger.root.onRecord.listen((r) => stdout.writeln('${r.level.name}: ${r.message}'));
-```
+Generated `*.ratel.dart` files sit next to their sources and are gitignored, so
+**code generation has to run before `dart analyze` or `dart test`** on a fresh
+clone. Requires the Dart SDK `3.6.0` or newer.
 
 ## License
 

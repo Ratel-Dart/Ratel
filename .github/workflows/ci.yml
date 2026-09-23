@@ -5,33 +5,73 @@ on:
     branches: [main, develop]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      # ratel_orm's Postgres suite self-skips without DB_HOST, and it is the only
+      # place the driver's real wire protocol is exercised.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ratel
+          POSTGRES_PASSWORD: ratel
+          POSTGRES_DB: ratel_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: dart-lang/setup-dart@v1
         with:
-          sdk: stable
+          sdk: 3.13.2
 
+      # One resolve for the whole workspace: every package under packages/ is a
+      # member, so they see each other without path dependencies.
       - name: Install dependencies
         run: dart pub get
 
-      # Non-fatal for now: flip to a hard gate after the first repo-wide
-      # `dart format .` pass once a local SDK is available.
+      - name: Generate code for ratel
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: packages/ratel
+
+      - name: Generate code for ratel_orm
+        run: dart run build_runner build --delete-conflicting-outputs
+        working-directory: packages/ratel_orm
+
       - name: Verify formatting
-        continue-on-error: true
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze
         run: dart analyze
 
-      - name: Run tests
+      - name: Test ratel
         run: dart test
+        working-directory: packages/ratel
 
-      # Validates the package is publishable (metadata, structure). Warnings are
-      # expected on a pre-release; kept non-fatal until 2.0.0 is cut.
-      - name: Publish dry-run
-        continue-on-error: true
-        run: dart pub publish --dry-run
+      - name: Test ratel_orm
+        run: dart test
+        working-directory: packages/ratel_orm
+        env:
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          DB_NAME: ratel_test
+          DB_USER: ratel
+          DB_PASSWORD: ratel
+          DB_SSL_MODE: disable
+
+      # Guards the reason dart:mirrors was dropped: if reflection creeps back
+      # in, AOT compilation fails here rather than in a user's deployment.
+      - name: Compile a native binary
+        run: dart run bin/ratel.dart build example/main.dart
+        working-directory: packages/ratel

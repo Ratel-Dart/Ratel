@@ -1,26 +1,13 @@
-name: ratel
-description: >-
-  Ratel is a lightweight, annotation-driven backend framework for Dart with HTTP
-  routing, dependency injection, PostgreSQL repositories and JWT authentication.
-version: 2.0.0-dev.6
-repository: https://github.com/Ratel-Dart/Ratel
-issue_tracker: https://github.com/Ratel-Dart/Ratel/issues
-homepage: https://github.com/Ratel-Dart/Ratel
-topics:
-  - backend
-  - http
-  - framework
-  - rest
-  - postgresql
+# Workspace root. Not published — it exists so pub resolves every package in
+# this repository against a single lockfile, which is what lets `ratel` depend
+# on `ratel_generator` (and `ratel_orm` on `ratel`) without path dependencies.
+name: ratel_workspace
+publish_to: none
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.6.0
 
-dependencies:
-  postgres: ^3.5.0
-  dart_jsonwebtoken: ^3.1.1
-  logging: ^1.3.0
-
-dev_dependencies:
-  lints: ^4.0.0
-  test: ^1.25.0
+workspace:
+  - packages/ratel
+  - packages/ratel_generator
+  - packages/ratel_orm
