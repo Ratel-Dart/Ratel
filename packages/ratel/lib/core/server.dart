@@ -61,6 +61,11 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// Whether to bind the port with `shared: true`, so several isolates can
+  /// listen on it and the OS spreads connections across them. Set it on every
+  /// server of a [runCluster] cluster.
+  final bool shared;
+
   /// The routes, sockets and body limit this server runs with. Defaults to the
   /// ambient [RatelRegistry.current], which is where generated code registers.
   /// Pass one explicitly to run two servers with different routes in a single
@@ -85,6 +90,7 @@ class RatelServer {
     this.onShutdown,
     this.gzip = true,
     this.idleTimeout,
+    this.shared = false,
     RatelRegistry? registry,
     int maxRequestBodyBytes = RatelRegistry.defaultMaxRequestBodyBytes,
   }) : registry = registry ?? RatelRegistry.current {
@@ -116,8 +122,12 @@ class RatelServer {
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
     final server = securityContext != null
         ? await HttpServer.bindSecure(
-            InternetAddress.anyIPv4, port, securityContext!)
-        : await HttpServer.bind(InternetAddress.anyIPv4, port);
+            InternetAddress.anyIPv4,
+            port,
+            securityContext!,
+            shared: shared,
+          )
+        : await HttpServer.bind(InternetAddress.anyIPv4, port, shared: shared);
     _server = server;
     server.autoCompress = gzip;
     if (idleTimeout != null) {

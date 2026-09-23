@@ -188,6 +188,37 @@ class ChatController extends RatelHandler {
 }
 ```
 
+## API documentation
+
+`openApiSpec` turns the registered routes into an OpenAPI 3 document. The
+generator resolved each handler's inputs at build time, so the spec needs no
+reflection and stays in step with the code.
+
+```dart
+@Get('/openapi.json')
+Future<Response> spec(RequestContext ctx) async =>
+    Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+```
+
+## Scaling across cores
+
+A Dart isolate uses one core. `runCluster` runs the application's startup on one
+isolate per core, and `shared: true` lets every one of them bind the same port,
+with the OS spreading connections across them.
+
+```dart
+void main() => runCluster(serve);
+
+void serve(List<String> args) {
+  $registerRatel();
+  RatelServer(port: 8080, shared: true).startServer();
+}
+```
+
+Isolates share no memory, so the entry point does the whole startup — routes,
+bindings and the server — on each one. It must be a top-level or static
+function.
+
 ## Database
 
 The core is database-agnostic: it defines the `RatelDriver` contract and runs
