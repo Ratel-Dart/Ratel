@@ -36,6 +36,14 @@ abstract class RatelHandler {
   static int get maxRequestBodyBytes =>
       RatelRegistry.current.maxRequestBodyBytes;
 
+  /// How many bytes past [maxRequestBodyBytes] are read and discarded before a
+  /// rejected request is abandoned, on the ambient [RatelRegistry]. See
+  /// [readBodyLimited].
+  static int get maxBodyDrainBytes => RatelRegistry.current.maxBodyDrainBytes;
+
+  static set maxBodyDrainBytes(int bytes) =>
+      RatelRegistry.current.maxBodyDrainBytes = bytes;
+
   /// Empties the ambient [RatelRegistry]. Intended for tests that register
   /// routes more than once in a single isolate.
   static void reset() => RatelRegistry.current.reset();
@@ -79,17 +87,41 @@ dynamic coerceParam(String name, String? value, Type targetType) {
 /// bodies larger than [maxBytes] with a [PayloadTooLargeException]. Counting
 /// bytes as they arrive bounds memory even for chunked requests whose length is
 /// unknown in advance.
-Future<String> readBodyLimited(Stream<List<int>> stream, int maxBytes) async {
+///
+/// Bytes past the limit are still read, and discarded, up to
+/// [RatelHandler.maxBodyDrainBytes]. `dart:io` resets a connection whose
+/// request body was left unread, which would tear the socket down before the
+/// client could read the 413; draining lets the request finish cleanly so the
+/// response is delivered and the connection stays reusable. A body that
+/// overshoots even that much is abandoned, and the exception carries
+/// `Connection: close` — delivery of that response is best-effort.
+Future<String> readBodyLimited(
+  Stream<List<int>> stream,
+  int maxBytes, {
+  int? maxDrainBytes,
+}) async {
+  final drainLimit = maxDrainBytes ?? RatelHandler.maxBodyDrainBytes;
   final bytes = <int>[];
   var total = 0;
+  var discarded = 0;
+  var drained = true;
   await for (final chunk in stream) {
     total += chunk.length;
     if (total > maxBytes) {
-      throw PayloadTooLargeException(
-        'Request body exceeds the limit of $maxBytes bytes',
-      );
+      discarded += chunk.length;
+      if (discarded > drainLimit) {
+        drained = false;
+        break;
+      }
+      continue;
     }
     bytes.addAll(chunk);
+  }
+  if (total > maxBytes) {
+    throw PayloadTooLargeException(
+      'Request body exceeds the limit of $maxBytes bytes',
+      drained ? const {} : const {HttpHeaders.connectionHeader: 'close'},
+    );
   }
   return utf8.decode(bytes);
 }

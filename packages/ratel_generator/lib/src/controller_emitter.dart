@@ -90,7 +90,8 @@ String _emitRegistration(
   } else if (hasBody) {
     buffer
       ..writeln('      final requestBody = await _r.readBodyLimited(')
-      ..writeln('          ctx.request, ctx.registry.maxRequestBodyBytes);')
+      ..writeln('          ctx.request, ctx.registry.maxRequestBodyBytes,')
+      ..writeln('          maxDrainBytes: ctx.registry.maxBodyDrainBytes);')
       ..writeln('      final jsonBody = requestBody.isNotEmpty')
       ..writeln('          ? _r.decodeBody(ctx.request, requestBody)')
       ..writeln('          : const <String, dynamic>{};');

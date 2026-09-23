@@ -84,7 +84,9 @@ class RatelServer {
   int _errorCounter = 0;
 
   /// Creates a server. [maxRequestBodyBytes] caps request body size (413 when
-  /// exceeded); it defaults to 1 MiB.
+  /// exceeded) and [maxBodyDrainBytes] bounds how much of an oversized body is
+  /// read and discarded so the 413 still reaches the client; both default to
+  /// 1 MiB.
   RatelServer({
     this.port = 8080,
     this.database,
@@ -100,8 +102,10 @@ class RatelServer {
     this.shared = false,
     RatelRegistry? registry,
     int maxRequestBodyBytes = RatelRegistry.defaultMaxRequestBodyBytes,
+    int maxBodyDrainBytes = RatelRegistry.defaultMaxBodyDrainBytes,
   }) : registry = registry ?? RatelRegistry.current {
     this.registry.maxRequestBodyBytes = maxRequestBodyBytes;
+    this.registry.maxBodyDrainBytes = maxBodyDrainBytes;
     bindings?.dependencies();
   }
 

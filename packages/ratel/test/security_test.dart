@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:ratel/ratel.dart';
@@ -49,6 +50,43 @@ void main() {
       await expectLater(
         readBodyLimited(stream, 4),
         throwsA(isA<PayloadTooLargeException>()),
+      );
+    });
+
+    test('reads past the limit so the request stream is drained', () async {
+      var delivered = 0;
+      final stream = Stream<List<int>>.fromIterable([
+        utf8.encode('a' * 8),
+        utf8.encode('b' * 8),
+        utf8.encode('c' * 8),
+      ]).map((chunk) {
+        delivered += chunk.length;
+        return chunk;
+      });
+      await expectLater(
+        readBodyLimited(stream, 4),
+        throwsA(isA<PayloadTooLargeException>()),
+      );
+      expect(delivered, 24);
+    });
+
+    test('closes the connection when the drain limit is passed', () async {
+      final previous = RatelHandler.maxBodyDrainBytes;
+      RatelHandler.maxBodyDrainBytes = 8;
+      addTearDown(() => RatelHandler.maxBodyDrainBytes = previous);
+      final stream = Stream<List<int>>.fromIterable([
+        utf8.encode('a' * 8),
+        utf8.encode('b' * 16),
+      ]);
+      await expectLater(
+        readBodyLimited(stream, 4),
+        throwsA(
+          isA<PayloadTooLargeException>().having(
+            (e) => e.headers,
+            'headers',
+            {HttpHeaders.connectionHeader: 'close'},
+          ),
+        ),
       );
     });
   });

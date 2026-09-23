@@ -32,6 +32,13 @@ class RatelRegistry {
   /// The body limit a server falls back to: 1 MiB.
   static const int defaultMaxRequestBodyBytes = 1024 * 1024;
 
+  /// How many bytes past [maxRequestBodyBytes] are read and discarded before a
+  /// rejected request is abandoned, so the 413 still reaches the client.
+  int maxBodyDrainBytes = defaultMaxBodyDrainBytes;
+
+  /// The drain bound a server falls back to: 1 MiB.
+  static const int defaultMaxBodyDrainBytes = 1024 * 1024;
+
   /// Runs [register] with [registry] installed as [current], then restores the
   /// previous one. This is how generated `$registerRatel()` fills a registry
   /// other than the ambient one.
