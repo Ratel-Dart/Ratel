@@ -3,16 +3,12 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
-## 2.0.0-dev.6 (unreleased)
+## 2.0.0-dev.7 (unreleased)
 
 ### Added
 - **A `ratel` command line tool.** `ratel create` scaffolds an application,
   `ratel dev` runs it and restarts on change, and `ratel build` compiles a
   native binary to `build/server`. Install with `dart pub global activate ratel`.
-- Response gzip compression (`RatelServer(gzip: ...)`, on by default) when the
-  client advertises `Accept-Encoding: gzip`.
-- Configurable connection `idleTimeout` on `RatelServer`.
-- `@Header('Name')` and `@CookieParam('name')` handler parameter injection.
 - **`RatelControllers`**, so a controller can take its dependencies through its
   constructor. Register a factory from `Bindings.dependencies()` and the
   generated route table builds the controller with it:
@@ -24,8 +20,6 @@ All notable changes to this project are documented here. This project follows
   Controllers with a no-argument constructor need no registration.
 
 ### Fixed
-- `null` values now serialize as JSON `null` instead of the string `"null"`.
-- `Response.bytes` now writes a raw binary body instead of `data.toString()`.
 - A response payload with no serializer no longer serializes silently as
   `"Instance of 'Foo'"`; it now raises an error naming the type. `DateTime`,
   `Enum`, `Uri` and `BigInt` gained explicit representations rather than
@@ -69,6 +63,18 @@ All notable changes to this project are documented here. This project follows
   `HttpRequestException`, `HttpResponseException` and `JsonDecodingException`
   (breaking). It was exported but unused, untested, and leaked its `HttpClient`
   on the error path. Use `package:http` or `dart:io`'s `HttpClient` directly.
+
+## 2.0.0-dev.6 (unreleased)
+
+### Added
+- Response gzip compression (`RatelServer(gzip: ...)`, on by default) when the
+  client advertises `Accept-Encoding: gzip`.
+- Configurable connection `idleTimeout` on `RatelServer`.
+- `@Header('Name')` and `@CookieParam('name')` handler parameter injection.
+
+### Fixed
+- `null` values now serialize as JSON `null` instead of the string `"null"`.
+- `Response.bytes` now writes a raw binary body instead of `data.toString()`.
 
 ## 2.0.0-dev.5 (unreleased)
 

@@ -19,7 +19,7 @@
 
 | Package | Version | What it is |
 |---|---|---|
-| [`ratel`](packages/ratel) | `2.0.0-dev.6` | The HTTP framework: routing, DI, JWT, middleware, the database driver contract, and the `ratel` CLI. Depends on no database package. |
+| [`ratel`](packages/ratel) | `2.0.0-dev.7` | The HTTP framework: routing, DI, JWT, middleware, the database driver contract, and the `ratel` CLI. Depends on no database package. |
 | [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | Repository, row mapping, query builder, dialects, migrations, and the Postgres and SQLite drivers. Optional — add it only if you want the data layer. |
 | [`ratel_generator`](packages/ratel_generator) | `0.1.0-dev.1` | The `build_runner` generator that replaces `dart:mirrors`, so applications compile with `dart compile exe`. Wired in for you by the CLI. |
 
