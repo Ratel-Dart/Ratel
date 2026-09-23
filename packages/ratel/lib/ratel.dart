@@ -7,6 +7,7 @@ export 'core/controllers.dart';
 export 'core/serialization.dart';
 export 'core/static_files.dart';
 export 'core/logger.dart';
+export 'core/error_handler.dart';
 export 'core/request_context.dart';
 export 'core/middleware.dart';
 export 'core/router.dart';

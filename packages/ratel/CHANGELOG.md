@@ -11,6 +11,10 @@ All notable changes to this project are documented here. This project follows
   through to the router when no file matches. Content types come from
   `package:mime`, and a request that resolves outside the directory — `..`
   segments or a symlink leaving the tree — gets a `404` instead of the file.
+- **`RatelServer(onError: ...)`**, a hook that maps an error no route handled
+  onto a `Response` of the application's choosing — the seam where a domain
+  exception becomes an HTTP status. The error is still logged with its
+  correlation id first, and a hook that throws falls back to the generic `500`.
 - **`Response.withCookie`**, which attaches a `Set-Cookie` header built from a
   `dart:io` `Cookie`, so a response can carry flags like `httpOnly`, `secure`
   and `sameSite`. Cookies survive `withHeaders`, so decorating middleware does
