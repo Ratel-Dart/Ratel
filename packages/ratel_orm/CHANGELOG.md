@@ -1,5 +1,8 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- `Column` moved to `package:ratel_orm/annotations.dart`, a stable public
+  path the code generator can match against. It is still exported from
+  `package:ratel_orm/ratel_orm.dart`.
 - Row mappers are generated and resolved from a registry instead of
   `dart:mirrors`, so the ORM no longer blocks `dart compile exe`.
   `RatelRepository`'s mapper argument became optional — a repository that

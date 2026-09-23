@@ -42,11 +42,11 @@ jobs:
         run: dart pub get
 
       - name: Generate code for ratel
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
         working-directory: packages/ratel
 
       - name: Generate code for ratel_orm
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
         working-directory: packages/ratel_orm
 
       - name: Verify formatting
@@ -69,6 +69,10 @@ jobs:
           DB_USER: ratel
           DB_PASSWORD: ratel
           DB_SSL_MODE: disable
+
+      - name: Test ratel_generator
+        run: dart test
+        working-directory: packages/ratel_generator
 
       # Guards the reason dart:mirrors was dropped: if reflection creeps back
       # in, AOT compilation fails here rather than in a user's deployment.
