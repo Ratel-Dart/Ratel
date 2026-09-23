@@ -15,7 +15,7 @@ String _version(String pubspec) =>
         .group(1)!;
 
 void main() {
-  final source = File('lib/src/cli/project.dart').readAsStringSync();
+  final source = File('lib/src/cli/version.dart').readAsStringSync();
 
   test('the fallback version matches this package', () {
     expect(

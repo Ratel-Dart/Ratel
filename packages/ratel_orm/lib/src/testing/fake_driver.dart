@@ -1,6 +1,8 @@
 import 'package:ratel/ratel.dart'
     show DatabaseException, QueryResult, RatelDriver, RatelSession;
 
+import 'fake_session.dart';
+
 /// An in-memory [RatelDriver] for tests.
 ///
 /// Programmable: enqueue results with [enqueue] / [enqueueRows], inspect the
@@ -48,15 +50,5 @@ class FakeDriver extends RatelDriver {
 
   @override
   Future<T> transaction<T>(Future<T> Function(RatelSession session) action) =>
-      action(_FakeSession(this));
-}
-
-class _FakeSession implements RatelSession {
-  final FakeDriver _driver;
-
-  _FakeSession(this._driver);
-
-  @override
-  Future<QueryResult> query(String sql, {Map<String, Object?>? parameters}) =>
-      _driver.query(sql, parameters: parameters);
+      action(FakeSession(this));
 }

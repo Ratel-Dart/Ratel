@@ -6,6 +6,9 @@ import 'package:ratel/ratel.dart'
 
 import '../dialect.dart';
 import '../orm_driver.dart';
+import 'postgres_session.dart';
+import 'query_result_mapper.dart';
+import 'ssl_mode.dart';
 
 /// An [OrmDriver] backed by `package:postgres`.
 ///
@@ -79,7 +82,7 @@ class PostgresDriver extends OrmDriver {
       databaseName: required('DB_NAME'),
       username: required('DB_USER'),
       password: required('DB_PASSWORD'),
-      sslMode: _parseSslMode(env['DB_SSL_MODE']),
+      sslMode: parseSslMode(env['DB_SSL_MODE']),
       maxConnections: poolMax,
     );
   }
@@ -123,7 +126,7 @@ class PostgresDriver extends OrmDriver {
       final result = (parameters == null || parameters.isEmpty)
           ? await pool.execute(sql)
           : await pool.execute(Sql.named(sql), parameters: parameters);
-      return _toQueryResult(result);
+      return toQueryResult(result);
     } on DatabaseException {
       rethrow;
     } catch (e) {
@@ -138,7 +141,7 @@ class PostgresDriver extends OrmDriver {
   ) async {
     final pool = await _openPool;
     try {
-      return await pool.runTx((tx) => action(_PostgresSession(tx)));
+      return await pool.runTx((tx) => action(PostgresSession(tx)));
     } on DatabaseException {
       rethrow;
     } catch (e) {
@@ -150,45 +153,3 @@ class PostgresDriver extends OrmDriver {
     }
   }
 }
-
-class _PostgresSession implements RatelSession {
-  final TxSession _tx;
-
-  _PostgresSession(this._tx);
-
-  @override
-  Future<QueryResult> query(String sql,
-      {Map<String, Object?>? parameters}) async {
-    final result = (parameters == null || parameters.isEmpty)
-        ? await _tx.execute(sql)
-        : await _tx.execute(Sql.named(sql), parameters: parameters);
-    return _toQueryResult(result);
-  }
-}
-
-QueryResult _toQueryResult(Result result) => QueryResult(
-      rows: [for (final row in result) row.toColumnMap()],
-      affectedRows: result.affectedRows,
-    );
-
-SslMode _parseSslMode(String? value) {
-  switch (value) {
-    case 'disable':
-      return SslMode.disable;
-    case 'verify_full':
-      return SslMode.verifyFull;
-    case null:
-    case 'require':
-      return SslMode.require;
-    default:
-      throw StateError('Invalid DB_SSL_MODE: $value');
-  }
-}
-
-/// Opt-in helper that appends `RETURNING *` to a write statement.
-///
-/// Not applied automatically by [PostgresDriver.query], which runs SQL
-/// verbatim. Delegates to [PostgresDialect.applyReturning]; prefer the
-/// `returning:` option on `RatelRepository.execute`.
-String applyReturningClause(String sql) =>
-    const PostgresDialect().applyReturning(sql, returning: true);

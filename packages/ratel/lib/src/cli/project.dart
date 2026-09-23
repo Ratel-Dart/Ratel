@@ -1,29 +1,8 @@
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 
-const _fallbackVersion = '2.0.0-dev.7';
-
-/// Version constraint the scaffold pins for `ratel_generator`. It versions
-/// independently of `ratel`, so it cannot reuse [ratelVersion].
-const generatorVersion = '0.1.0-dev.1';
-
-final _namePattern = RegExp(r'^name:\s*(\S+)\s*$', multiLine: true);
-final _versionPattern = RegExp(r'^version:\s*(\S+)\s*$', multiLine: true);
-
-/// The Ratel version, read from the `ratel` package's own pubspec.
-Future<String> ratelVersion() async {
-  final resolved =
-      await Isolate.resolvePackageUri(Uri.parse('package:ratel/ratel.dart'));
-  if (resolved == null || !resolved.isScheme('file')) return _fallbackVersion;
-  final pubspec = File(
-    p.join(p.dirname(p.dirname(resolved.toFilePath())), 'pubspec.yaml'),
-  );
-  if (!pubspec.existsSync()) return _fallbackVersion;
-  final match = _versionPattern.firstMatch(pubspec.readAsStringSync());
-  return match?.group(1) ?? _fallbackVersion;
-}
+import 'pubspec.dart';
 
 /// A Ratel application on disk: its [root] directory and package [name].
 class RatelProject {
@@ -42,9 +21,9 @@ class RatelProject {
     while (true) {
       final pubspec = File(p.join(dir.path, 'pubspec.yaml'));
       if (pubspec.existsSync()) {
-        final match = _namePattern.firstMatch(pubspec.readAsStringSync());
-        if (match == null) return null;
-        return RatelProject._(dir, match.group(1)!);
+        final name = readName(pubspec.readAsStringSync());
+        if (name == null) return null;
+        return RatelProject._(dir, name);
       }
       final parent = dir.parent;
       if (parent.path == dir.path) return null;
@@ -101,8 +80,8 @@ class RatelProject {
   Future<int> ensureCodegenDependencies() async {
     final pubspec = File(p.join(root.path, 'pubspec.yaml')).readAsStringSync();
     final missing = <String>[
-      if (!_declares(pubspec, 'build_runner')) 'build_runner',
-      if (!_declares(pubspec, 'ratel_generator')) 'ratel_generator',
+      if (!declaresDependency(pubspec, 'build_runner')) 'build_runner',
+      if (!declaresDependency(pubspec, 'ratel_generator')) 'ratel_generator',
     ];
     if (missing.isEmpty) return 0;
     stdout.writeln('Adding ${missing.join(', ')}…');
@@ -126,11 +105,3 @@ class RatelProject {
     return process.exitCode;
   }
 }
-
-/// Whether [pubspec] declares [name] as a dependency.
-///
-/// Matches an indented `name:` key rather than the bare word, so a mention in
-/// a description or a comment does not count as a declaration.
-bool _declares(String pubspec, String name) =>
-    RegExp(r'^\s+' + RegExp.escape(name) + r'\s*:', multiLine: true)
-        .hasMatch(pubspec);

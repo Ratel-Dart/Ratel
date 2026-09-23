@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'project.dart' show generatorVersion;
+import 'version.dart' show generatorVersion;
 
 /// Writes a runnable Ratel application into [target].
 ///

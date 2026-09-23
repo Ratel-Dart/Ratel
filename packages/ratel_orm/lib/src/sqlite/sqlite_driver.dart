@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import '../dialect.dart';
 import '../orm_driver.dart';
+import 'sqlite_session.dart';
 
 /// An [OrmDriver] backed by `package:sqlite3` (in-process SQLite).
 ///
@@ -81,7 +82,7 @@ class SqliteDriver extends OrmDriver {
       );
     }
     try {
-      final result = await action(_SqliteSession(this));
+      final result = await action(SqliteSession(this));
       db.execute('COMMIT');
       return result;
     } catch (_) {
@@ -89,14 +90,4 @@ class SqliteDriver extends OrmDriver {
       rethrow;
     }
   }
-}
-
-class _SqliteSession implements RatelSession {
-  final SqliteDriver _driver;
-
-  _SqliteSession(this._driver);
-
-  @override
-  Future<QueryResult> query(String sql, {Map<String, Object?>? parameters}) =>
-      _driver.query(sql, parameters: parameters);
 }
