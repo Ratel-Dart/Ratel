@@ -4,19 +4,25 @@ import 'dialect.dart';
 import 'exceptions.dart';
 import 'orm_driver.dart';
 import 'query.dart';
+import 'row_mappers.dart';
 
 /// Base class for data-access repositories of entity type [T].
 ///
-/// Subclasses pass a generated `fromRow` mapper (`_$<Name>FromRow`) to the
-/// constructor; [execute] runs a SQL statement and maps each result row onto
-/// [T] with it. The driver is read from the core [Db] registry, the single
-/// source of truth shared with the raw-SQL facade.
+/// [execute] runs a SQL statement and maps each result row onto [T] using the
+/// mapper generated from the entity's `@Column` fields. The driver is read from
+/// the core [Db] registry, the single source of truth shared with the raw-SQL
+/// facade.
 abstract class RatelRepository<T> {
-  final T Function(Map<String, Object?> row) _fromRow;
+  final T Function(Map<String, Object?> row)? _explicitFromRow;
 
-  /// Creates a repository that maps rows with [fromRow] (generated from the
-  /// entity's `@Column` fields).
-  RatelRepository(this._fromRow);
+  /// Creates a repository for [T].
+  ///
+  /// The row mapper is resolved from the generated registry on first use. Pass
+  /// [fromRow] only to override it with a hand-written mapper.
+  RatelRepository([this._explicitFromRow]);
+
+  late final T Function(Map<String, Object?> row) _fromRow =
+      _explicitFromRow ?? RatelRowMappers.of<T>();
 
   /// Registers [driver] for standalone use (without a running server).
   ///

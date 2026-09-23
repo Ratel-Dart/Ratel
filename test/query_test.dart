@@ -5,7 +5,7 @@ import 'package:ratel_orm/sqlite.dart';
 import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 
-part 'query_test.g.dart';
+import 'query_test.ratel.dart';
 
 class Person {
   @Column(name: 'id')
@@ -18,12 +18,12 @@ class Person {
   int age = 0;
 }
 
-class PersonRepo extends RatelRepository<Person> {
-  PersonRepo() : super(_$PersonFromRow);
-}
+class PersonRepo extends RatelRepository<Person> {}
 
 void main() {
   setUpAll(() {
+    RatelRowMappers.reset();
+    $registerRatel();
     open.overrideFor(
       OperatingSystem.linux,
       () => DynamicLibrary.open('libsqlite3.so.0'),

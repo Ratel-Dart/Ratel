@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 
 import 'support/conformance.dart';
 
-part 'sqlite_driver_test.g.dart';
+import 'sqlite_driver_test.ratel.dart';
 
 class Note {
   @Column(name: 'id')
@@ -18,8 +18,6 @@ class Note {
 }
 
 class NoteRepo extends RatelRepository<Note> {
-  NoteRepo() : super(_$NoteFromRow);
-
   Future<List<Note>?> insert(int id, String body) => execute(
         'INSERT INTO notes (id, body) VALUES (@id, @body)',
         substitutionValues: {'id': id, 'body': body},
@@ -31,6 +29,8 @@ class NoteRepo extends RatelRepository<Note> {
 
 void main() {
   setUpAll(() {
+    RatelRowMappers.reset();
+    $registerRatel();
     open.overrideFor(
       OperatingSystem.linux,
       () => DynamicLibrary.open('libsqlite3.so.0'),
