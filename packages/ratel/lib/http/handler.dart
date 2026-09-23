@@ -18,6 +18,11 @@ abstract class RatelHandler {
   /// `RatelServer(maxRequestBodyBytes: ...)`; defaults to 1 MiB.
   static int maxRequestBodyBytes = 1024 * 1024;
 
+  /// How many bytes past [maxRequestBodyBytes] are read and discarded before a
+  /// rejected request is abandoned, so that the 413 still reaches the client.
+  /// See [readBodyLimited]. Defaults to 1 MiB.
+  static int maxBodyDrainBytes = 1024 * 1024;
+
   /// Registers [route], rejecting a duplicate `method`+`path` pair.
   static void register(Route route) {
     final clash = routesList.any(
@@ -76,17 +81,36 @@ dynamic coerceParam(String name, String? value, Type targetType) {
 /// bodies larger than [maxBytes] with a [PayloadTooLargeException]. Counting
 /// bytes as they arrive bounds memory even for chunked requests whose length is
 /// unknown in advance.
+///
+/// Bytes past the limit are still read, and discarded, up to
+/// [RatelHandler.maxBodyDrainBytes]. `dart:io` resets a connection whose
+/// request body was left unread, which would tear the socket down before the
+/// client could read the 413; draining lets the request finish cleanly so the
+/// response is delivered and the connection stays reusable. A body that
+/// overshoots even that much is abandoned, and the exception carries
+/// `Connection: close` — delivery of that response is best-effort.
 Future<String> readBodyLimited(Stream<List<int>> stream, int maxBytes) async {
   final bytes = <int>[];
   var total = 0;
+  var discarded = 0;
+  var drained = true;
   await for (final chunk in stream) {
     total += chunk.length;
     if (total > maxBytes) {
-      throw PayloadTooLargeException(
-        'Request body exceeds the limit of $maxBytes bytes',
-      );
+      discarded += chunk.length;
+      if (discarded > RatelHandler.maxBodyDrainBytes) {
+        drained = false;
+        break;
+      }
+      continue;
     }
     bytes.addAll(chunk);
+  }
+  if (total > maxBytes) {
+    throw PayloadTooLargeException(
+      'Request body exceeds the limit of $maxBytes bytes',
+      drained ? const {} : const {HttpHeaders.connectionHeader: 'close'},
+    );
   }
   return utf8.decode(bytes);
 }
