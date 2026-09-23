@@ -120,6 +120,19 @@ Future<Response> me(RequestContext ctx) async =>
 A `HEAD` request with no `@Head` route of its own is answered from the `GET`
 route for the same path, with its status and headers but no body.
 
+A `multipart/form-data` upload is parsed into a `MultipartData` parameter, which
+carries the text `fields` and the uploaded `files`. The server's
+`maxRequestBodyBytes` limit applies across every part together.
+
+```dart
+@Post('/avatar')
+Future<Response> avatar(MultipartData form) async {
+  final file = form.file('avatar');
+  await File('uploads/${file!.filename}').writeAsBytes(file.bytes);
+  return Response.json(data: {'saved': file.filename});
+}
+```
+
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.
@@ -158,6 +171,53 @@ final server = RatelServer(
 
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
+
+## WebSockets
+
+`@Socket` binds a method to WebSocket upgrades on a path. The method receives
+the upgraded socket, and the `RequestContext` if it asks for one. Socket paths
+match exactly, and upgrades do not run the middleware chain — authenticate
+inside the handler, from the query string or the first message.
+
+```dart
+class ChatController extends RatelHandler {
+  @Socket('/ws')
+  Future<void> chat(WebSocket socket) async {
+    socket.listen((message) => socket.add('echo: $message'));
+  }
+}
+```
+
+## API documentation
+
+`openApiSpec` turns the registered routes into an OpenAPI 3 document. The
+generator resolved each handler's inputs at build time, so the spec needs no
+reflection and stays in step with the code.
+
+```dart
+@Get('/openapi.json')
+Future<Response> spec(RequestContext ctx) async =>
+    Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+```
+
+## Scaling across cores
+
+A Dart isolate uses one core. `runCluster` runs the application's startup on one
+isolate per core, and `shared: true` lets every one of them bind the same port,
+with the OS spreading connections across them.
+
+```dart
+void main() => runCluster(serve);
+
+void serve(List<String> args) {
+  $registerRatel();
+  RatelServer(port: 8080, shared: true).startServer();
+}
+```
+
+Isolates share no memory, so the entry point does the whole startup — routes,
+bindings and the server — on each one. It must be a top-level or static
+function.
 
 ## Database
 
