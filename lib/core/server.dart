@@ -14,8 +14,11 @@ import 'response.dart';
 import 'router.dart';
 
 /// The application entry point: binds an HTTP server, wires dependency
-/// [bindings], registers the annotated [handlers], and dispatches each request
-/// through the [middlewares] pipeline to its matching route.
+/// [bindings], and dispatches each request through the [middlewares] pipeline
+/// to its matching route.
+///
+/// Routes come from generated code (`$registerRatel()`, wired in by the `ratel`
+/// CLI), so controllers need not be passed here.
 ///
 /// JWT auth is added automatically as the innermost middleware when [jwtKey] is
 /// set, enforcing protection and roles on routes. Provide a [securityContext]
@@ -30,10 +33,6 @@ class RatelServer {
   /// active driver and manages its lifecycle (`open` at startup, `close` at
   /// shutdown). Raw SQL is then available through [db].
   final RatelDriver? database;
-
-  /// Controller instances. Constructing a controller registers its annotated
-  /// routes, so passing them here is enough to serve them.
-  final List<RatelHandler> handlers;
 
   /// HMAC secret enabling JWT auth; when null, no routes are protected.
   final String? jwtKey;
@@ -72,7 +71,6 @@ class RatelServer {
   RatelServer({
     this.port = 8080,
     this.database,
-    this.handlers = const [],
     this.jwtKey,
     this.bindings,
     this.securityContext,

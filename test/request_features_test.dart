@@ -4,26 +4,17 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'request_features_test.g.dart';
+import 'request_features_test.ratel.dart';
 
 @Json()
-class _Form {
+class Form {
   String name = '';
   String city = '';
-
-  factory _Form.fromJson(Map<String, dynamic> json) => _$_FormFromJson(json);
-  _Form();
-
-  Map<String, dynamic> toJson() => _$_FormToJson(this);
 }
 
-class _FormController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_FormControllerRoutes(this);
-
+class FormController extends RatelHandler {
   @Post('/submit')
-  Future<Response> submit(@Body() _Form form) async => Response.json(
-        statusCode: 200,
+  Future<Response> submit(@Body() Form form) async => Response.json(
         data: {'name': form.name, 'city': form.city},
       );
 
@@ -32,7 +23,7 @@ class _FormController extends RatelHandler {
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_FormController()]);
+  final server = RatelServer(port: 0);
   final client = HttpClient();
   late int port;
 
@@ -56,6 +47,8 @@ void main() {
   }
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

@@ -18,6 +18,7 @@ a clean way to build RESTful APIs, with built-in support for:
   [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm))
 - **Dependency injection**
 - **JWT authentication**
+- **Native binaries**: `ratel build` compiles the whole app ahead of time
 
 > **Status:** the `2.0.0-dev` line is an active hardening effort (routing,
 > performance, security and tooling). APIs are changing — see the
@@ -26,16 +27,20 @@ a clean way to build RESTful APIs, with built-in support for:
 ## Install
 
 ```sh
-dart pub add ratel
+dart pub global activate ratel
 ```
 
 ## Quick start
 
-Define a JSON model and a controller, then start the server:
+```sh
+ratel create my_api
+cd my_api
+ratel dev
+```
+
+Define a JSON model and a controller — that is all the code there is:
 
 ```dart
-import 'dart:io';
-
 import 'package:ratel/ratel.dart';
 
 @Json()
@@ -47,32 +52,44 @@ class Greeting {
 class HelloController extends RatelHandler {
   @Get('/hello')
   Future<Response> hello(@Param() String? name) async {
-    return Response.json(
-      statusCode: HttpStatus.ok,
-      data: Greeting(message: 'Hello, ${name ?? 'world'}!'),
-    );
+    return Response.json(data: Greeting(message: 'Hello, ${name ?? 'world'}!'));
   }
 
   @Post('/echo')
   Future<Response> echo(@Body() Greeting body) async {
-    return Response.json(statusCode: HttpStatus.ok, data: body);
+    return Response.json(data: body);
   }
 }
+```
 
+```dart
+// bin/server.dart
 Future<void> main() async {
-  final server = RatelServer(port: 8080, handlers: [HelloController]);
+  final server = RatelServer(port: 8080);
   await server.startServer();
 }
 ```
 
-Run it:
-
 ```sh
-dart run example/main.dart
 curl "http://localhost:8080/hello?name=Ada"   # {"message":"Hello, Ada!"}
 ```
 
-A complete runnable version lives in [`example/main.dart`](example/main.dart).
+`ratel dev` reloads on every change. A complete runnable version lives in
+[`example/main.dart`](example/main.dart).
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `ratel create <name>` | Scaffold a new application. |
+| `ratel dev` | Run the app, rebuilding and restarting on change. |
+| `ratel build` | Compile a native binary to `build/server`. |
+
+Ratel reads your annotations at build time rather than through reflection, which
+is what lets an app compile to a native binary. The CLI runs that step for you —
+`ratel dev` and `ratel build` regenerate before they run, so there is no
+generation command to remember and no generated code to write by hand. The
+`.ratel.dart` files it produces are build output; leave them gitignored.
 
 ## Routing
 
@@ -86,7 +103,7 @@ known path with an unsupported method returns `405` with an `Allow` header.
 class UserController extends RatelHandler {
   @Get('/users/:id')
   Future<Response> byId(@PathParam('id') int id) async =>
-      Response.json(statusCode: 200, data: {'id': id});
+      Response.json(data: {'id': id});
 }
 ```
 
@@ -99,18 +116,14 @@ Protected routes require an `Authorization: Bearer <token>` header.
 @Protected()
 class AccountController extends RatelHandler {
   @Get('/me')
-  Future<Response> me() async => Response.json(statusCode: 200, data: {});
+  Future<Response> me() async => Response.json(data: {});
 
   @Public() // opt a single route out of protection
   @Get('/health')
-  Future<Response> health() async => Response.json(statusCode: 200, data: {});
+  Future<Response> health() async => Response.json(data: {});
 }
 
-final server = RatelServer(
-  port: 8080,
-  handlers: [AccountController],
-  jwtKey: 'your-secret',
-);
+final server = RatelServer(port: 8080, jwtKey: 'your-secret');
 ```
 
 ## Middleware
@@ -123,7 +136,6 @@ and `rateLimitMiddleware`.
 ```dart
 final server = RatelServer(
   port: 8080,
-  handlers: [AccountController],
   jwtKey: 'your-secret',
   middlewares: [corsMiddleware(), securityHeadersMiddleware()],
   onStartup: () async => print('starting'),
@@ -145,10 +157,7 @@ the [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) package:
 import 'package:ratel/ratel.dart';
 import 'package:ratel_orm/postgres.dart'; // PostgresDriver
 
-final server = RatelServer(
-  database: PostgresDriver.fromEnv(),
-  handlers: [UserController],
-);
+final server = RatelServer(database: PostgresDriver.fromEnv());
 await server.startServer();
 
 final users = await server.db.query(

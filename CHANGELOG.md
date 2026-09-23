@@ -6,6 +6,9 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.6 (unreleased)
 
 ### Added
+- **A `ratel` command line tool.** `ratel create` scaffolds an application,
+  `ratel dev` runs it and restarts on change, and `ratel build` compiles a
+  native binary to `build/server`. Install with `dart pub global activate ratel`.
 - Response gzip compression (`RatelServer(gzip: ...)`, on by default) when the
   client advertises `Accept-Encoding: gzip`.
 - Configurable connection `idleTimeout` on `RatelServer`.
@@ -14,6 +17,13 @@ All notable changes to this project are documented here. This project follows
 ### Fixed
 - `null` values now serialize as JSON `null` instead of the string `"null"`.
 - `Response.bytes` now writes a raw binary body instead of `data.toString()`.
+- A response payload with no serializer no longer serializes silently as
+  `"Instance of 'Foo'"`; it now raises an error naming the type. `DateTime`,
+  `Enum`, `Uri` and `BigInt` gained explicit representations rather than
+  relying on `toString()` by accident.
+- A controller that failed to register its routes no longer starts a server that
+  silently 404s everything — registration is no longer something an application
+  can forget.
 
 ### Changed
 - **The database layer is now driver-based and database-agnostic** (breaking).
@@ -23,14 +33,21 @@ All notable changes to this project are documented here. This project follows
   verbatim). The driver contract — `RatelDriver`, `QueryResult`, `RatelSession`,
   `transaction`, and the `DatabaseException` hierarchy — now lives in the core.
 - **`dart:mirrors` is gone; the framework is now AOT-compilable** (breaking).
-  Routing, controller instantiation and JSON serialization are generated at
-  build time by the new `ratel_generator` package, so an app compiles with
-  `dart compile exe`. This changes the developer workflow:
-  - Run `dart run build_runner build` before `dart run` / `dart compile`.
-  - Pass controller **instances**: `RatelServer(handlers: [MyController()])`.
-  - Controllers declare `@override void registerRoutes() => _$MyControllerRoutes(this);`.
-  - `@Json` classes declare `part '<file>.g.dart';` and a `toJson()` (plus a
-    `fromJson` factory when used as a request body).
+  Routing, controller wiring and JSON serialization are resolved at build time
+  instead of by reflection, so an app compiles to a native binary. The `ratel`
+  CLI performs that step, so there is no build command to run by hand and no
+  generated code to reference:
+  - Run the app with `ratel dev`, and compile it with `ratel build`.
+  - `RatelServer` no longer takes `handlers:` — annotated controllers are found
+    automatically.
+  - `@Json` classes need no `part` directive, no `toJson()` and no `fromJson`
+    factory. Write the class; the rest is generated.
+  - Controllers and `@Json`/`@Column` classes must be **public**, since the
+    generated code lives in a separate library. A private one is now a build
+    error naming the class.
+- `Response.json`, `.text`, `.html` and `.bytes` default `statusCode` to `200`.
+- `RatelRepository<T>` resolves its row mapper automatically; the constructor
+  argument is now optional and only needed to override the generated mapper.
 
 ### Removed
 - **`package:postgres` is no longer a dependency of `ratel`** (breaking).
@@ -39,6 +56,8 @@ All notable changes to this project are documented here. This project follows
   (`PostgresDriver` from `package:ratel_orm/postgres.dart`). Repository writes no
   longer auto-append `RETURNING *`; add it explicitly. See
   [`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).
+- The `ratel.sh` script, superseded by the `ratel` CLI
+  (`dart pub global activate ratel`).
 
 ## 2.0.0-dev.5 (unreleased)
 

@@ -61,7 +61,7 @@ The core exposes the configured driver through `server.db`, without the ORM:
 import 'package:ratel/ratel.dart';
 import 'package:ratel_orm/postgres.dart';
 
-final server = RatelServer(database: PostgresDriver.fromEnv(), handlers: [...]);
+final server = RatelServer(database: PostgresDriver.fromEnv());
 await server.startServer();
 
 final result = await server.db.query(

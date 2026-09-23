@@ -3,25 +3,23 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'compression_test.g.dart';
+import 'compression_test.ratel.dart';
 
-class _DataController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_DataControllerRoutes(this);
-
+class DataController extends RatelHandler {
   @Get('/data')
   Future<Response> data() async => Response.json(
-        statusCode: 200,
         data: {'items': List.generate(200, (i) => 'item-$i')},
       );
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_DataController()]);
+  final server = RatelServer(port: 0);
   final client = HttpClient()..autoUncompress = false;
   late int port;
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

@@ -3,21 +3,16 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'rate_limit_test.g.dart';
+import 'rate_limit_test.ratel.dart';
 
-class _PingController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_PingControllerRoutes(this);
-
+class PingController extends RatelHandler {
   @Get('/ping')
-  Future<Response> ping() async =>
-      Response.json(statusCode: 200, data: {'ok': true});
+  Future<Response> ping() async => Response.json(data: {'ok': true});
 }
 
 void main() {
   final server = RatelServer(
     port: 0,
-    handlers: [_PingController()],
     middlewares: [
       rateLimitMiddleware(maxRequests: 2, window: Duration(minutes: 1)),
     ],
@@ -31,6 +26,8 @@ void main() {
   }
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

@@ -4,23 +4,20 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'param_injection_test.g.dart';
+import 'param_injection_test.ratel.dart';
 
-class _CtxController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_CtxControllerRoutes(this);
-
+class CtxController extends RatelHandler {
   @Get('/header')
   Future<Response> header(@Header('X-User') String? user) async =>
-      Response.json(statusCode: 200, data: {'user': user});
+      Response.json(data: {'user': user});
 
   @Get('/cookie')
   Future<Response> cookie(@CookieParam('session') String? session) async =>
-      Response.json(statusCode: 200, data: {'session': session});
+      Response.json(data: {'session': session});
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_CtxController()]);
+  final server = RatelServer(port: 0);
   final client = HttpClient();
   late int port;
 
@@ -32,6 +29,8 @@ void main() {
   }
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

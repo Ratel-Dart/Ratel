@@ -4,34 +4,25 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'routing_integration_test.g.dart';
+import 'routing_integration_test.ratel.dart';
 
 @Json()
-class _PatchBody {
+class PatchBody {
   String name = '';
-
-  factory _PatchBody.fromJson(Map<String, dynamic> json) =>
-      _$_PatchBodyFromJson(json);
-  _PatchBody();
-
-  Map<String, dynamic> toJson() => _$_PatchBodyToJson(this);
 }
 
 @Controller('/api')
-class _UsersController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_UsersControllerRoutes(this);
-
+class UsersController extends RatelHandler {
   @Get('/users/:id')
   Future<Response> getUser(@PathParam('id') int id) async =>
-      Response.json(statusCode: 200, data: {'id': id});
+      Response.json(data: {'id': id});
 
   @Patch('/users/:id')
   Future<Response> patchUser(
     @PathParam('id') int id,
-    @Body() _PatchBody body,
+    @Body() PatchBody body,
   ) async =>
-      Response.json(statusCode: 200, data: {'id': id, 'name': body.name});
+      Response.json(data: {'id': id, 'name': body.name});
 
   @Post('/users')
   Future<Response> create() async =>
@@ -39,7 +30,7 @@ class _UsersController extends RatelHandler {
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_UsersController()]);
+  final server = RatelServer(port: 0);
   final client = HttpClient();
   late int port;
 
@@ -58,6 +49,8 @@ void main() {
   }
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

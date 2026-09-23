@@ -5,31 +5,24 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'integration_test.g.dart';
+import 'integration_test.ratel.dart';
 
-class _ApiController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_ApiControllerRoutes(this);
-
+class ApiController extends RatelHandler {
   @Get('/public')
-  Future<Response> public() async =>
-      Response.json(statusCode: 200, data: {'ok': true});
+  Future<Response> public() async => Response.json(data: {'ok': true});
 
   @Protected()
   @Get('/secure')
-  Future<Response> secure() async =>
-      Response.json(statusCode: 200, data: {'ok': true});
+  Future<Response> secure() async => Response.json(data: {'ok': true});
 
   @Protected(roles: ['admin'])
   @Get('/admin')
-  Future<Response> admin() async =>
-      Response.json(statusCode: 200, data: {'ok': true});
+  Future<Response> admin() async => Response.json(data: {'ok': true});
 }
 
 void main() {
   final server = RatelServer(
     port: 0,
-    handlers: [_ApiController()],
     jwtKey: 'secret',
     middlewares: [corsMiddleware(), securityHeadersMiddleware()],
   );
@@ -57,6 +50,8 @@ void main() {
   }
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

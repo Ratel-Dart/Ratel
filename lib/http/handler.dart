@@ -5,9 +5,11 @@ import '../annotations/annotations.dart';
 import '../exceptions/exceptions.dart';
 
 /// Base class for controllers. Subclasses annotate methods with `@Get`,
-/// `@Post`, etc.; generated code (`_$<Name>Routes`, wired through the overridden
-/// [registerRoutes]) registers the routes without reflection. A class-level
-/// `@Controller('/prefix')` prefixes every route.
+/// `@Post`, etc.; a class-level `@Controller('/prefix')` prefixes every route.
+///
+/// Routes are registered by generated code (`$registerRatel()`, which the
+/// `ratel` CLI wires into the application bootstrap), so a controller needs no
+/// registration boilerplate of its own.
 abstract class RatelHandler {
   static final List<Route> routesList = [];
 
@@ -15,15 +17,6 @@ abstract class RatelHandler {
   /// rejected with `413 Payload Too Large`. Configured via
   /// `RatelServer(maxRequestBodyBytes: ...)`; defaults to 1 MiB.
   static int maxRequestBodyBytes = 1024 * 1024;
-
-  RatelHandler() {
-    registerRoutes();
-  }
-
-  /// Registers this controller's routes. Overridden by generated code
-  /// (`void registerRoutes() => _$<Name>Routes(this);`); the default registers
-  /// nothing.
-  void registerRoutes() {}
 
   /// Registers [route], rejecting a duplicate `method`+`path` pair.
   static void register(Route route) {
@@ -37,6 +30,10 @@ abstract class RatelHandler {
     }
     routesList.add(route);
   }
+
+  /// Removes every registered route. Intended for tests that register routes
+  /// more than once in a single isolate.
+  static void reset() => routesList.clear();
 
   static List<Route> get routes => routesList;
 }

@@ -1,17 +1,13 @@
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'routing_test.g.dart';
+import 'routing_test.ratel.dart';
 
 @Protected()
-class _GreetController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_GreetControllerRoutes(this);
-
+class GreetController extends RatelHandler {
   @Get('/ping')
   @Public()
-  Future<Response> ping() async =>
-      Response.json(statusCode: 200, data: {'pong': true});
+  Future<Response> ping() async => Response.json(data: {'pong': true});
 
   @Post('/greet')
   Future<Response> greet() async =>
@@ -20,7 +16,10 @@ class _GreetController extends RatelHandler {
 
 void main() {
   group('RatelHandler route registration', () {
-    setUpAll(_GreetController.new);
+    setUpAll(() {
+      RatelHandler.reset();
+      $registerRatel();
+    });
 
     test('registers a GET route from a @Get annotation', () {
       final route = RatelHandler.routes

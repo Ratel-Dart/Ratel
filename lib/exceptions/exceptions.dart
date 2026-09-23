@@ -132,3 +132,20 @@ class TooManyRequestsException extends HttpStatusException {
               : {'Retry-After': '$retryAfterSeconds'},
         );
 }
+
+/// Thrown while serializing a JSON response when [type] has no registered
+/// encoder and no `toJson()` method.
+///
+/// Annotate the class with `@Json()` so an encoder is generated for it.
+class RatelSerializationException implements Exception {
+  /// The type that could not be serialized.
+  final Type type;
+
+  /// Creates an exception naming the unserializable [type].
+  const RatelSerializationException(this.type);
+
+  @override
+  String toString() =>
+      'RatelSerializationException: no JSON encoder for $type. Annotate $type '
+      'with @Json(), or give it a toJson() method.';
+}

@@ -8,8 +8,23 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ratel
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout ratel
+        uses: actions/checkout@v4
+        with:
+          path: ratel
+
+      # Checked out as a sibling so the `../ratel_generator` path dependency
+      # resolves. Drop this once ratel_generator is published to pub.dev.
+      - name: Checkout ratel_generator
+        uses: actions/checkout@v4
+        with:
+          repository: Ratel-Dart/ratel_generator
+          path: ratel_generator
+          token: ${{ secrets.RATEL_CI_PAT }}
 
       - uses: dart-lang/setup-dart@v1
         with:
@@ -18,10 +33,10 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
-      # Non-fatal for now: flip to a hard gate after the first repo-wide
-      # `dart format .` pass once a local SDK is available.
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: Verify formatting
-        continue-on-error: true
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze
@@ -30,8 +45,14 @@ jobs:
       - name: Run tests
         run: dart test
 
-      # Validates the package is publishable (metadata, structure). Warnings are
-      # expected on a pre-release; kept non-fatal until 2.0.0 is cut.
+      # Guards the reason dart:mirrors was dropped: if reflection creeps back
+      # in, AOT compilation fails here rather than in a user's deployment.
+      - name: Compile a native binary
+        run: dart run bin/ratel.dart build example/main.dart
+
+      # Validates the package is publishable (metadata, structure). Fails on the
+      # ratel_generator path dependency until it is published; kept non-fatal
+      # until 2.0.0 is cut.
       - name: Publish dry-run
         continue-on-error: true
         run: dart pub publish --dry-run

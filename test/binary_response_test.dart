@@ -4,23 +4,21 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-part 'binary_response_test.g.dart';
+import 'binary_response_test.ratel.dart';
 
-class _BinController extends RatelHandler {
-  @override
-  void registerRoutes() => _$_BinControllerRoutes(this);
-
+class BinController extends RatelHandler {
   @Get('/bytes')
-  Future<Response> bytes() async =>
-      Response.bytes(statusCode: 200, data: utf8.encode('hello'));
+  Future<Response> bytes() async => Response.bytes(data: utf8.encode('hello'));
 }
 
 void main() {
-  final server = RatelServer(port: 0, handlers: [_BinController()]);
+  final server = RatelServer(port: 0);
   final client = HttpClient();
   late int port;
 
   setUpAll(() async {
+    RatelHandler.reset();
+    $registerRatel();
     await server.startServer();
     port = server.boundPort!;
   });

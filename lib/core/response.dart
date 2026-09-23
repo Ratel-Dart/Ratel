@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../exceptions/exceptions.dart';
+import 'serialization.dart';
+
 /// An HTTP response with a [statusCode], a [data] payload, and a content type.
 ///
 /// Use the named constructors ([Response.json], [Response.text],
@@ -22,7 +25,7 @@ class Response {
   });
 
   Response.json({
-    required this.statusCode,
+    this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'application/json',
@@ -30,7 +33,7 @@ class Response {
   }) : contentType = 'application/json';
 
   Response.text({
-    required this.statusCode,
+    this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'text/plain',
@@ -38,7 +41,7 @@ class Response {
   }) : contentType = 'text/plain';
 
   Response.html({
-    required this.statusCode,
+    this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'text/html',
@@ -46,7 +49,7 @@ class Response {
   }) : contentType = 'text/html';
 
   Response.bytes({
-    required this.statusCode,
+    this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'application/octet-stream',
@@ -84,9 +87,11 @@ class Response {
 
   /// Serializes [data] to a JSON string.
   ///
-  /// Primitives, `List`s and `Map`s encode natively; other objects are expected
-  /// to provide a `toJson()` method (generated for `@Json` classes) and fall
-  /// back to `toString()` otherwise.
+  /// Primitives, `List`s and `Map`s encode natively. `@Json` classes encode
+  /// through their generated encoder; `DateTime`, `Enum`, `Uri` and `BigInt`
+  /// have built-in representations, and any other object must expose a
+  /// `toJson()` method. Anything else throws a [RatelSerializationException]
+  /// naming the offending type.
   String toJson() {
     if (data == null) return '';
     if (contentType != 'application/json') return data.toString();
@@ -96,10 +101,15 @@ class Response {
   }
 
   static Object? _toEncodable(dynamic object) {
+    final encode = RatelJson.encoderFor(object.runtimeType);
+    if (encode != null) return encode(object as Object);
+    if (object is DateTime) return object.toIso8601String();
+    if (object is Enum) return object.name;
+    if (object is Uri || object is BigInt) return object.toString();
     try {
       return object.toJson();
     } on NoSuchMethodError {
-      return object.toString();
+      throw RatelSerializationException(object.runtimeType);
     }
   }
 

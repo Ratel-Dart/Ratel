@@ -2,57 +2,43 @@ import 'dart:io';
 
 import 'package:ratel/ratel.dart';
 
-part 'main.g.dart';
-
-/// A JSON-serializable model. The [Json] annotation lets Ratel deserialize it
-/// from a request body and serialize it back into a response.
+/// A JSON-serializable model. The [Json] annotation generates its serializer
+/// and deserializer, so neither `toJson` nor `fromJson` is written by hand.
 @Json()
 class Greeting {
   String message;
 
   Greeting({this.message = ''});
-
-  factory Greeting.fromJson(Map<String, dynamic> json) =>
-      _$GreetingFromJson(json);
-
-  Map<String, dynamic> toJson() => _$GreetingToJson(this);
 }
 
 /// A controller exposes routes by annotating methods. Each method returns a
-/// [Response] (or any value, which is wrapped as JSON).
+/// [Response] (or any value, which is wrapped as JSON). Routes are registered
+/// by generated code, so the controller carries no wiring of its own.
+///
+/// Run with `ratel dev`, which generates the wiring and starts the server.
 class HelloController extends RatelHandler {
-  @override
-  void registerRoutes() => _$HelloControllerRoutes(this);
-
   /// GET /hello?name=Ada  ->  {"message":"Hello, Ada!"}
   @Get('/hello')
   Future<Response> hello(@Param() String? name) async {
-    return Response.json(
-      statusCode: HttpStatus.ok,
-      data: Greeting(message: 'Hello, ${name ?? 'world'}!'),
-    );
+    return Response.json(data: Greeting(message: 'Hello, ${name ?? 'world'}!'));
   }
 
   /// GET /greet/Ada  ->  {"message":"Hi, Ada!"}
   @Get('/greet/:name')
   Future<Response> greet(@PathParam('name') String name) async {
-    return Response.json(
-      statusCode: HttpStatus.ok,
-      data: Greeting(message: 'Hi, $name!'),
-    );
+    return Response.json(data: Greeting(message: 'Hi, $name!'));
   }
 
   /// POST /echo  with body {"message":"hi"}  ->  {"message":"hi"}
   @Post('/echo')
   Future<Response> echo(@Body() Greeting body) async {
-    return Response.json(statusCode: HttpStatus.ok, data: body);
+    return Response.json(data: body);
   }
 }
 
 Future<void> main() async {
   final server = RatelServer(
     port: 8080,
-    handlers: [HelloController()],
     middlewares: [corsMiddleware(), securityHeadersMiddleware()],
   );
 
