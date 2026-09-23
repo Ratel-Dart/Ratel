@@ -20,5 +20,6 @@ export 'exceptions/exceptions.dart';
 export 'http/handler.dart';
 export 'http/multipart_data.dart';
 export 'http/multipart_parser.dart';
+export 'http/socket_handler.dart';
 export 'http/uploaded_file.dart';
 export 'jwt.dart';

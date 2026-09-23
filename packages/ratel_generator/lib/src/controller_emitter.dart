@@ -7,6 +7,7 @@ import 'generation_context.dart';
 import 'injected_types.dart';
 import 'parameter_emitter.dart';
 import 'route_path.dart';
+import 'socket_emitter.dart';
 
 String emitRoutes(ClassElement controller, GenerationContext ctx) {
   final name = controller.displayName;
@@ -32,6 +33,9 @@ String emitRoutes(ClassElement controller, GenerationContext ctx) {
         ),
       );
     }
+
+    final socket = emitSocketRegistration(method, prefix);
+    if (socket != null) registrations.add(socket);
   }
 
   return 'void \$${name}Routes($name Function() factory) {\n'

@@ -151,11 +151,37 @@ class RatelServer {
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
+      if (WebSocketTransformer.isUpgradeRequest(request)) {
+        unawaited(_upgrade(request));
+        continue;
+      }
       try {
         await _handleRequest(request, chain);
       } catch (e, stackTrace) {
         ratelLogger.severe('Failed to handle request', e, stackTrace);
       }
+    }
+  }
+
+  /// Accepts a WebSocket upgrade on a path registered with @Socket.
+  ///
+  /// Upgrades do not run the middleware chain: it produces a [Response], which
+  /// an upgraded connection has no place for. A socket authenticates itself
+  /// inside its handler.
+  Future<void> _upgrade(HttpRequest request) async {
+    final handler = RatelHandler.socketFor(request.uri.path);
+    if (handler == null) {
+      Response(
+        statusCode: HttpStatus.notFound,
+        data: {'error': 'Not Found'},
+      ).send(request.response);
+      return;
+    }
+    try {
+      final socket = await WebSocketTransformer.upgrade(request);
+      await handler(socket, RequestContext(request));
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Failed to handle a socket upgrade', e, stackTrace);
     }
   }
 

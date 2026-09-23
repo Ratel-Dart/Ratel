@@ -15,6 +15,17 @@ All notable changes to this project are documented here. This project follows
   Future<Response> me(RequestContext ctx) async =>
       Response.json(data: {'sub': ctx.claims?['sub']});
   ```
+- **WebSocket routes.** `@Socket('/path')` binds a controller method to
+  WebSocket upgrades on that path; the method receives the upgraded `WebSocket`
+  and, if it asks for one, the `RequestContext`. Socket paths match exactly and
+  upgrades bypass the middleware chain, so a socket authenticates itself inside
+  its handler:
+  ```dart
+  @Socket('/ws')
+  Future<void> chat(WebSocket socket) async {
+    socket.listen((message) => socket.add('echo: $message'));
+  }
+  ```
 - **`multipart/form-data` parsing.** A handler parameter typed `MultipartData`
   receives the parsed body — text `fields` and uploaded `files` — with the
   request size limit enforced across every part:

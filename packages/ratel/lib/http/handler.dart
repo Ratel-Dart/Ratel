@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../annotations/annotations.dart';
+import '../core/router.dart';
 import '../exceptions/exceptions.dart';
+import 'socket_handler.dart';
 
 /// Base class for controllers. Subclasses annotate methods with `@Get`,
 /// `@Post`, etc.; a class-level `@Controller('/prefix')` prefixes every route.
@@ -12,6 +14,10 @@ import '../exceptions/exceptions.dart';
 /// registration boilerplate of its own.
 abstract class RatelHandler {
   static final List<Route> routesList = [];
+
+  /// WebSocket handlers registered from @Socket methods, keyed by their
+  /// normalised path.
+  static final Map<String, SocketHandler> socketRoutesMap = {};
 
   /// Maximum accepted request body size, in bytes. Bodies larger than this are
   /// rejected with `413 Payload Too Large`. Configured via
@@ -31,9 +37,27 @@ abstract class RatelHandler {
     routesList.add(route);
   }
 
-  /// Removes every registered route. Intended for tests that register routes
-  /// more than once in a single isolate.
-  static void reset() => routesList.clear();
+  /// Registers [handler] for WebSocket upgrades on [path], rejecting a second
+  /// registration for the same path.
+  static void registerSocket(String path, SocketHandler handler) {
+    final key = normaliseSocketPath(path);
+    if (socketRoutesMap.containsKey(key)) {
+      throw StateError('Duplicate socket registered: $key');
+    }
+    socketRoutesMap[key] = handler;
+  }
+
+  /// The handler accepting WebSocket upgrades on [path], or null when none is
+  /// registered for it.
+  static SocketHandler? socketFor(String path) =>
+      socketRoutesMap[normaliseSocketPath(path)];
+
+  /// Removes every registered route and socket. Intended for tests that
+  /// register routes more than once in a single isolate.
+  static void reset() {
+    routesList.clear();
+    socketRoutesMap.clear();
+  }
 
   static List<Route> get routes => routesList;
 }
@@ -117,3 +141,7 @@ Map<String, dynamic> decodeJsonObject(String body) {
   }
   return decoded;
 }
+
+/// Normalises a socket [path] so a trailing slash or a missing leading one
+/// resolve to the same registration.
+String normaliseSocketPath(String path) => '/${splitPath(path).join('/')}';
