@@ -6,6 +6,7 @@ import 'constant_values.dart';
 import 'generation_context.dart';
 import 'injected_types.dart';
 import 'parameter_emitter.dart';
+import 'route_metadata_emitter.dart';
 import 'route_path.dart';
 import 'socket_emitter.dart';
 
@@ -72,6 +73,8 @@ String _emitRegistration(
     ..writeln("    method: '$verb',")
     ..writeln('    isProtected: $isProtected,')
     ..writeln('    requiredRoles: const [$roles],')
+    ..writeln(emitRouteParameters(method))
+    ..writeln(emitRouteBodyType(method))
     ..writeln('    handler: ([ctxArg]) async {')
     ..writeln('      final ctx = ctxArg as _r.RequestContext;');
   if (hasMultipart) {

@@ -172,6 +172,18 @@ final server = RatelServer(
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
 
+## API documentation
+
+`openApiSpec` turns the registered routes into an OpenAPI 3 document. The
+generator resolved each handler's inputs at build time, so the spec needs no
+reflection and stays in step with the code.
+
+```dart
+@Get('/openapi.json')
+Future<Response> spec(RequestContext ctx) async =>
+    Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+```
+
 ## Scaling across cores
 
 A Dart isolate uses one core. `runCluster` runs the application's startup on one
