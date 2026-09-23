@@ -101,6 +101,11 @@ class CookieParam {
   final String name;
   const CookieParam(this.name);
 }
+
+class Socket {
+  final String path;
+  const Socket(this.path);
+}
 ''';
 
 const _requestContext = '''

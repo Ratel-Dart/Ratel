@@ -3,31 +3,37 @@ import 'exceptions.dart';
 import 'query_result.dart';
 import 'session.dart';
 
-/// Registry of the configured [RatelDriver] and entry point for raw SQL.
+/// Entry point for raw SQL against a [RatelDriver].
 ///
-/// A single source of truth shared by the server's raw-SQL facade and the ORM
-/// repository. Configure it once (the server does this at startup), then use an
-/// instance to run raw SQL against the configured driver.
+/// A [Db] built with a driver runs against that one — `server.db` hands out a
+/// facade over the server's own driver. A [Db] built without one falls back to
+/// the driver registered with [configure], which is what the ORM repository
+/// resolves through.
 class Db {
-  static RatelDriver? _driver;
+  static RatelDriver? _ambient;
 
-  /// Registers [driver] as the active database driver.
-  static void configure(RatelDriver driver) => _driver = driver;
+  final RatelDriver? _driver;
 
-  /// The configured driver.
+  /// Creates a facade over [driver], or over the registered driver when it is
+  /// null.
+  const Db([RatelDriver? driver]) : _driver = driver;
+
+  /// Registers [driver] as the driver a [Db] without one resolves to.
+  static void configure(RatelDriver driver) => _ambient = driver;
+
+  /// The registered driver.
   ///
   /// Throws [DatabaseNotConfiguredException] if no driver was configured.
   static RatelDriver get driver =>
-      _driver ?? (throw const DatabaseNotConfiguredException());
+      _ambient ?? (throw const DatabaseNotConfiguredException());
 
-  /// Creates a facade over the configured driver.
-  const Db();
+  RatelDriver get _resolved => _driver ?? driver;
 
   /// Runs [sql] verbatim with optional named [parameters].
   Future<QueryResult> query(String sql, {Map<String, Object?>? parameters}) =>
-      driver.query(sql, parameters: parameters);
+      _resolved.query(sql, parameters: parameters);
 
-  /// Runs [action] inside a transaction on the configured driver.
+  /// Runs [action] inside a transaction on the resolved driver.
   Future<T> transaction<T>(Future<T> Function(RatelSession session) action) =>
-      driver.transaction(action);
+      _resolved.transaction(action);
 }
