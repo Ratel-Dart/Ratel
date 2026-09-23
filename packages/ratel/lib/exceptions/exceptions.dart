@@ -70,9 +70,14 @@ class MethodNotAllowedException extends HttpStatusException {
 
 /// A 413 Payload Too Large — the request body exceeded the configured limit.
 class PayloadTooLargeException extends HttpStatusException {
-  /// Creates a 413 response with an optional [message].
-  const PayloadTooLargeException([String message = 'Payload Too Large'])
-      : super(413, message);
+  /// Creates a 413 response with an optional [message] and response [headers].
+  ///
+  /// The server passes `Connection: close` in [headers] when the oversized body
+  /// could not be drained, so the client is told the connection is going away.
+  const PayloadTooLargeException([
+    String message = 'Payload Too Large',
+    Map<String, String> headers = const {},
+  ]) : super(413, message, headers: headers);
 }
 
 /// A 429 Too Many Requests — the client exceeded the rate limit. When known, a
