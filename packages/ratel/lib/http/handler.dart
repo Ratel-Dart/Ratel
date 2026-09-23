@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../annotations/annotations.dart';
+import '../core/ratel_registry.dart';
 import '../exceptions/exceptions.dart';
+import 'socket_handler.dart';
 
 /// Base class for controllers. Subclasses annotate methods with `@Get`,
 /// `@Post`, etc.; a class-level `@Controller('/prefix')` prefixes every route.
@@ -11,36 +13,40 @@ import '../exceptions/exceptions.dart';
 /// `ratel` CLI wires into the application bootstrap), so a controller needs no
 /// registration boilerplate of its own.
 abstract class RatelHandler {
-  static final List<Route> routesList = [];
+  /// Registers [route] on the ambient [RatelRegistry].
+  static void register(Route route) => RatelRegistry.current.register(route);
 
-  /// Maximum accepted request body size, in bytes. Bodies larger than this are
-  /// rejected with `413 Payload Too Large`. Configured via
-  /// `RatelServer(maxRequestBodyBytes: ...)`; defaults to 1 MiB.
-  static int maxRequestBodyBytes = 1024 * 1024;
+  /// Registers [handler] for WebSocket upgrades on [path] on the ambient
+  /// [RatelRegistry].
+  static void registerSocket(String path, SocketHandler handler) =>
+      RatelRegistry.current.registerSocket(path, handler);
+
+  /// The handler accepting WebSocket upgrades on [path] on the ambient
+  /// [RatelRegistry].
+  static SocketHandler? socketFor(String path) =>
+      RatelRegistry.current.socketFor(path);
+
+  /// Routes registered on the ambient [RatelRegistry].
+  static List<Route> get routes => RatelRegistry.current.routes;
+
+  /// Maximum accepted request body size on the ambient [RatelRegistry].
+  ///
+  /// A handler reads its server's limit from `ctx.registry` instead, so two
+  /// servers in one isolate do not share one.
+  static int get maxRequestBodyBytes =>
+      RatelRegistry.current.maxRequestBodyBytes;
 
   /// How many bytes past [maxRequestBodyBytes] are read and discarded before a
-  /// rejected request is abandoned, so that the 413 still reaches the client.
-  /// See [readBodyLimited]. Defaults to 1 MiB.
-  static int maxBodyDrainBytes = 1024 * 1024;
+  /// rejected request is abandoned, on the ambient [RatelRegistry]. See
+  /// [readBodyLimited].
+  static int get maxBodyDrainBytes => RatelRegistry.current.maxBodyDrainBytes;
 
-  /// Registers [route], rejecting a duplicate `method`+`path` pair.
-  static void register(Route route) {
-    final clash = routesList.any(
-      (r) => r.path == route.path && r.method == route.method,
-    );
-    if (clash) {
-      throw StateError(
-        'Duplicate route registered: ${route.method} ${route.path}',
-      );
-    }
-    routesList.add(route);
-  }
+  static set maxBodyDrainBytes(int bytes) =>
+      RatelRegistry.current.maxBodyDrainBytes = bytes;
 
-  /// Removes every registered route. Intended for tests that register routes
-  /// more than once in a single isolate.
-  static void reset() => routesList.clear();
-
-  static List<Route> get routes => routesList;
+  /// Empties the ambient [RatelRegistry]. Intended for tests that register
+  /// routes more than once in a single isolate.
+  static void reset() => RatelRegistry.current.reset();
 }
 
 /// Returns the value of the cookie named [name], or null when absent.
@@ -89,7 +95,12 @@ dynamic coerceParam(String name, String? value, Type targetType) {
 /// response is delivered and the connection stays reusable. A body that
 /// overshoots even that much is abandoned, and the exception carries
 /// `Connection: close` — delivery of that response is best-effort.
-Future<String> readBodyLimited(Stream<List<int>> stream, int maxBytes) async {
+Future<String> readBodyLimited(
+  Stream<List<int>> stream,
+  int maxBytes, {
+  int? maxDrainBytes,
+}) async {
+  final drainLimit = maxDrainBytes ?? RatelHandler.maxBodyDrainBytes;
   final bytes = <int>[];
   var total = 0;
   var discarded = 0;
@@ -98,7 +109,7 @@ Future<String> readBodyLimited(Stream<List<int>> stream, int maxBytes) async {
     total += chunk.length;
     if (total > maxBytes) {
       discarded += chunk.length;
-      if (discarded > RatelHandler.maxBodyDrainBytes) {
+      if (discarded > drainLimit) {
         drained = false;
         break;
       }

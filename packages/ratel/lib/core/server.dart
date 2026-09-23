@@ -5,10 +5,11 @@ import '../database/db.dart';
 import '../database/driver.dart';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
-import '../http/handler.dart';
 import '../jwt.dart';
+import 'error_handler.dart';
 import 'logger.dart';
 import 'middleware.dart';
+import 'ratel_registry.dart';
 import 'request_context.dart';
 import 'response.dart';
 import 'router.dart';
@@ -61,13 +62,31 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// Whether to bind the port with `shared: true`, so several isolates can
+  /// listen on it and the OS spreads connections across them. Set it on every
+  /// server of a [runCluster] cluster.
+  final bool shared;
+
+  /// The routes, sockets and body limit this server runs with. Defaults to the
+  /// ambient [RatelRegistry.current], which is where generated code registers.
+  /// Pass one explicitly to run two servers with different routes in a single
+  /// isolate.
+  final RatelRegistry registry;
+
+  /// Maps an error no route handled onto a [Response], e.g. to translate a
+  /// domain exception. Errors are still logged with their correlation id before
+  /// the hook runs, and a hook that throws falls back to the generic 500.
+  final ErrorHandler? onError;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
-  static int _errorCounter = 0;
+  int _errorCounter = 0;
 
   /// Creates a server. [maxRequestBodyBytes] caps request body size (413 when
-  /// exceeded); it defaults to 1 MiB.
+  /// exceeded) and [maxBodyDrainBytes] bounds how much of an oversized body is
+  /// read and discarded so the 413 still reaches the client; both default to
+  /// 1 MiB.
   RatelServer({
     this.port = 8080,
     this.database,
@@ -79,9 +98,14 @@ class RatelServer {
     this.onShutdown,
     this.gzip = true,
     this.idleTimeout,
-    int maxRequestBodyBytes = 1024 * 1024,
-  }) {
-    RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
+    this.onError,
+    this.shared = false,
+    RatelRegistry? registry,
+    int maxRequestBodyBytes = RatelRegistry.defaultMaxRequestBodyBytes,
+    int maxBodyDrainBytes = RatelRegistry.defaultMaxBodyDrainBytes,
+  }) : registry = registry ?? RatelRegistry.current {
+    this.registry.maxRequestBodyBytes = maxRequestBodyBytes;
+    this.registry.maxBodyDrainBytes = maxBodyDrainBytes;
     bindings?.dependencies();
   }
 
@@ -92,7 +116,7 @@ class RatelServer {
   ///
   /// SQL passes through verbatim. Throws `DatabaseNotConfiguredException` when
   /// no [database] was provided.
-  Db get db => const Db();
+  Db get db => Db(database);
 
   /// Binds the socket and starts serving in the background. Completes once the
   /// server is listening; the process stays alive via the active socket until
@@ -109,8 +133,12 @@ class RatelServer {
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
     final server = securityContext != null
         ? await HttpServer.bindSecure(
-            InternetAddress.anyIPv4, port, securityContext!)
-        : await HttpServer.bind(InternetAddress.anyIPv4, port);
+            InternetAddress.anyIPv4,
+            port,
+            securityContext!,
+            shared: shared,
+          )
+        : await HttpServer.bind(InternetAddress.anyIPv4, port, shared: shared);
     _server = server;
     server.autoCompress = gzip;
     if (idleTimeout != null) {
@@ -126,7 +154,7 @@ class RatelServer {
     }
 
     _installSignalHandlers();
-    _router = Router(RatelHandler.routes);
+    _router = Router(registry.routes);
 
     final chain = <Middleware>[
       ...middlewares,
@@ -151,11 +179,41 @@ class RatelServer {
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
-      try {
-        await _handleRequest(request, chain);
-      } catch (e, stackTrace) {
-        ratelLogger.severe('Failed to handle request', e, stackTrace);
+      if (WebSocketTransformer.isUpgradeRequest(request)) {
+        unawaited(_upgrade(request));
+        continue;
       }
+      unawaited(_dispatch(request, chain));
+    }
+  }
+
+  Future<void> _dispatch(HttpRequest request, List<Middleware> chain) async {
+    try {
+      await _handleRequest(request, chain);
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Failed to handle request', e, stackTrace);
+    }
+  }
+
+  /// Accepts a WebSocket upgrade on a path registered with @Socket.
+  ///
+  /// Upgrades do not run the middleware chain: it produces a [Response], which
+  /// an upgraded connection has no place for. A socket authenticates itself
+  /// inside its handler.
+  Future<void> _upgrade(HttpRequest request) async {
+    final handler = registry.socketFor(request.uri.path);
+    if (handler == null) {
+      Response(
+        statusCode: HttpStatus.notFound,
+        data: {'error': 'Not Found'},
+      ).send(request.response);
+      return;
+    }
+    try {
+      final socket = await WebSocketTransformer.upgrade(request);
+      await handler(socket, RequestContext(request, registry: registry));
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Failed to handle a socket upgrade', e, stackTrace);
     }
   }
 
@@ -163,14 +221,21 @@ class RatelServer {
     HttpRequest request,
     List<Middleware> chain,
   ) async {
-    final ctx = RequestContext(request);
-    final match = _router!.match(ctx.method, ctx.path);
+    final ctx = RequestContext(request, registry: registry);
+    final match = _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
     if (match != null) {
       ctx.route = match.route;
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    response.send(request.response);
+    await response.send(request.response, includeBody: ctx.method != 'HEAD');
+  }
+
+  /// The `GET` route standing in for a `HEAD` request, so a controller does not
+  /// have to declare both. The handler still runs; only the body is dropped.
+  RouteMatch? _getRouteForHead(RequestContext ctx) {
+    if (ctx.method != 'HEAD') return null;
+    return _router!.match('GET', ctx.path);
   }
 
   Future<Response> _runChain(
@@ -197,13 +262,29 @@ class RatelServer {
         e,
         stackTrace,
       );
-      return Response(
-        statusCode: HttpStatus.internalServerError,
-        data: {
-          'error': 'Internal Server Error',
-          'correlationId': correlationId
-        },
-      );
+      return await _handleError(e, stackTrace, ctx) ??
+          Response(
+            statusCode: HttpStatus.internalServerError,
+            data: {
+              'error': 'Internal Server Error',
+              'correlationId': correlationId
+            },
+          );
+    }
+  }
+
+  Future<Response?> _handleError(
+    Object error,
+    StackTrace stackTrace,
+    RequestContext ctx,
+  ) async {
+    final hook = onError;
+    if (hook == null) return null;
+    try {
+      return await hook(error, stackTrace, ctx);
+    } catch (hookError, hookStack) {
+      ratelLogger.severe('onError hook threw', hookError, hookStack);
+      return null;
     }
   }
 

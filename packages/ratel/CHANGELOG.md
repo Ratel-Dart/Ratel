@@ -6,15 +6,105 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Added
+- **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from
+  the registered routes — `:id` becomes `{id}`, every bound parameter becomes an
+  operation parameter with its location and type, a `@Body` route gains a JSON
+  request body, and a `@Protected` route carries its roles as a `bearerAuth`
+  requirement:
+  ```dart
+  @Get('/openapi.json')
+  Future<Response> spec(RequestContext ctx) async =>
+      Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+  ```
+  A `Route` now carries the `parameters` and `bodyType` the generator resolved
+  at build time, so the spec is produced without reflection.
+- **`RequestContext` injection.** A handler parameter typed `RequestContext`
+  receives the context for the request — the raw `HttpRequest`, the matched
+  route, the path parameters, the JWT claims and the middleware state bag — with
+  no annotation:
+  ```dart
+  @Get('/me')
+  Future<Response> me(RequestContext ctx) async =>
+      Response.json(data: {'sub': ctx.claims?['sub']});
+  ```
+- **WebSocket routes.** `@Socket('/path')` binds a controller method to
+  WebSocket upgrades on that path; the method receives the upgraded `WebSocket`
+  and, if it asks for one, the `RequestContext`. Socket paths match exactly and
+  upgrades bypass the middleware chain, so a socket authenticates itself inside
+  its handler:
+  ```dart
+  @Socket('/ws')
+  Future<void> chat(WebSocket socket) async {
+    socket.listen((message) => socket.add('echo: $message'));
+  }
+  ```
+- **Multi-isolate scaling.** `runCluster(entryPoint)` runs an application's
+  startup on one isolate per CPU core, and `RatelServer(shared: true)` binds the
+  port so they can all listen on it and the OS spreads connections across them:
+  ```dart
+  void main() => runCluster(serve);
+
+  void serve(List<String> args) {
+    $registerRatel();
+    RatelServer(port: 8080, shared: true).startServer();
+  }
+  ```
+- **`multipart/form-data` parsing.** A handler parameter typed `MultipartData`
+  receives the parsed body — text `fields` and uploaded `files` — with the
+  request size limit enforced across every part:
+  ```dart
+  @Post('/avatar')
+  Future<Response> avatar(MultipartData form) async {
+    final file = form.file('avatar');
+    return Response.json(data: {'bytes': file?.bytes.length});
+  }
+  ```
+- **Automatic `HEAD` handling.** A `HEAD` request with no `@Head` route of its
+  own falls back to the `GET` route for the same path and answers with its
+  status and headers but no body. An explicit `@Head` route still wins.
 - **Static file serving.** `staticFiles(directory: ..., urlPrefix: ...)` is a
   middleware that answers `GET` requests from a directory on disk and falls
   through to the router when no file matches. Content types come from
   `package:mime`, and a request that resolves outside the directory — `..`
   segments or a symlink leaving the tree — gets a `404` instead of the file.
+- **Server-Sent Events.** `Response.sse(stream)` streams a `Stream<String>` as
+  `text/event-stream`, one `data:` frame per value, until the stream closes. The
+  response opens with an SSE comment so the client gets its headers immediately,
+  and declines compression so a gzip buffer cannot hold events back.
+- **`RatelServer(onError: ...)`**, a hook that maps an error no route handled
+  onto a `Response` of the application's choosing — the seam where a domain
+  exception becomes an HTTP status. The error is still logged with its
+  correlation id first, and a hook that throws falls back to the generic `500`.
 - **`Response.withCookie`**, which attaches a `Set-Cookie` header built from a
   `dart:io` `Cookie`, so a response can carry flags like `httpOnly`, `secure`
   and `sameSite`. Cookies survive `withHeaders`, so decorating middleware does
   not drop them.
+
+### Changed
+- **Routes, sockets and the request body limit are held by a `RatelRegistry`
+  rather than by statics on `RatelHandler`** — the prerequisite for running more
+  than one server in an isolate, and for `runCluster`. A server adopts the
+  ambient registry unless given one, so nothing changes for an application with
+  a single server; `RatelServer(registry: ...)` opts out. A handler reads its
+  limit from `ctx.registry`, so the last server constructed no longer decides
+  the body limit for every other one.
+- **`server.db` runs on the server's own driver** instead of the last driver
+  passed to `Db.configure`. `Db.driver` stays ambient for the ORM repository,
+  which resolves through it.
+- **`Injector` can be scoped.** `Injector.scoped()` builds an isolated one,
+  `Injector.ambient` chooses which `Injector()` hands out, and `clear()` forgets
+  its registrations — so a test no longer inherits another test's bindings.
+- The server's error correlation counter is per server rather than per process.
+- The oversized-body drain bound is per server too: `RatelServer(maxBodyDrainBytes:
+  ...)` sets it, `ctx.registry.maxBodyDrainBytes` is what a handler reads, and
+  `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
+
+### Fixed
+- `HEAD` on a `Response.sse` route answers with the stream's headers and closes,
+  instead of streaming the body a `HEAD` must not carry.
+- Requests are dispatched concurrently. The serve loop used to `await` each
+  request before accepting the next, so a single slow handler — or an open
+  event stream — blocked every other client.
 
 ## 2.0.0-dev.7 (unreleased)
 

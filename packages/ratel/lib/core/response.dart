@@ -18,6 +18,10 @@ class Response {
   /// Cookies sent as `Set-Cookie` headers. Attach one with [withCookie].
   final List<Cookie> cookies;
 
+  /// Server-Sent Events to stream instead of a buffered body, set by
+  /// [Response.sse].
+  final Stream<String>? events;
+
   Response({
     required this.statusCode,
     this.data,
@@ -26,6 +30,7 @@ class Response {
     },
     this.contentType = 'application/json',
     this.cookies = const [],
+    this.events,
   });
 
   Response.json({
@@ -35,7 +40,8 @@ class Response {
       HttpHeaders.contentTypeHeader: 'application/json',
     },
   })  : contentType = 'application/json',
-        cookies = const [];
+        cookies = const [],
+        events = null;
 
   Response.text({
     this.statusCode = HttpStatus.ok,
@@ -44,7 +50,8 @@ class Response {
       HttpHeaders.contentTypeHeader: 'text/plain',
     },
   })  : contentType = 'text/plain',
-        cookies = const [];
+        cookies = const [],
+        events = null;
 
   Response.html({
     this.statusCode = HttpStatus.ok,
@@ -53,7 +60,8 @@ class Response {
       HttpHeaders.contentTypeHeader: 'text/html',
     },
   })  : contentType = 'text/html',
-        cookies = const [];
+        cookies = const [],
+        events = null;
 
   Response.bytes({
     this.statusCode = HttpStatus.ok,
@@ -62,13 +70,31 @@ class Response {
       HttpHeaders.contentTypeHeader: 'application/octet-stream',
     },
   })  : contentType = 'application/octet-stream',
-        cookies = const [];
+        cookies = const [],
+        events = null;
 
   static Response from(dynamic value) {
     if (value is Response) return value;
     return Response.json(
       statusCode: HttpStatus.ok,
       data: value,
+    );
+  }
+
+  /// Streams [events] as `text/event-stream` Server-Sent Events, one `data:`
+  /// frame per value. The connection stays open until [events] closes.
+  ///
+  /// Compression is declined for the stream, since a gzip buffer would hold
+  /// events back instead of delivering them as they are produced.
+  factory Response.sse(Stream<String> events) {
+    return Response(
+      statusCode: HttpStatus.ok,
+      contentType: 'text/event-stream',
+      headers: const {
+        HttpHeaders.cacheControlHeader: 'no-cache',
+        HttpHeaders.contentEncodingHeader: 'identity',
+      },
+      events: events,
     );
   }
 
@@ -91,6 +117,7 @@ class Response {
       headers: {...headers, ...extra},
       contentType: contentType,
       cookies: cookies,
+      events: events,
     );
   }
 
@@ -105,6 +132,7 @@ class Response {
       headers: headers,
       contentType: contentType,
       cookies: [...cookies, cookie],
+      events: events,
     );
   }
 
@@ -136,21 +164,53 @@ class Response {
     }
   }
 
-  void send(HttpResponse response) {
+  /// Writes this response to [response]. With [includeBody] false the status
+  /// line and headers are sent without a body, which is what a `HEAD` request
+  /// answers with.
+  Future<void> send(HttpResponse response, {bool includeBody = true}) async {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
     response.cookies.addAll(cookies);
+
+    final stream = events;
+    if (stream != null && includeBody) {
+      await _stream(stream, response);
+      return;
+    }
+
+    if (includeBody) {
+      _writeBody(response);
+    }
+    await response.close();
+  }
+
+  Future<void> _stream(Stream<String> stream, HttpResponse response) async {
+    response.bufferOutput = false;
+    response.write(_sseOpening);
+    await response.flush();
+    await for (final event in stream) {
+      response.write('data: $event\n\n');
+      await response.flush();
+    }
+    await response.close();
+  }
+
+  void _writeBody(HttpResponse response) {
     final body = data;
     if (body is List<int>) {
       response.add(body);
-    } else {
-      final responseData =
-          contentType == 'application/json' ? toJson() : body.toString();
-      if (responseData.isNotEmpty) {
-        response.write(responseData);
-      }
+      return;
     }
-    response.close();
+    final responseData =
+        contentType == 'application/json' ? toJson() : body.toString();
+    if (responseData.isNotEmpty) {
+      response.write(responseData);
+    }
   }
 }
+
+/// An empty SSE comment, written as soon as the stream is subscribed so the
+/// client receives the response headers without waiting for the first event.
+/// Clients ignore comment lines.
+const _sseOpening = ':\n\n';

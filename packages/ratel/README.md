@@ -107,6 +107,32 @@ class UserController extends RatelHandler {
 }
 ```
 
+A parameter typed `RequestContext` receives the context for the request — the
+raw `HttpRequest`, the matched route, the path parameters, the JWT claims and
+the middleware state bag — without an annotation.
+
+```dart
+@Get('/me')
+Future<Response> me(RequestContext ctx) async =>
+    Response.json(data: {'sub': ctx.claims?['sub']});
+```
+
+A `HEAD` request with no `@Head` route of its own is answered from the `GET`
+route for the same path, with its status and headers but no body.
+
+A `multipart/form-data` upload is parsed into a `MultipartData` parameter, which
+carries the text `fields` and the uploaded `files`. The server's
+`maxRequestBodyBytes` limit applies across every part together.
+
+```dart
+@Post('/avatar')
+Future<Response> avatar(MultipartData form) async {
+  final file = form.file('avatar');
+  await File('uploads/${file!.filename}').writeAsBytes(file.bytes);
+  return Response.json(data: {'saved': file.filename});
+}
+```
+
 ## Responses
 
 A handler returns a `Response` (or any value, which is wrapped as JSON).
@@ -122,6 +148,35 @@ Future<Response> signIn() async => Response.json(data: {'ok': true}).withCookie(
         ..secure = true
         ..sameSite = SameSite.strict,
     );
+```
+
+A handler streams Server-Sent Events by returning `Response.sse`. Each value of
+the stream is sent as one `data:` frame and the connection stays open until the
+stream closes.
+
+```dart
+@Get('/prices')
+Future<Response> prices() async => Response.sse(priceTicks.map(jsonEncode));
+```
+
+## Errors
+
+Throwing an `HttpStatusException` — `BadRequestException`, `NotFoundException`,
+`ForbiddenException` and the rest — answers with that status and message. Any
+other error is logged with a correlation id and answered with a generic `500`,
+so internal detail never reaches the client.
+
+`onError` maps those unexpected errors onto a response of your own, which is
+where a domain exception becomes an HTTP status. The error is still logged
+first, and a hook that throws falls back to the generic `500`.
+
+```dart
+final server = RatelServer(
+  port: 8080,
+  onError: (error, stackTrace, ctx) => error is PaymentDeclined
+      ? Response(statusCode: 402, data: {'error': error.reason})
+      : Response(statusCode: 500, data: {'error': 'Internal Server Error'}),
+);
 ```
 
 ## Authentication
@@ -162,6 +217,53 @@ final server = RatelServer(
 
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
+
+## WebSockets
+
+`@Socket` binds a method to WebSocket upgrades on a path. The method receives
+the upgraded socket, and the `RequestContext` if it asks for one. Socket paths
+match exactly, and upgrades do not run the middleware chain — authenticate
+inside the handler, from the query string or the first message.
+
+```dart
+class ChatController extends RatelHandler {
+  @Socket('/ws')
+  Future<void> chat(WebSocket socket) async {
+    socket.listen((message) => socket.add('echo: $message'));
+  }
+}
+```
+
+## API documentation
+
+`openApiSpec` turns the registered routes into an OpenAPI 3 document. The
+generator resolved each handler's inputs at build time, so the spec needs no
+reflection and stays in step with the code.
+
+```dart
+@Get('/openapi.json')
+Future<Response> spec(RequestContext ctx) async =>
+    Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+```
+
+## Scaling across cores
+
+A Dart isolate uses one core. `runCluster` runs the application's startup on one
+isolate per core, and `shared: true` lets every one of them bind the same port,
+with the OS spreading connections across them.
+
+```dart
+void main() => runCluster(serve);
+
+void serve(List<String> args) {
+  $registerRatel();
+  RatelServer(port: 8080, shared: true).startServer();
+}
+```
+
+Isolates share no memory, so the entry point does the whole startup — routes,
+bindings and the server — on each one. It must be a top-level or static
+function.
 
 Files on disk are served by `staticFiles`, which falls through to the router
 when no file matches and refuses paths that escape the directory.

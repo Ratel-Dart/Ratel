@@ -1,6 +1,8 @@
 const stubPackages = <String, String>{
   'ratel|lib/annotations/annotations.dart': _annotations,
+  'ratel|lib/core/request_context.dart': _requestContext,
   'ratel|lib/http/handler.dart': _handler,
+  'ratel|lib/http/multipart_data.dart': _multipartData,
   'ratel_orm|lib/annotations.dart': _ormAnnotations,
   'ratel_orm|lib/ratel_orm.dart': _orm,
 };
@@ -99,6 +101,15 @@ class CookieParam {
   final String name;
   const CookieParam(this.name);
 }
+
+class Socket {
+  final String path;
+  const Socket(this.path);
+}
+''';
+
+const _requestContext = '''
+class RequestContext {}
 ''';
 
 const _handler = '''
@@ -120,4 +131,10 @@ class Column {
 
 const _orm = '''
 export 'annotations.dart';
+''';
+
+const _multipartData = '''
+class MultipartData {
+  const MultipartData();
+}
 ''';

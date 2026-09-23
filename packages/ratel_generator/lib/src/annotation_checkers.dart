@@ -27,3 +27,5 @@ const verbCheckers = <(TypeChecker, String)>[
   (TypeChecker.fromUrl('$_annotations#Head'), 'HEAD'),
   (TypeChecker.fromUrl('$_annotations#Options'), 'OPTIONS'),
 ];
+
+const socketChecker = TypeChecker.fromUrl('$_annotations#Socket');
