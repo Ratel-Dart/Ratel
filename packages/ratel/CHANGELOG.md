@@ -6,6 +6,18 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Added
+- **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from
+  the registered routes — `:id` becomes `{id}`, every bound parameter becomes an
+  operation parameter with its location and type, a `@Body` route gains a JSON
+  request body, and a `@Protected` route carries its roles as a `bearerAuth`
+  requirement:
+  ```dart
+  @Get('/openapi.json')
+  Future<Response> spec(RequestContext ctx) async =>
+      Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+  ```
+  A `Route` now carries the `parameters` and `bodyType` the generator resolved
+  at build time, so the spec is produced without reflection.
 - **`RequestContext` injection.** A handler parameter typed `RequestContext`
   receives the context for the request — the raw `HttpRequest`, the matched
   route, the path parameters, the JWT claims and the middleware state bag — with
