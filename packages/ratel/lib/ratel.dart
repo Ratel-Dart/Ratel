@@ -6,6 +6,7 @@ export 'core/response.dart';
 export 'core/controllers.dart';
 export 'core/serialization.dart';
 export 'core/logger.dart';
+export 'core/ratel_registry.dart';
 export 'core/request_context.dart';
 export 'core/middleware.dart';
 export 'core/router.dart';

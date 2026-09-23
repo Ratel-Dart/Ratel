@@ -40,6 +40,22 @@ All notable changes to this project are documented here. This project follows
   own falls back to the `GET` route for the same path and answers with its
   status and headers but no body. An explicit `@Head` route still wins.
 
+### Changed
+- **Routes, sockets and the request body limit are held by a `RatelRegistry`
+  rather than by statics on `RatelHandler`** — the prerequisite for running more
+  than one server in an isolate, and for `runCluster`. A server adopts the
+  ambient registry unless given one, so nothing changes for an application with
+  a single server; `RatelServer(registry: ...)` opts out. A handler reads its
+  limit from `ctx.registry`, so the last server constructed no longer decides
+  the body limit for every other one.
+- **`server.db` runs on the server's own driver** instead of the last driver
+  passed to `Db.configure`. `Db.driver` stays ambient for the ORM repository,
+  which resolves through it.
+- **`Injector` can be scoped.** `Injector.scoped()` builds an isolated one,
+  `Injector.ambient` chooses which `Injector()` hands out, and `clear()` forgets
+  its registrations — so a test no longer inherits another test's bindings.
+- The server's error correlation counter is per server rather than per process.
+
 ## 2.0.0-dev.7 (unreleased)
 
 ### Added

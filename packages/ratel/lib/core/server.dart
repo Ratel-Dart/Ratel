@@ -5,10 +5,10 @@ import '../database/db.dart';
 import '../database/driver.dart';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
-import '../http/handler.dart';
 import '../jwt.dart';
 import 'logger.dart';
 import 'middleware.dart';
+import 'ratel_registry.dart';
 import 'request_context.dart';
 import 'response.dart';
 import 'router.dart';
@@ -61,10 +61,16 @@ class RatelServer {
   /// applies.
   final Duration? idleTimeout;
 
+  /// The routes, sockets and body limit this server runs with. Defaults to the
+  /// ambient [RatelRegistry.current], which is where generated code registers.
+  /// Pass one explicitly to run two servers with different routes in a single
+  /// isolate.
+  final RatelRegistry registry;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
-  static int _errorCounter = 0;
+  int _errorCounter = 0;
 
   /// Creates a server. [maxRequestBodyBytes] caps request body size (413 when
   /// exceeded); it defaults to 1 MiB.
@@ -79,9 +85,10 @@ class RatelServer {
     this.onShutdown,
     this.gzip = true,
     this.idleTimeout,
-    int maxRequestBodyBytes = 1024 * 1024,
-  }) {
-    RatelHandler.maxRequestBodyBytes = maxRequestBodyBytes;
+    RatelRegistry? registry,
+    int maxRequestBodyBytes = RatelRegistry.defaultMaxRequestBodyBytes,
+  }) : registry = registry ?? RatelRegistry.current {
+    this.registry.maxRequestBodyBytes = maxRequestBodyBytes;
     bindings?.dependencies();
   }
 
@@ -92,7 +99,7 @@ class RatelServer {
   ///
   /// SQL passes through verbatim. Throws `DatabaseNotConfiguredException` when
   /// no [database] was provided.
-  Db get db => const Db();
+  Db get db => Db(database);
 
   /// Binds the socket and starts serving in the background. Completes once the
   /// server is listening; the process stays alive via the active socket until
@@ -126,7 +133,7 @@ class RatelServer {
     }
 
     _installSignalHandlers();
-    _router = Router(RatelHandler.routes);
+    _router = Router(registry.routes);
 
     final chain = <Middleware>[
       ...middlewares,
@@ -169,7 +176,7 @@ class RatelServer {
   /// an upgraded connection has no place for. A socket authenticates itself
   /// inside its handler.
   Future<void> _upgrade(HttpRequest request) async {
-    final handler = RatelHandler.socketFor(request.uri.path);
+    final handler = registry.socketFor(request.uri.path);
     if (handler == null) {
       Response(
         statusCode: HttpStatus.notFound,
@@ -179,7 +186,7 @@ class RatelServer {
     }
     try {
       final socket = await WebSocketTransformer.upgrade(request);
-      await handler(socket, RequestContext(request));
+      await handler(socket, RequestContext(request, registry: registry));
     } catch (e, stackTrace) {
       ratelLogger.severe('Failed to handle a socket upgrade', e, stackTrace);
     }
@@ -189,7 +196,7 @@ class RatelServer {
     HttpRequest request,
     List<Middleware> chain,
   ) async {
-    final ctx = RequestContext(request);
+    final ctx = RequestContext(request, registry: registry);
     final match = _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
     if (match != null) {
       ctx.route = match.route;

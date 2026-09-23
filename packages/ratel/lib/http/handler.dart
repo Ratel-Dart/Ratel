@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../annotations/annotations.dart';
-import '../core/router.dart';
+import '../core/ratel_registry.dart';
 import '../exceptions/exceptions.dart';
 import 'socket_handler.dart';
 
@@ -13,53 +13,32 @@ import 'socket_handler.dart';
 /// `ratel` CLI wires into the application bootstrap), so a controller needs no
 /// registration boilerplate of its own.
 abstract class RatelHandler {
-  static final List<Route> routesList = [];
+  /// Registers [route] on the ambient [RatelRegistry].
+  static void register(Route route) => RatelRegistry.current.register(route);
 
-  /// WebSocket handlers registered from @Socket methods, keyed by their
-  /// normalised path.
-  static final Map<String, SocketHandler> socketRoutesMap = {};
+  /// Registers [handler] for WebSocket upgrades on [path] on the ambient
+  /// [RatelRegistry].
+  static void registerSocket(String path, SocketHandler handler) =>
+      RatelRegistry.current.registerSocket(path, handler);
 
-  /// Maximum accepted request body size, in bytes. Bodies larger than this are
-  /// rejected with `413 Payload Too Large`. Configured via
-  /// `RatelServer(maxRequestBodyBytes: ...)`; defaults to 1 MiB.
-  static int maxRequestBodyBytes = 1024 * 1024;
-
-  /// Registers [route], rejecting a duplicate `method`+`path` pair.
-  static void register(Route route) {
-    final clash = routesList.any(
-      (r) => r.path == route.path && r.method == route.method,
-    );
-    if (clash) {
-      throw StateError(
-        'Duplicate route registered: ${route.method} ${route.path}',
-      );
-    }
-    routesList.add(route);
-  }
-
-  /// Registers [handler] for WebSocket upgrades on [path], rejecting a second
-  /// registration for the same path.
-  static void registerSocket(String path, SocketHandler handler) {
-    final key = normaliseSocketPath(path);
-    if (socketRoutesMap.containsKey(key)) {
-      throw StateError('Duplicate socket registered: $key');
-    }
-    socketRoutesMap[key] = handler;
-  }
-
-  /// The handler accepting WebSocket upgrades on [path], or null when none is
-  /// registered for it.
+  /// The handler accepting WebSocket upgrades on [path] on the ambient
+  /// [RatelRegistry].
   static SocketHandler? socketFor(String path) =>
-      socketRoutesMap[normaliseSocketPath(path)];
+      RatelRegistry.current.socketFor(path);
 
-  /// Removes every registered route and socket. Intended for tests that
-  /// register routes more than once in a single isolate.
-  static void reset() {
-    routesList.clear();
-    socketRoutesMap.clear();
-  }
+  /// Routes registered on the ambient [RatelRegistry].
+  static List<Route> get routes => RatelRegistry.current.routes;
 
-  static List<Route> get routes => routesList;
+  /// Maximum accepted request body size on the ambient [RatelRegistry].
+  ///
+  /// A handler reads its server's limit from `ctx.registry` instead, so two
+  /// servers in one isolate do not share one.
+  static int get maxRequestBodyBytes =>
+      RatelRegistry.current.maxRequestBodyBytes;
+
+  /// Empties the ambient [RatelRegistry]. Intended for tests that register
+  /// routes more than once in a single isolate.
+  static void reset() => RatelRegistry.current.reset();
 }
 
 /// Returns the value of the cookie named [name], or null when absent.
@@ -141,7 +120,3 @@ Map<String, dynamic> decodeJsonObject(String body) {
   }
   return decoded;
 }
-
-/// Normalises a socket [path] so a trailing slash or a missing leading one
-/// resolve to the same registration.
-String normaliseSocketPath(String path) => '/${splitPath(path).join('/')}';
