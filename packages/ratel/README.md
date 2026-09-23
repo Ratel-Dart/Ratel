@@ -172,6 +172,22 @@ final server = RatelServer(
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
 
+## WebSockets
+
+`@Socket` binds a method to WebSocket upgrades on a path. The method receives
+the upgraded socket, and the `RequestContext` if it asks for one. Socket paths
+match exactly, and upgrades do not run the middleware chain — authenticate
+inside the handler, from the query string or the first message.
+
+```dart
+class ChatController extends RatelHandler {
+  @Socket('/ws')
+  Future<void> chat(WebSocket socket) async {
+    socket.listen((message) => socket.add('echo: $message'));
+  }
+}
+```
+
 ## API documentation
 
 `openApiSpec` turns the registered routes into an OpenAPI 3 document. The
