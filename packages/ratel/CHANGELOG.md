@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.8 (unreleased)
+
+### Added
+- **`RequestContext` injection.** A handler parameter typed `RequestContext`
+  receives the context for the request — the raw `HttpRequest`, the matched
+  route, the path parameters, the JWT claims and the middleware state bag — with
+  no annotation:
+  ```dart
+  @Get('/me')
+  Future<Response> me(RequestContext ctx) async =>
+      Response.json(data: {'sub': ctx.claims?['sub']});
+  ```
+- **Automatic `HEAD` handling.** A `HEAD` request with no `@Head` route of its
+  own falls back to the `GET` route for the same path and answers with its
+  status and headers but no body. An explicit `@Head` route still wins.
+
 ## 2.0.0-dev.7 (unreleased)
 
 ### Added

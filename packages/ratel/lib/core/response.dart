@@ -113,20 +113,29 @@ class Response {
     }
   }
 
-  void send(HttpResponse response) {
+  /// Writes this response to [response]. With [includeBody] false the status
+  /// line and headers are sent without a body, which is what a `HEAD` request
+  /// answers with.
+  void send(HttpResponse response, {bool includeBody = true}) {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
+    if (includeBody) {
+      _writeBody(response);
+    }
+    response.close();
+  }
+
+  void _writeBody(HttpResponse response) {
     final body = data;
     if (body is List<int>) {
       response.add(body);
-    } else {
-      final responseData =
-          contentType == 'application/json' ? toJson() : body.toString();
-      if (responseData.isNotEmpty) {
-        response.write(responseData);
-      }
+      return;
     }
-    response.close();
+    final responseData =
+        contentType == 'application/json' ? toJson() : body.toString();
+    if (responseData.isNotEmpty) {
+      response.write(responseData);
+    }
   }
 }

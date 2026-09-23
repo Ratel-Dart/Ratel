@@ -107,6 +107,19 @@ class UserController extends RatelHandler {
 }
 ```
 
+A parameter typed `RequestContext` receives the context for the request — the
+raw `HttpRequest`, the matched route, the path parameters, the JWT claims and
+the middleware state bag — without an annotation.
+
+```dart
+@Get('/me')
+Future<Response> me(RequestContext ctx) async =>
+    Response.json(data: {'sub': ctx.claims?['sub']});
+```
+
+A `HEAD` request with no `@Head` route of its own is answered from the `GET`
+route for the same path, with its status and headers but no body.
+
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.

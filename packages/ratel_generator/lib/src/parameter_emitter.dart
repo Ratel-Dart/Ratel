@@ -4,9 +4,12 @@ import 'annotation_checkers.dart';
 import 'constant_values.dart';
 import 'cross_library_reference.dart';
 import 'generation_context.dart';
+import 'injected_types.dart';
 import 'type_display.dart';
 
 String emitArgument(FormalParameterElement param, GenerationContext ctx) {
+  if (requestContextChecker.isExactlyType(param.type)) return 'ctx';
+
   final full = nullableDisplay(param.type);
   final base = nonNullableDisplay(param.type);
 

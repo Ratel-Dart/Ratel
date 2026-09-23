@@ -164,13 +164,20 @@ class RatelServer {
     List<Middleware> chain,
   ) async {
     final ctx = RequestContext(request);
-    final match = _router!.match(ctx.method, ctx.path);
+    final match = _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
     if (match != null) {
       ctx.route = match.route;
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    response.send(request.response);
+    response.send(request.response, includeBody: ctx.method != 'HEAD');
+  }
+
+  /// The `GET` route standing in for a `HEAD` request, so a controller does not
+  /// have to declare both. The handler still runs; only the body is dropped.
+  RouteMatch? _getRouteForHead(RequestContext ctx) {
+    if (ctx.method != 'HEAD') return null;
+    return _router!.match('GET', ctx.path);
   }
 
   Future<Response> _runChain(

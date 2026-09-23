@@ -141,4 +141,20 @@ class MixedController extends RatelHandler {
     expect(call.indexOf("'id'"), lessThan(call.indexOf("'format'")));
     expect(call.indexOf("'format'"), lessThan(call.indexOf("'X-Trace'")));
   });
+
+  test('passes the RequestContext through untouched', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/core/request_context.dart';
+
+class ContextController extends RatelHandler {
+  @Get('/me')
+  Future<String> me(RequestContext ctx) async => '';
+}
+''',
+    });
+
+    expect(output, contains('return await controller().me(ctx);'));
+  });
 }
