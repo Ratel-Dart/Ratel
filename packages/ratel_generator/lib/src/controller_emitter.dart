@@ -6,6 +6,7 @@ import 'constant_values.dart';
 import 'generation_context.dart';
 import 'injected_types.dart';
 import 'parameter_emitter.dart';
+import 'route_metadata_emitter.dart';
 import 'route_path.dart';
 import 'socket_emitter.dart';
 
@@ -72,12 +73,14 @@ String _emitRegistration(
     ..writeln("    method: '$verb',")
     ..writeln('    isProtected: $isProtected,')
     ..writeln('    requiredRoles: const [$roles],')
+    ..writeln(emitRouteParameters(method))
+    ..writeln(emitRouteBodyType(method))
     ..writeln('    handler: ([ctxArg]) async {')
     ..writeln('      final ctx = ctxArg as _r.RequestContext;');
   if (hasMultipart) {
     buffer
       ..writeln('      final multipart = await _r.readMultipart(')
-      ..writeln('          ctx.request, _r.RatelHandler.maxRequestBodyBytes);');
+      ..writeln('          ctx.request, ctx.registry.maxRequestBodyBytes);');
   }
   if (hasBody && hasMultipart) {
     buffer.writeln(
@@ -87,7 +90,7 @@ String _emitRegistration(
   } else if (hasBody) {
     buffer
       ..writeln('      final requestBody = await _r.readBodyLimited(')
-      ..writeln('          ctx.request, _r.RatelHandler.maxRequestBodyBytes);')
+      ..writeln('          ctx.request, ctx.registry.maxRequestBodyBytes);')
       ..writeln('      final jsonBody = requestBody.isNotEmpty')
       ..writeln('          ? _r.decodeBody(ctx.request, requestBody)')
       ..writeln('          : const <String, dynamic>{};');

@@ -174,8 +174,9 @@ class UploadController extends RatelHandler {
     expect(
       output,
       stringContainsInOrder([
-        'final multipart = await _r.readMultipart(',
-        '_r.RatelHandler.maxRequestBodyBytes',
+        'final multipart',
+        '_r.readMultipart(',
+        'ctx.registry.maxRequestBodyBytes',
         'controller().upload(multipart)',
       ]),
     );
@@ -202,8 +203,9 @@ class ProfileController extends RatelHandler {
     expect(
       output,
       stringContainsInOrder([
-        'final multipart = await _r.readMultipart(',
-        'final jsonBody = Map<String, dynamic>.from(multipart.fields);',
+        'final multipart',
+        '_r.readMultipart(',
+        'Map<String, dynamic>.from(multipart.fields)',
         r'controller().save(multipart, $ProfileFromJson(jsonBody))',
       ]),
     );

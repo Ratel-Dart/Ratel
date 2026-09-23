@@ -8,3 +8,5 @@ String nonNullableDisplay(DartType type) {
       ? display.substring(0, display.length - 1)
       : display;
 }
+
+bool isNullableType(DartType type) => type.getDisplayString().endsWith('?');

@@ -1,3 +1,5 @@
+import '../core/route_parameter.dart';
+
 /// Signature of a compiled route handler.
 ///
 /// The optional [request] is the incoming `HttpRequest`. It is declared
@@ -27,6 +29,14 @@ class Route {
   /// empty list means authentication is enough, with no role check.
   final List<String> requiredRoles;
 
+  /// The inputs this route reads, as resolved at build time. Generated code
+  /// fills it so the routes can describe themselves without reflection.
+  final List<RouteParameter> parameters;
+
+  /// The name of the @Json class bound to this route's @Body parameter, or
+  /// null when it takes no body.
+  final String? bodyType;
+
   /// Creates a route. Only [path], [method] and [handler] are required.
   Route({
     required this.path,
@@ -34,6 +44,8 @@ class Route {
     required this.handler,
     this.isProtected = false,
     this.requiredRoles = const [],
+    this.parameters = const [],
+    this.bodyType,
   });
 }
 

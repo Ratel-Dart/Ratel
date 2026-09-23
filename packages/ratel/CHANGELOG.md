@@ -6,6 +6,18 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Added
+- **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from
+  the registered routes — `:id` becomes `{id}`, every bound parameter becomes an
+  operation parameter with its location and type, a `@Body` route gains a JSON
+  request body, and a `@Protected` route carries its roles as a `bearerAuth`
+  requirement:
+  ```dart
+  @Get('/openapi.json')
+  Future<Response> spec(RequestContext ctx) async =>
+      Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+  ```
+  A `Route` now carries the `parameters` and `bodyType` the generator resolved
+  at build time, so the spec is produced without reflection.
 - **`RequestContext` injection.** A handler parameter typed `RequestContext`
   receives the context for the request — the raw `HttpRequest`, the matched
   route, the path parameters, the JWT claims and the middleware state bag — with
@@ -26,6 +38,17 @@ All notable changes to this project are documented here. This project follows
     socket.listen((message) => socket.add('echo: $message'));
   }
   ```
+- **Multi-isolate scaling.** `runCluster(entryPoint)` runs an application's
+  startup on one isolate per CPU core, and `RatelServer(shared: true)` binds the
+  port so they can all listen on it and the OS spreads connections across them:
+  ```dart
+  void main() => runCluster(serve);
+
+  void serve(List<String> args) {
+    $registerRatel();
+    RatelServer(port: 8080, shared: true).startServer();
+  }
+  ```
 - **`multipart/form-data` parsing.** A handler parameter typed `MultipartData`
   receives the parsed body — text `fields` and uploaded `files` — with the
   request size limit enforced across every part:
@@ -39,6 +62,22 @@ All notable changes to this project are documented here. This project follows
 - **Automatic `HEAD` handling.** A `HEAD` request with no `@Head` route of its
   own falls back to the `GET` route for the same path and answers with its
   status and headers but no body. An explicit `@Head` route still wins.
+
+### Changed
+- **Routes, sockets and the request body limit are held by a `RatelRegistry`
+  rather than by statics on `RatelHandler`** — the prerequisite for running more
+  than one server in an isolate, and for `runCluster`. A server adopts the
+  ambient registry unless given one, so nothing changes for an application with
+  a single server; `RatelServer(registry: ...)` opts out. A handler reads its
+  limit from `ctx.registry`, so the last server constructed no longer decides
+  the body limit for every other one.
+- **`server.db` runs on the server's own driver** instead of the last driver
+  passed to `Db.configure`. `Db.driver` stays ambient for the ORM repository,
+  which resolves through it.
+- **`Injector` can be scoped.** `Injector.scoped()` builds an isolated one,
+  `Injector.ambient` chooses which `Injector()` hands out, and `clear()` forgets
+  its registrations — so a test no longer inherits another test's bindings.
+- The server's error correlation counter is per server rather than per process.
 
 ## 2.0.0-dev.7 (unreleased)
 
