@@ -107,6 +107,23 @@ class UserController extends RatelHandler {
 }
 ```
 
+## Responses
+
+A handler returns a `Response` (or any value, which is wrapped as JSON).
+`Response.json`, `Response.text`, `Response.html` and `Response.bytes` pick the
+representation, `Response.redirect` sends a `Location`, and `withCookie`
+attaches a `Set-Cookie` header built with the flags the response needs.
+
+```dart
+@Post('/sign-in')
+Future<Response> signIn() async => Response.json(data: {'ok': true}).withCookie(
+      Cookie('session', token)
+        ..httpOnly = true
+        ..secure = true
+        ..sameSite = SameSite.strict,
+    );
+```
+
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.
@@ -130,8 +147,8 @@ final server = RatelServer(port: 8080, jwtKey: 'your-secret');
 
 Cross-cutting concerns are composable middleware. Register global middleware on
 the server; the JWT auth middleware is appended automatically when `jwtKey` is
-set. Built-in middleware includes `corsMiddleware`, `securityHeadersMiddleware`
-and `rateLimitMiddleware`.
+set. Built-in middleware includes `corsMiddleware`, `securityHeadersMiddleware`,
+`rateLimitMiddleware` and `staticFiles`.
 
 ```dart
 final server = RatelServer(
@@ -145,6 +162,16 @@ final server = RatelServer(
 
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
+
+Files on disk are served by `staticFiles`, which falls through to the router
+when no file matches and refuses paths that escape the directory.
+
+```dart
+final server = RatelServer(
+  port: 8080,
+  middlewares: [staticFiles(directory: 'public', urlPrefix: '/assets')],
+);
+```
 
 ## Database
 

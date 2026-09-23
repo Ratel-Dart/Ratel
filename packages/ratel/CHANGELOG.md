@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org).
 
+## 2.0.0-dev.8 (unreleased)
+
+### Added
+- **Static file serving.** `staticFiles(directory: ..., urlPrefix: ...)` is a
+  middleware that answers `GET` requests from a directory on disk and falls
+  through to the router when no file matches. Content types come from
+  `package:mime`, and a request that resolves outside the directory — `..`
+  segments or a symlink leaving the tree — gets a `404` instead of the file.
+- **`Response.withCookie`**, which attaches a `Set-Cookie` header built from a
+  `dart:io` `Cookie`, so a response can carry flags like `httpOnly`, `secure`
+  and `sameSite`. Cookies survive `withHeaders`, so decorating middleware does
+  not drop them.
+
 ## 2.0.0-dev.7 (unreleased)
 
 ### Added

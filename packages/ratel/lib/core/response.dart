@@ -15,6 +15,9 @@ class Response {
   final Map<String, String> headers;
   final String contentType;
 
+  /// Cookies sent as `Set-Cookie` headers. Attach one with [withCookie].
+  final List<Cookie> cookies;
+
   Response({
     required this.statusCode,
     this.data,
@@ -22,6 +25,7 @@ class Response {
       HttpHeaders.contentTypeHeader: 'application/json',
     },
     this.contentType = 'application/json',
+    this.cookies = const [],
   });
 
   Response.json({
@@ -30,7 +34,8 @@ class Response {
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'application/json',
     },
-  }) : contentType = 'application/json';
+  })  : contentType = 'application/json',
+        cookies = const [];
 
   Response.text({
     this.statusCode = HttpStatus.ok,
@@ -38,7 +43,8 @@ class Response {
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'text/plain',
     },
-  }) : contentType = 'text/plain';
+  })  : contentType = 'text/plain',
+        cookies = const [];
 
   Response.html({
     this.statusCode = HttpStatus.ok,
@@ -46,7 +52,8 @@ class Response {
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'text/html',
     },
-  }) : contentType = 'text/html';
+  })  : contentType = 'text/html',
+        cookies = const [];
 
   Response.bytes({
     this.statusCode = HttpStatus.ok,
@@ -54,7 +61,8 @@ class Response {
     this.headers = const {
       HttpHeaders.contentTypeHeader: 'application/octet-stream',
     },
-  }) : contentType = 'application/octet-stream';
+  })  : contentType = 'application/octet-stream',
+        cookies = const [];
 
   static Response from(dynamic value) {
     if (value is Response) return value;
@@ -82,6 +90,21 @@ class Response {
       data: data,
       headers: {...headers, ...extra},
       contentType: contentType,
+      cookies: cookies,
+    );
+  }
+
+  /// Returns a copy of this response with [cookie] appended to [cookies].
+  ///
+  /// Build the `dart:io` [Cookie] with the flags the response needs
+  /// (`httpOnly`, `secure`, `sameSite`, `maxAge`, ...).
+  Response withCookie(Cookie cookie) {
+    return Response(
+      statusCode: statusCode,
+      data: data,
+      headers: headers,
+      contentType: contentType,
+      cookies: [...cookies, cookie],
     );
   }
 
@@ -117,6 +140,7 @@ class Response {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
+    response.cookies.addAll(cookies);
     final body = data;
     if (body is List<int>) {
       response.add(body);
