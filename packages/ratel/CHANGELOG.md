@@ -95,6 +95,9 @@ All notable changes to this project are documented here. This project follows
   `Injector.ambient` chooses which `Injector()` hands out, and `clear()` forgets
   its registrations — so a test no longer inherits another test's bindings.
 - The server's error correlation counter is per server rather than per process.
+- The oversized-body drain bound is per server too: `RatelServer(maxBodyDrainBytes:
+  ...)` sets it, `ctx.registry.maxBodyDrainBytes` is what a handler reads, and
+  `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
 - `HEAD` on a `Response.sse` route answers with the stream's headers and closes,

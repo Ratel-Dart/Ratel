@@ -42,7 +42,10 @@ Route get _limit => Route(
       handler: ([ctxArg]) async {
         final ctx = ctxArg as RequestContext;
         return Response.json(
-          data: {'limit': ctx.registry.maxRequestBodyBytes},
+          data: {
+            'limit': ctx.registry.maxRequestBodyBytes,
+            'drain': ctx.registry.maxBodyDrainBytes,
+          },
         );
       },
     );
@@ -55,10 +58,18 @@ void main() {
     ..register(_name('beta'))
     ..register(_limit);
 
-  final alphaServer =
-      RatelServer(port: 0, registry: alpha, maxRequestBodyBytes: 1024);
-  final betaServer =
-      RatelServer(port: 0, registry: beta, maxRequestBodyBytes: 16);
+  final alphaServer = RatelServer(
+    port: 0,
+    registry: alpha,
+    maxRequestBodyBytes: 1024,
+    maxBodyDrainBytes: 2048,
+  );
+  final betaServer = RatelServer(
+    port: 0,
+    registry: beta,
+    maxRequestBodyBytes: 16,
+    maxBodyDrainBytes: 32,
+  );
   final client = HttpClient();
 
   setUpAll(() async {
@@ -96,14 +107,14 @@ void main() {
         {'server': 'beta'});
   });
 
-  test('each handler reads the body limit of the server it ran on', () async {
+  test('each handler reads the body limits of the server it ran on', () async {
     final fromAlpha = await send(alphaServer, 'GET', '/limit');
     final fromBeta = await send(betaServer, 'GET', '/limit');
 
     expect(jsonDecode(await fromAlpha.transform(utf8.decoder).join()),
-        {'limit': 1024});
+        {'limit': 1024, 'drain': 2048});
     expect(jsonDecode(await fromBeta.transform(utf8.decoder).join()),
-        {'limit': 16});
+        {'limit': 16, 'drain': 32});
   });
 
   test('the ambient registry is untouched by a scoped one', () {
