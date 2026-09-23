@@ -11,8 +11,6 @@ analyzer:
     empty_catches: warning
   exclude:
     - "**/*.ratel.dart"
-    - "**/*.g.dart"
-    - "**/*.reflectable.dart"
 
 linter:
   rules:

@@ -5,6 +5,10 @@ import 'package:path/path.dart' as p;
 
 const _fallbackVersion = '2.0.0-dev.6';
 
+/// Version constraint the scaffold pins for `ratel_generator`. It versions
+/// independently of `ratel`, so it cannot reuse [ratelVersion].
+const generatorVersion = '0.1.0-dev.1';
+
 final _namePattern = RegExp(r'^name:\s*(\S+)\s*$', multiLine: true);
 final _versionPattern = RegExp(r'^version:\s*(\S+)\s*$', multiLine: true);
 
@@ -97,8 +101,8 @@ class RatelProject {
   Future<int> ensureCodegenDependencies() async {
     final pubspec = File(p.join(root.path, 'pubspec.yaml')).readAsStringSync();
     final missing = <String>[
-      if (!pubspec.contains('build_runner')) 'build_runner',
-      if (!pubspec.contains('ratel_generator')) 'ratel_generator',
+      if (!_declares(pubspec, 'build_runner')) 'build_runner',
+      if (!_declares(pubspec, 'ratel_generator')) 'ratel_generator',
     ];
     if (missing.isEmpty) return 0;
     stdout.writeln('Adding ${missing.join(', ')}…');
@@ -122,3 +126,11 @@ class RatelProject {
     return process.exitCode;
   }
 }
+
+/// Whether [pubspec] declares [name] as a dependency.
+///
+/// Matches an indented `name:` key rather than the bare word, so a mention in
+/// a description or a comment does not count as a declaration.
+bool _declares(String pubspec, String name) =>
+    RegExp(r'^\s+' + RegExp.escape(name) + r'\s*:', multiLine: true)
+        .hasMatch(pubspec);

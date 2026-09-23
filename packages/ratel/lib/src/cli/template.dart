@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'project.dart' show generatorVersion;
 
 /// Writes a runnable Ratel application into [target].
 ///
@@ -18,7 +19,7 @@ publish_to: none
 version: 0.1.0
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.6.0
 
 dependencies:
   ratel: ^$version
@@ -26,7 +27,7 @@ dependencies:
 dev_dependencies:
   build_runner: ^2.4.0
   lints: ^4.0.0
-  ratel_generator: ^$version
+  ratel_generator: ^$generatorVersion
   test: ^1.25.0
 ''');
 
