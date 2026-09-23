@@ -26,6 +26,17 @@ All notable changes to this project are documented here. This project follows
     socket.listen((message) => socket.add('echo: $message'));
   }
   ```
+- **Multi-isolate scaling.** `runCluster(entryPoint)` runs an application's
+  startup on one isolate per CPU core, and `RatelServer(shared: true)` binds the
+  port so they can all listen on it and the OS spreads connections across them:
+  ```dart
+  void main() => runCluster(serve);
+
+  void serve(List<String> args) {
+    $registerRatel();
+    RatelServer(port: 8080, shared: true).startServer();
+  }
+  ```
 - **`multipart/form-data` parsing.** A handler parameter typed `MultipartData`
   receives the parsed body — text `fields` and uploaded `files` — with the
   request size limit enforced across every part:
