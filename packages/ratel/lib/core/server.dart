@@ -158,11 +158,15 @@ class RatelServer {
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {
     await for (final request in server) {
-      try {
-        await _handleRequest(request, chain);
-      } catch (e, stackTrace) {
-        ratelLogger.severe('Failed to handle request', e, stackTrace);
-      }
+      unawaited(_dispatch(request, chain));
+    }
+  }
+
+  Future<void> _dispatch(HttpRequest request, List<Middleware> chain) async {
+    try {
+      await _handleRequest(request, chain);
+    } catch (e, stackTrace) {
+      ratelLogger.severe('Failed to handle request', e, stackTrace);
     }
   }
 
@@ -177,7 +181,7 @@ class RatelServer {
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    response.send(request.response);
+    await response.send(request.response);
   }
 
   Future<Response> _runChain(

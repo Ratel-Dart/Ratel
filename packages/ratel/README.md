@@ -124,6 +124,15 @@ Future<Response> signIn() async => Response.json(data: {'ok': true}).withCookie(
     );
 ```
 
+A handler streams Server-Sent Events by returning `Response.sse`. Each value of
+the stream is sent as one `data:` frame and the connection stays open until the
+stream closes.
+
+```dart
+@Get('/prices')
+Future<Response> prices() async => Response.sse(priceTicks.map(jsonEncode));
+```
+
 ## Errors
 
 Throwing an `HttpStatusException` — `BadRequestException`, `NotFoundException`,

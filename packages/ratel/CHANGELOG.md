@@ -11,6 +11,10 @@ All notable changes to this project are documented here. This project follows
   through to the router when no file matches. Content types come from
   `package:mime`, and a request that resolves outside the directory — `..`
   segments or a symlink leaving the tree — gets a `404` instead of the file.
+- **Server-Sent Events.** `Response.sse(stream)` streams a `Stream<String>` as
+  `text/event-stream`, one `data:` frame per value, until the stream closes. The
+  response opens with an SSE comment so the client gets its headers immediately,
+  and declines compression so a gzip buffer cannot hold events back.
 - **`RatelServer(onError: ...)`**, a hook that maps an error no route handled
   onto a `Response` of the application's choosing — the seam where a domain
   exception becomes an HTTP status. The error is still logged with its
@@ -19,6 +23,11 @@ All notable changes to this project are documented here. This project follows
   `dart:io` `Cookie`, so a response can carry flags like `httpOnly`, `secure`
   and `sameSite`. Cookies survive `withHeaders`, so decorating middleware does
   not drop them.
+
+### Fixed
+- Requests are dispatched concurrently. The serve loop used to `await` each
+  request before accepting the next, so a single slow handler — or an open
+  event stream — blocked every other client.
 
 ## 2.0.0-dev.7 (unreleased)
 
