@@ -93,4 +93,14 @@ void main() {
     await held.close();
     await drained;
   });
+
+  test('answers HEAD on an event stream without streaming it', () async {
+    final req = await client.openUrl(
+        'HEAD', Uri.parse('http://127.0.0.1:$port/events'));
+    final res = await req.close().timeout(const Duration(seconds: 5));
+
+    expect(res.statusCode, 200);
+    expect(res.headers.value('content-type'), 'text/event-stream');
+    expect(await res.transform(utf8.decoder).join(), isEmpty);
+  });
 }

@@ -105,3 +105,7 @@ List<String> splitPath(String path) {
   if (normalized.isEmpty) return const [];
   return normalized.split('/');
 }
+
+/// Normalises a socket [path] so that a trailing slash, or a missing leading
+/// one, resolve to the same registration.
+String normaliseSocketPath(String path) => '/${splitPath(path).join('/')}';

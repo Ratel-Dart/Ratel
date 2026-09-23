@@ -164,27 +164,23 @@ class Response {
     }
   }
 
-  Future<void> send(HttpResponse response) async {
+  /// Writes this response to [response]. With [includeBody] false the status
+  /// line and headers are sent without a body, which is what a `HEAD` request
+  /// answers with.
+  Future<void> send(HttpResponse response, {bool includeBody = true}) async {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
     response.cookies.addAll(cookies);
 
     final stream = events;
-    if (stream != null) {
+    if (stream != null && includeBody) {
       await _stream(stream, response);
       return;
     }
 
-    final body = data;
-    if (body is List<int>) {
-      response.add(body);
-    } else {
-      final responseData =
-          contentType == 'application/json' ? toJson() : body.toString();
-      if (responseData.isNotEmpty) {
-        response.write(responseData);
-      }
+    if (includeBody) {
+      _writeBody(response);
     }
     await response.close();
   }
@@ -198,6 +194,19 @@ class Response {
       await response.flush();
     }
     await response.close();
+  }
+
+  void _writeBody(HttpResponse response) {
+    final body = data;
+    if (body is List<int>) {
+      response.add(body);
+      return;
+    }
+    final responseData =
+        contentType == 'application/json' ? toJson() : body.toString();
+    if (responseData.isNotEmpty) {
+      response.write(responseData);
+    }
   }
 }
 

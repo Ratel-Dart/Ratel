@@ -141,4 +141,73 @@ class MixedController extends RatelHandler {
     expect(call.indexOf("'id'"), lessThan(call.indexOf("'format'")));
     expect(call.indexOf("'format'"), lessThan(call.indexOf("'X-Trace'")));
   });
+
+  test('passes the RequestContext through untouched', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/core/request_context.dart';
+
+class ContextController extends RatelHandler {
+  @Get('/me')
+  Future<String> me(RequestContext ctx) async => '';
+}
+''',
+    });
+
+    expect(output, contains('return await controller().me(ctx);'));
+  });
+
+  test('reads a multipart body for a MultipartData parameter', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/http/multipart_data.dart';
+
+class UploadController extends RatelHandler {
+  @Post('/upload')
+  Future<String> upload(MultipartData data) async => '';
+}
+''',
+    });
+
+    expect(
+      output,
+      stringContainsInOrder([
+        'final multipart',
+        '_r.readMultipart(',
+        'ctx.registry.maxRequestBodyBytes',
+        'controller().upload(multipart)',
+      ]),
+    );
+  });
+
+  test('feeds a @Body alongside multipart from the form fields', () async {
+    final output = await generate('app|lib/api.dart', {
+      'app|lib/api.dart': '''
+$_imports
+import 'package:ratel/http/multipart_data.dart';
+
+@Json()
+class Profile {
+  String name = '';
+}
+
+class ProfileController extends RatelHandler {
+  @Post('/profile')
+  Future<String> save(MultipartData files, @Body() Profile profile) async => '';
+}
+''',
+    });
+
+    expect(
+      output,
+      stringContainsInOrder([
+        'final multipart',
+        '_r.readMultipart(',
+        'Map<String, dynamic>.from(multipart.fields)',
+        r'controller().save(multipart, $ProfileFromJson(jsonBody))',
+      ]),
+    );
+  });
 }
