@@ -42,9 +42,6 @@ class AppBindings extends Bindings {
 }
 
 void main() {
-  // RatelServer runs its bindings from the constructor, so it has to be built
-  // after the registries are reset — otherwise the reset wipes what the
-  // bindings registered.
   late final RatelServer server;
   final client = HttpClient();
   late int port;
