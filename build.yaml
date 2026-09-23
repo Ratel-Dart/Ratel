@@ -1,8 +1,12 @@
 builders:
-  ratel_json:
+  ratel:
     import: "package:ratel_generator/builder.dart"
-    builder_factories: ["jsonBuilder"]
-    build_extensions: {".dart": [".ratel_json.g.part"]}
+    builder_factories: ["ratelBuilder"]
+    build_extensions: {".dart": [".ratel.dart"]}
     auto_apply: dependents
-    build_to: cache
-    applies_builders: ["source_gen:combining_builder"]
+    build_to: source
+    defaults:
+      generate_for:
+        exclude:
+          - "**.ratel.dart"
+          - "**.g.dart"
