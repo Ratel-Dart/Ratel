@@ -6,6 +6,13 @@ The database layer moved out of `ratel` so the core no longer depends on
 Postgres driver live in the separate [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm)
 package.
 
+> **This is half of the release.** The same version also replaced `dart:mirrors`
+> with code generation, which changes how controllers and `@Json` models are
+> written and how an application is run — `RatelServer(handlers:)` is gone,
+> annotated classes must be public, and `ratel dev` / `ratel build` replace
+> `dart run`. Following this guide alone will not get you compiling; see the
+> `2.0.0-dev` entry in [`CHANGELOG.md`](../CHANGELOG.md) for that half.
+
 ## What lives where now
 
 | Concern | Package |
@@ -25,7 +32,7 @@ dart pub add ratel_orm
 
 ## Wiring
 
-| Before (`ratel` ≤ dev.7) | After |
+| Before (`ratel` 2.0.0-dev.6 and earlier) | After |
 |---|---|
 | `RatelDatabase(host: ..., databaseName: ..., username: ..., password: ...)` | `PostgresDriver(host: ..., databaseName: ..., username: ..., password: ...)` from `package:ratel_orm/postgres.dart` |
 | `RatelDatabase.fromEnv()` | `PostgresDriver.fromEnv()` |
@@ -51,7 +58,15 @@ await execute(
 );
 ```
 
-An explicit `returning:` option arrives with the dialect layer (spec 080).
+Or let the dialect add it, which keeps the SQL portable:
+
+```dart
+await execute(
+  'INSERT INTO users (name) VALUES (@n)',
+  substitutionValues: {'n': name},
+  returning: true,
+);
+```
 
 ## Raw SQL from the core
 

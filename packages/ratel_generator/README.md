@@ -1,24 +1,43 @@
 <h1 align="center">Ratel Generator</h1>
 
-`build_runner` code generators for the [Ratel](https://github.com/Ratel-Dart/Ratel)
-framework and [ratel_orm](https://github.com/Ratel-Dart/ratel_orm). They replace
+`build_runner` code generator for the [Ratel](https://github.com/Ratel-Dart/Ratel)
+framework and [ratel_orm](https://github.com/Ratel-Dart/ratel_orm). It replaces
 Ratel's runtime `dart:mirrors` reflection with generated code, so Ratel apps
 compile ahead-of-time (`dart compile exe`).
 
-Generated per annotation:
+For every source file holding annotated classes it emits a standalone
+`<file>.ratel.dart` library — not a `part`, so **applications never declare a
+`part` directive**:
 
-- `@Json` → `toJson` / `fromJson`
-- controllers (`RatelHandler` subclasses) → route tables with typed parameter
-  binding
-- `@Column` → entity row mappers for the ORM repository
+| Annotation | Generated |
+|---|---|
+| `@Json` | `$XToJson` and, when the type is used as a `@Body`, `$XFromJson` |
+| controller (a `RatelHandler` subclass) | `$XRoutes(factory)` — a route table with typed parameter binding |
+| `@Column` | `$XFromRow` — an entity row mapper for the ORM repository |
+
+Each generated library also exposes a `$registerRatel()` that wires those into
+the runtime registries. Emitting a library rather than a part is what lets a
+`@Body` model be resolved across file boundaries, and it keeps a file with no
+`@Column` from importing `package:ratel_orm`.
 
 ## Usage
 
-Add as a dev dependency alongside `build_runner`, add `part '<file>.g.dart';`
-to files with the annotations above, then run:
+You normally do not set this up by hand: `ratel create` scaffolds it, and
+`ratel dev` / `ratel build` run generation and the bootstrap that calls every
+`$registerRatel()` for you.
+
+To wire it manually, add it as a dev dependency alongside `build_runner` and
+run:
 
 ```sh
-dart run build_runner build
+dart run build_runner build --delete-conflicting-outputs
+```
+
+The builder is `auto_apply: dependents`, so no `build.yaml` is needed. Generated
+files sit next to their sources and belong in `.gitignore`:
+
+```
+*.ratel.dart
 ```
 
 ## Status

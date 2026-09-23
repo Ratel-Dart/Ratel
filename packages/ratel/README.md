@@ -22,7 +22,7 @@ a clean way to build RESTful APIs, with built-in support for:
 
 > **Status:** the `2.0.0-dev` line is an active hardening effort (routing,
 > performance, security and tooling). APIs are changing — see the
-> [CHANGELOG](CHANGELOG.md). For the stable API use `1.0.2`.
+> [CHANGELOG](CHANGELOG.md). For the stable API use `1.0.3`.
 
 ## Install
 

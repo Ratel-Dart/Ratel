@@ -13,6 +13,15 @@ All notable changes to this project are documented here. This project follows
   client advertises `Accept-Encoding: gzip`.
 - Configurable connection `idleTimeout` on `RatelServer`.
 - `@Header('Name')` and `@CookieParam('name')` handler parameter injection.
+- **`RatelControllers`**, so a controller can take its dependencies through its
+  constructor. Register a factory from `Bindings.dependencies()` and the
+  generated route table builds the controller with it:
+  ```dart
+  RatelControllers.register<UserController>(
+    () => UserController(Injector().get<UserService>()),
+  );
+  ```
+  Controllers with a no-argument constructor need no registration.
 
 ### Fixed
 - `null` values now serialize as JSON `null` instead of the string `"null"`.
@@ -46,8 +55,6 @@ All notable changes to this project are documented here. This project follows
     generated code lives in a separate library. A private one is now a build
     error naming the class.
 - `Response.json`, `.text`, `.html` and `.bytes` default `statusCode` to `200`.
-- `RatelRepository<T>` resolves its row mapper automatically; the constructor
-  argument is now optional and only needed to override the generated mapper.
 
 ### Removed
 - **`package:postgres` is no longer a dependency of `ratel`** (breaking).
@@ -58,6 +65,10 @@ All notable changes to this project are documented here. This project follows
   [`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).
 - The `ratel.sh` script, superseded by the `ratel` CLI
   (`dart pub global activate ratel`).
+- **The outbound HTTP client** (`Request`, `ApiResponse`) and its exceptions
+  `HttpRequestException`, `HttpResponseException` and `JsonDecodingException`
+  (breaking). It was exported but unused, untested, and leaked its `HttpClient`
+  on the error path. Use `package:http` or `dart:io`'s `HttpClient` directly.
 
 ## 2.0.0-dev.5 (unreleased)
 
