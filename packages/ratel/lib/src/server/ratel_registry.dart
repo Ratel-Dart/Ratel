@@ -39,6 +39,17 @@ class RatelRegistry {
 
   final Map<String, SocketHandler> sockets = {};
 
+  final List<void Function()> _controllerChecks = [];
+
+  void registerControllerCheck(void Function() check) =>
+      _controllerChecks.add(check);
+
+  void verifyControllers() {
+    for (final check in _controllerChecks) {
+      check();
+    }
+  }
+
   void register(Route route) {
     final clash = routes.any(
       (r) => r.path == route.path && r.method == route.method,

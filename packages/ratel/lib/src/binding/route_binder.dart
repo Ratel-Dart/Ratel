@@ -14,6 +14,7 @@ final class RouteBinder {
   void bind<C extends Object>(ControllerDefinition<C> definition) {
     C? instance;
     C controller() => instance ??= _create(definition);
+    registry.registerControllerCheck(() => _ensureCreatable(definition));
 
     for (final route in definition.routes) {
       registry.register(Route(
@@ -54,12 +55,20 @@ final class RouteBinder {
     if (injector.contains<C>()) return injector.get<C>();
     final create = definition.create;
     if (create != null) return create();
-    throw StateError(
-      'Controller $C has no constructor Ratel can call without arguments. '
-      'Register it in Bindings.dependencies() with '
-      'Injector().put<$C>(() => $C(...)).',
-    );
+    throw StateError(_unregistered(C));
   }
+
+  static void _ensureCreatable<C extends Object>(
+    ControllerDefinition<C> definition,
+  ) {
+    if (Injector().contains<C>() || definition.create != null) return;
+    throw StateError(_unregistered(C));
+  }
+
+  static String _unregistered(Type controller) =>
+      'Controller $controller has no constructor Ratel can call without '
+      'arguments. Register it in Bindings.dependencies() with '
+      'Injector().put<$controller>(() => $controller(...)).';
 
   static bool _isRequestParameter(RouteParameter parameter) =>
       switch (parameter.location) {

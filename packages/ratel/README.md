@@ -363,6 +363,10 @@ class AppBindings extends Bindings {
 final server = RatelServer(port: 8080, bindings: AppBindings());
 ```
 
+`startServer` checks every controller after `onStartup` and before it binds the
+port, and throws a `StateError` naming any controller that is neither
+registered nor built with a no-argument constructor.
+
 `Injector()` returns the ambient injector. A test builds an isolated one with
 `Injector.scoped()` and installs it as `Injector.ambient`.
 
