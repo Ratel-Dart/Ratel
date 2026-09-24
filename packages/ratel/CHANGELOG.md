@@ -170,6 +170,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- `RatelServer.stop()` is now idempotent: calling it again, or a SIGINT arriving
+  mid-shutdown, waits for the shutdown already running. It no longer runs
+  `onShutdown` a second time or throws a `ConcurrentModificationError`. The 404
+  for a WebSocket upgrade on an unknown path is now awaited.
 - A multipart upload over `maxRequestBodyBytes` now gets its 413 instead of a
   connection reset. The parser reads and discards the rest of the body, up to
   `maxBodyDrainBytes`, before rejecting it, and adds `Connection: close` when
