@@ -1,11 +1,20 @@
-import 'package:ratel/ratel.dart';
+import 'item_status.dart';
+import 'tag.dart';
 
-@Json()
-class Item {
-  Item({this.id = 0, this.name = ''});
+final class Item {
+  const Item({
+    required this.id,
+    required this.name,
+    this.tags = const [],
+    this.status = ItemStatus.draft,
+    this.createdAt,
+  });
 
-  int id;
-  String name;
+  final int id;
+  final String name;
+  final List<Tag> tags;
+  final ItemStatus status;
+  final DateTime? createdAt;
 
   String get label => '$id:$name';
 }

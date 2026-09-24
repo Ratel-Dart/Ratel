@@ -1,3 +1,5 @@
+import 'package:analyzer/dart/element/type.dart';
+
 import 'scanned_parameter.dart';
 
 final class ScannedRoute {
@@ -8,6 +10,7 @@ final class ScannedRoute {
     required this.isProtected,
     required this.roles,
     required this.parameters,
+    required this.returnType,
   });
 
   final String methodName;
@@ -16,4 +19,5 @@ final class ScannedRoute {
   final bool isProtected;
   final List<String> roles;
   final List<ScannedParameter> parameters;
+  final DartType returnType;
 }

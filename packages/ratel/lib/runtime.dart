@@ -9,3 +9,4 @@ export 'src/runtime/ratel_manifest.dart';
 export 'src/runtime/ratel_runtime.dart';
 export 'src/runtime/route_definition.dart';
 export 'src/runtime/socket_definition.dart';
+export 'src/serialization/json_values.dart';

@@ -52,6 +52,22 @@ void main() {
     );
   });
 
+  test('serializes a set and a lazy iterable as JSON arrays', () {
+    final response = Response.json(data: {
+      'tags': {'a', 'b'},
+      'points': {GridPoint(1, 2)},
+      'doubled': [1, 2].map((n) => n * 2),
+    });
+    expect(
+      response.toJson(codecs: codecs),
+      '{"tags":["a","b"],"points":[{"x":1,"y":2}],"doubled":[2,4]}',
+    );
+  });
+
+  test('serializes a set payload as a JSON array', () {
+    expect(Response.json(data: {'a', 'b'}).toJson(), '["a","b"]');
+  });
+
   test('still honours a hand-written toJson', () {
     expect(
       Response.json(data: HandWrittenJson()).toJson(codecs: codecs),
@@ -67,6 +83,17 @@ void main() {
             .having((e) => e.cause, 'cause', isA<RatelSerializationException>())
             .having((e) => e.toString(), 'message', contains('PlainValue')),
       ),
+    );
+  });
+
+  test('explains that route signatures declare the encoders', () {
+    expect(
+      const RatelSerializationException(PlainValue).toString(),
+      'RatelSerializationException: No JSON encoder for PlainValue. Ratel '
+      'generates encoders for the types that route signatures declare: '
+      'return PlainValue or Response<PlainValue> from a route, or reach it '
+      'through a field of such a type. A raw Response hides its payload '
+      'type, and the encoder is chosen by the exact runtime class.',
     );
   });
 }

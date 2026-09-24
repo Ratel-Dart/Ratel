@@ -1,5 +1,6 @@
 import 'package:ratel/ratel.dart';
 
+import '../models/seat.dart';
 import '../models/ticket.dart';
 
 final class StrictInputController {
@@ -12,4 +13,6 @@ final class StrictInputController {
       Response.json(data: {'session': session});
 
   Future<Response> create(Ticket body) async => Response.json(data: body);
+
+  Future<Seat> reserve(Seat seat) async => seat;
 }

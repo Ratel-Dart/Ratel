@@ -1,6 +1,7 @@
 import 'package:ratel/runtime.dart';
 
 import '../controllers/strict_input_controller.dart';
+import '../models/seat.dart';
 import '../models/ticket.dart';
 
 abstract final class StrictInputControllerDefinition {
@@ -59,6 +60,19 @@ abstract final class StrictInputControllerDefinition {
         ],
         invoke: _create,
       ),
+      RouteDefinition<StrictInputController>(
+        method: 'POST',
+        path: '/seats',
+        parameters: [
+          RouteParameter(
+            name: 'seat',
+            location: ParameterLocation.body,
+            type: Seat,
+            isRequired: true,
+          ),
+        ],
+        invoke: _reserve,
+      ),
     ],
   );
 
@@ -85,4 +99,10 @@ abstract final class StrictInputControllerDefinition {
     List<Object?> arguments,
   ) =>
       controller.create(arguments[0] as Ticket);
+
+  static Object? _reserve(
+    StrictInputController controller,
+    List<Object?> arguments,
+  ) =>
+      controller.reserve(arguments[0] as Seat);
 }

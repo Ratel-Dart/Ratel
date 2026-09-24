@@ -6,6 +6,19 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Removed
+- **`@Json` is gone** (breaking). JSON conversion is discovered from the route
+  signatures, the way Spring does with Jackson: the type of every `@Body()`
+  parameter is decoded, every route's return type is encoded (through
+  `Future`, `Response<T>` and collections), and so is every class their
+  fields reach. To migrate, delete the annotations; a leftover `@Json()` fails
+  the build with a hint saying so. A class that a route sends only through a
+  raw `Response` needs the route to return it, or `Response<T>` of it, since a
+  raw `Response` hides the payload type:
+  ```dart
+  @Post('/')
+  Future<Response<Item>> create(@Body() Item item) async =>
+      Response.json(statusCode: 201, data: item);
+  ```
 - **One declaration per file, no top-level functions** (breaking renames). The
   public API is the same, reached through classes:
   - `corsMiddleware` → `CorsMiddleware.create`,
@@ -64,6 +77,28 @@ All notable changes to this project are documented here. This project follows
   `RatelRepository`.
 
 ### Added
+- **Typed JSON decoding.** Generated decoders build a class through its public
+  unnamed constructor, so immutable DTOs with final fields and a `const`
+  constructor work, as do nested classes, `List`, `Set` and `Map<String, T>`
+  fields, enums, `DateTime`, `Uri`, `BigInt` and generic instantiations such
+  as `Page<Item>`. A missing key falls back to the parameter's default value
+  or `null`, and a missing required field or a value of the wrong type answers
+  400 naming the field: `Field "id" is required`,
+  `Field "id" must be an integer`. The decoders read values through
+  `JsonValues`, exported from `package:ratel/runtime.dart`, which also accepts
+  numbers and booleans written as strings, so form-urlencoded and multipart
+  bodies decode into the same DTOs. A blank form value for a number, `bool`,
+  `DateTime`, `BigInt` or enum counts as missing, and a checkbox's `on` reads
+  as `true`. A multipart body binds to a `@Body()` DTO even when the route
+  takes no `MultipartData`.
+- **Typed JSON encoding.** Generated encoders convert nested classes,
+  collections, enums (by `name`), `DateTime` (ISO-8601), `Uri` and `BigInt`
+  field by field instead of looking each value up at runtime.
+- **Hand-written `toJson` and `fromJson` still win.** A class that declares
+  `toJson()` is encoded through it, and one with a
+  `fromJson(Map<String, dynamic>)` constructor is decoded through it, so
+  `json_serializable` and `freezed` classes, abstract ones included, keep
+  their key names.
 - `Response` is generic. `Response<T>` types its `data` and keeps the type
   through `withHeaders` and `withCookie`, the way Spring's `ResponseEntity<T>`
   does, so a handler can declare `Future<Response<Item>>`. A raw `Response` is
@@ -155,6 +190,9 @@ All notable changes to this project are documented here. This project follows
   not drop them.
 
 ### Changed
+- A `Set` or any other `Iterable` in a JSON response is encoded as an array,
+  and `RatelSerializationException` explains which route signatures make Ratel
+  generate an encoder.
 - **The source carries no comments, dartdoc included.** The README now documents
   the server configuration and dependency injection that only the API reference
   used to describe.
@@ -202,7 +240,7 @@ All notable changes to this project are documented here. This project follows
 - A missing required path, query, header or cookie parameter now gets a 400 that
   names the parameter instead of a 500. A JSON body whose field types do not
   match the model (for example `"id":"x"` for an int field) now gets a 400 that
-  names the body type instead of a 500.
+  names the field instead of a 500.
 - OpenAPI output is now valid for routes that require roles. The bearerAuth
   security requirement uses an empty scope list, as OpenAPI 3.0 requires for
   http bearer schemes. The roles now appear in an `x-required-roles` extension

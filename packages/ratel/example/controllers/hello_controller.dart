@@ -1,21 +1,18 @@
 import 'package:ratel/ratel.dart';
 
-import '../models/greeting.dart';
+import '../dtos/greeting.dart';
 
 @Controller()
 class HelloController {
   @Get('/hello')
-  Future<Response> hello(@Param() String? name) async {
-    return Response.json(data: Greeting(message: 'Hello, ${name ?? 'world'}!'));
-  }
+  Future<Greeting> hello(@Param() String? name) async =>
+      Greeting(message: 'Hello, ${name ?? 'world'}!');
 
   @Get('/greet/:name')
-  Future<Response> greet(@PathParam('name') String name) async {
-    return Response.json(data: Greeting(message: 'Hi, $name!'));
-  }
+  Future<Greeting> greet(@PathParam('name') String name) async =>
+      Greeting(message: 'Hi, $name!');
 
   @Post('/echo')
-  Future<Response> echo(@Body() Greeting body) async {
-    return Response.json(data: body);
-  }
+  Future<Response<Greeting>> echo(@Body() Greeting body) async =>
+      Response.json(statusCode: 201, data: body);
 }

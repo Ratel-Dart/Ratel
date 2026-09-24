@@ -27,18 +27,38 @@ void main() {
     expect(pubspec, isNot(contains('ratel_generator')));
   });
 
-  test('keeps the model and the controller in their own files', () {
+  test('keeps the DTO and the controller in their own files', () {
     final relative = files()
         .map((file) => p.split(p.relative(file.path, from: app.path)).join('/'))
         .toSet();
     expect(
       relative,
       containsAll([
-        'lib/models/greeting.dart',
+        'lib/dtos/greeting.dart',
         'lib/controllers/hello_controller.dart',
         'bin/server.dart',
       ]),
     );
+  });
+
+  test('returns an immutable DTO that needs no annotation', () {
+    String read(String relative) =>
+        File(p.joinAll([app.path, ...relative.split('/')])).readAsStringSync();
+    final greeting = read('lib/dtos/greeting.dart');
+    expect(greeting, contains('const Greeting({required this.message});'));
+    expect(greeting, contains('final String message;'));
+    expect(greeting, isNot(contains('@')));
+    expect(
+      read('lib/controllers/hello_controller.dart'),
+      contains('Future<Greeting> hello(@Param() String? name) async =>'),
+    );
+    for (final file in files()) {
+      expect(
+        file.readAsStringSync(),
+        isNot(contains('@Json')),
+        reason: file.path,
+      );
+    }
   });
 
   test('writes no comments in any language', () {

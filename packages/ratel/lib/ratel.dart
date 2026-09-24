@@ -5,7 +5,6 @@ export 'src/annotations/delete.dart';
 export 'src/annotations/get.dart';
 export 'src/annotations/head.dart';
 export 'src/annotations/header.dart';
-export 'src/annotations/json.dart';
 export 'src/annotations/options.dart';
 export 'src/annotations/param.dart';
 export 'src/annotations/patch.dart';

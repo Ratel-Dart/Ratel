@@ -24,13 +24,7 @@ void main() {
     final codes = {
       for (final diagnostic in result.diagnostics) diagnostic.code
     };
-    expect(
-      codes,
-      containsAll([
-        DiagnosticCodes.missingController,
-        DiagnosticCodes.bodyNotJson,
-      ]),
-    );
+    expect(codes, contains(DiagnosticCodes.missingController));
     final orphan = single(DiagnosticCodes.missingController);
     expect(orphan.path, endsWith('orphan.dart'));
     expect(orphan.line, 5);
@@ -61,6 +55,54 @@ void main() {
     expect(staticRoute.path, endsWith('static_route_controller.dart'));
     expect(staticRoute.line, 6);
     expect(staticRoute.message, contains('StaticRouteController.list'));
+  });
+
+  test('reports a body that is not a class', () {
+    final body = single(DiagnosticCodes.bodyNotClass);
+    expect(body.isError, isTrue);
+    expect(body.path, endsWith('bodies_controller.dart'));
+    expect(body.line, 6);
+    expect(
+      body.message,
+      allOf([contains('BodiesController.count'), contains('type int')]),
+    );
+  });
+
+  test('reports a body DTO it cannot construct', () {
+    final ticket = single(DiagnosticCodes.dtoNotConstructible);
+    expect(ticket.isError, isTrue);
+    expect(ticket.path, endsWith('ticket.dart'));
+    expect(ticket.line, 1);
+    expect(
+      ticket.message,
+      allOf([
+        startsWith('TicketController.redeem needs Ratel to build Ticket'),
+        contains('no public unnamed constructor'),
+      ]),
+    );
+  });
+
+  test('reports an abstract class a route returns', () {
+    final shape = single(DiagnosticCodes.dtoAbstract);
+    expect(shape.isError, isTrue);
+    expect(shape.path, endsWith('shape_controller.dart'));
+    expect(shape.line, 8);
+    expect(
+      shape.message,
+      startsWith('ShapeController.latest uses Shape, an abstract class'),
+    );
+  });
+
+  test('reports a DTO field whose type has no JSON form', () {
+    final segment = single(DiagnosticCodes.dtoUnsupportedType);
+    expect(segment.isError, isTrue);
+    expect(segment.path, endsWith('segment.dart'));
+    expect(segment.line, 4);
+    expect(
+      segment.message,
+      startsWith('SegmentController.current -> Segment.span has type '
+          '(int, int), which Ratel cannot convert to JSON'),
+    );
   });
 
   test('reports a path parameter the route path does not declare', () {

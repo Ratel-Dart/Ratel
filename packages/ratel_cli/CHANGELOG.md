@@ -1,5 +1,30 @@
 ## 2.0.0-dev.8 (unreleased)
 
+- JSON codecs come from the route signatures instead of `@Json`. The engine
+  starts from each `@Body()` parameter type and each route's return type,
+  looking through `Future`, `FutureOr`, `Response<T>`, `List`, `Set`,
+  `Iterable` and `Map<String, T>`, and follows the fields of every class it
+  reaches, classes from other packages included. Each generic instantiation,
+  such as `Page<Item>`, gets its own codec.
+- Generated codecs are typed. Encoders call the nested encoders directly and
+  convert enums, `DateTime`, `Uri` and `BigInt`. Decoders call the public
+  unnamed constructor, matching `this.x`, `super.x`, declaring and plain
+  parameters to fields, copy default values into the generated code, assign
+  the mutable fields the constructor leaves out, and read every value through
+  `JsonValues`, so a bad body answers 400 naming the field. Fields declared by
+  a primary constructor are now included. A class that declares `toJson()` or
+  a `fromJson` constructor is converted through them, and a `late` field
+  without an initializer is always assigned.
+- New diagnostics name the path from the route to the problem, such as
+  `ItemsController.create -> Item.tags -> Tag.meta`: `ratel_body_not_class`,
+  `ratel_dto_not_constructible`, `ratel_dto_abstract` and
+  `ratel_dto_unsupported_type`. A leftover `@Json()` gets a hint that the
+  annotation was removed.
+- Generated string literals escape backslashes. A route path or JSON key
+  holding a backslash turned into a different string, or into code that did
+  not compile.
+- `ratel create` writes an immutable `Greeting` DTO with no annotation to
+  `lib/dtos/`, and the scaffold's route returns `Future<Greeting>`.
 - The engine resolves @Protected and @Public on @Socket methods with the same
   rule as routes and writes the result into the `SocketDefinition`, so protected
   sockets are enforced.
@@ -14,8 +39,8 @@
   `dart pub global activate ratel_cli`. It is released in lockstep with
   `ratel`.
 - `ratel dev`, `ratel build` and `ratel create` run on the engine, built on
-  `package:analyzer` with no build_runner. It finds `@Controller` and `@Json`
-  classes in `lib/` and next to the entrypoint, even when nothing imports them.
+  `package:analyzer` with no build_runner. It finds `@Controller` classes in
+  `lib/` and next to the entrypoint, even when nothing imports them.
   It reports misplaced annotations and compile errors as `file:line`
   diagnostics. It writes a const route manifest plus an entry that installs it
   into `.dart_tool/ratel/<mode>/`, and nothing into the project.
@@ -30,7 +55,7 @@
   The wrapper keeps the file's library annotations (`@Tags`, `@Timeout`, and so
   on), and arguments after `--` go to `dart test`.
 - `ratel create` scaffolds a pubspec without code generation dependencies,
-  the model and the controller in separate files, a sample HTTP test, and no
+  the DTO and the controller in separate files, a sample HTTP test, and no
   comments anywhere.
 - Before it generates anything, the CLI checks that it matches the runtime
   contract of the `ratel` the app resolves.

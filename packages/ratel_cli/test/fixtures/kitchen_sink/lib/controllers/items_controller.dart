@@ -25,7 +25,7 @@ class ItemsController {
 
   @Public()
   @Post('/')
-  Future<Response> create(@Body() Item item) async =>
+  Future<Response<Item>> create(@Body() Item item) async =>
       Response.json(statusCode: 201, data: item);
 
   @Public()

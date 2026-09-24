@@ -6,7 +6,7 @@ Ratel no longer has a database layer. Everything about databases lives in
 startup and shutdown hooks, and each is usable without the other.
 
 > **This is half of the release.** The same version also replaced `dart:mirrors`
-> with code generation, which changes how controllers and `@Json` models are
+> with code generation, which changes how controllers and JSON classes are
 > written and how an application is run. See the `2.0.0-dev` entries in
 > [`CHANGELOG.md`](../CHANGELOG.md) for that half.
 

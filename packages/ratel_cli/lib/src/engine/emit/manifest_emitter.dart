@@ -3,11 +3,11 @@ import 'package:analyzer/dart/element/type.dart';
 import '../model/parameter_source.dart';
 import '../model/scanned_app.dart';
 import '../model/scanned_controller.dart';
-import '../model/scanned_json_class.dart';
 import '../model/scanned_parameter.dart';
 import 'dart_literal.dart';
 import 'import_allocator.dart';
 import 'import_uris.dart';
+import 'json_codec_emitter.dart';
 import 'name_allocator.dart';
 import 'type_emitter.dart';
 
@@ -27,7 +27,8 @@ final class ManifestEmitter {
 
   String emit(ScannedApp app) {
     final controllers = [for (final c in app.controllers) _controller(c)];
-    final codecs = [for (final j in app.jsonClasses) _codec(j)];
+    final codecs =
+        JsonCodecEmitter(types: _types, names: _names).emit(app.dtos, _members);
     final body = StringBuffer()
       ..writeln('abstract final class $className {')
       ..writeln(
@@ -36,7 +37,7 @@ final class ManifestEmitter {
       ..writeAll(controllers)
       ..writeln('    ],')
       ..writeln('    jsonCodecs: [')
-      ..writeAll(codecs)
+      ..write(codecs)
       ..writeln('    ],')
       ..writeln('  );');
     for (final member in _members) {
@@ -156,45 +157,5 @@ final class ManifestEmitter {
         ? '$signature {\n    $call;\n    return null;\n  }\n'
         : '$signature =>\n      $call;\n');
     return name;
-  }
-
-  String _codec(ScannedJsonClass json) {
-    final type = _types.nonNullable(json.element.thisType);
-    final className = json.element.name ?? '';
-    final encode = _names.allocate([className, 'ToJson']);
-    final entries = [
-      for (final field in json.encoded)
-        '      ${DartLiteral.string(field)}: value.$field,',
-    ];
-    _members.add(
-      '  static Map<String, Object?> $encode($type value) =>\n'
-      '      <String, Object?>{\n${entries.join('\n')}\n      };\n',
-    );
-    final buffer = StringBuffer()
-      ..writeln('      $_r.JsonCodecDefinition<$type>(')
-      ..writeln('        encode: $encode,');
-    if (json.isConstructible) {
-      final decode = _names.allocate([className, 'FromJson']);
-      final assignments = StringBuffer();
-      for (final field in json.decoded) {
-        final key = DartLiteral.string(field.name);
-        assignments
-          ..writeln('    if (json.containsKey($key)) {')
-          ..writeln(
-            '      value.${field.name} = json[$key] as ${_types.emit(field.type)};',
-          )
-          ..writeln('    }');
-      }
-      _members.add(
-        '  static $type $decode(Map<String, Object?> json) {\n'
-        '    final value = $type();\n'
-        '$assignments'
-        '    return value;\n'
-        '  }\n',
-      );
-      buffer.writeln('        decode: $decode,');
-    }
-    buffer.writeln('      ),');
-    return buffer.toString();
   }
 }

@@ -4,13 +4,10 @@ import 'package:analyzer/diagnostic/diagnostic.dart';
 import 'package:path/path.dart' as p;
 
 import 'analysis/controller_scanner.dart';
-import 'analysis/element_queries.dart';
+import 'analysis/dto_collector.dart';
 import 'analysis/entry_signature_reader.dart';
-import 'analysis/json_scanner.dart';
-import 'analysis/ratel_annotations.dart';
 import 'diagnostics/diagnostic_codes.dart';
 import 'diagnostics/diagnostic_severity.dart';
-import 'diagnostics/element_diagnostics.dart';
 import 'diagnostics/ratel_diagnostic.dart';
 import 'emit/dev_watchdog_emitter.dart';
 import 'emit/entry_emitter.dart';
@@ -20,7 +17,6 @@ import 'generated_file.dart';
 import 'generation_result.dart';
 import 'model/entry_signature.dart';
 import 'model/generation_mode.dart';
-import 'model/parameter_source.dart';
 import 'model/scanned_app.dart';
 import 'project_analyzer.dart';
 import 'scan_scope.dart';
@@ -51,17 +47,14 @@ final class GenerationRun {
   Future<GenerationResult> run() async {
     final diagnostics = <RatelDiagnostic>[];
     final libraries = await _libraries();
+    final controllers = [
+      for (final library in libraries)
+        ...ControllerScanner.scan(library, diagnostics),
+    ];
     final app = ScannedApp(
-      controllers: [
-        for (final library in libraries)
-          ...ControllerScanner.scan(library, diagnostics),
-      ],
-      jsonClasses: [
-        for (final library in libraries)
-          ...JsonScanner.scan(library, diagnostics),
-      ],
+      controllers: controllers,
+      dtos: DtoCollector.collect(controllers, diagnostics),
     );
-    _checkBodies(app, diagnostics);
 
     final entry = entrypoint;
     EntrySignature? signature;
@@ -131,44 +124,6 @@ final class GenerationRun {
     return uris.relativeFile(path);
   }
 
-  void _checkBodies(ScannedApp app, List<RatelDiagnostic> diagnostics) {
-    final codecs = {for (final json in app.jsonClasses) json.element};
-    for (final controller in app.controllers) {
-      for (final route in controller.routes) {
-        for (final parameter in route.parameters) {
-          if (parameter.source != ParameterSource.body) continue;
-          final element = parameter.type.element;
-          final name = parameter.type.getDisplayString();
-          if (element is! ClassElement ||
-              !RatelAnnotations.has(element, 'Json')) {
-            diagnostics.add(ElementDiagnostics.at(
-              parameter.element,
-              DiagnosticCodes.bodyNotJson,
-              'The @Body() type $name is not a class annotated with @Json(), '
-              'so no decoder exists for it. Add @Json() to $name.',
-            ));
-          } else if (!ElementQueries.canConstruct(element)) {
-            diagnostics.add(ElementDiagnostics.at(
-              parameter.element,
-              DiagnosticCodes.bodyNotConstructible,
-              'The @Body() type $name has no constructor callable without '
-              'arguments, so it cannot be decoded. Give $name a constructor '
-              'whose parameters are all optional.',
-            ));
-          } else if (!codecs.contains(element)) {
-            diagnostics.add(ElementDiagnostics.at(
-              parameter.element,
-              DiagnosticCodes.bodyOutsideProject,
-              'The @Body() type $name is declared outside this project, so '
-              'Ratel does not generate its codec. Declare the model in this '
-              "project's lib/.",
-            ));
-          }
-        }
-      }
-    }
-  }
-
   Future<List<RatelDiagnostic>> _analyzerErrors(
     List<LibraryElement> roots,
   ) async {
@@ -198,10 +153,7 @@ final class GenerationRun {
           final location = unit.lineInfo.getLocation(diagnostic.offset);
           errors.add(RatelDiagnostic(
             code: diagnostic.diagnosticCode.lowerCaseName,
-            message: diagnostic.message.contains("'RatelHandler'")
-                ? '${diagnostic.message} RatelHandler was removed: annotate '
-                    'the class with @Controller() instead of extending it.'
-                : diagnostic.message,
+            message: _explained(diagnostic),
             path: unit.path,
             line: location.lineNumber,
             column: location.columnNumber,
@@ -210,6 +162,20 @@ final class GenerationRun {
       }
     }
     return errors;
+  }
+
+  static String _explained(Diagnostic diagnostic) {
+    final message = diagnostic.message;
+    if (message.contains("'RatelHandler'")) {
+      return '$message RatelHandler was removed: annotate the class with '
+          '@Controller() instead of extending it.';
+    }
+    if (message.contains("'Json'") &&
+        diagnostic.diagnosticCode.lowerCaseName.startsWith('undefined')) {
+      return '$message @Json was removed: Ratel generates JSON codecs from '
+          'route signatures; delete the annotation.';
+    }
+    return message;
   }
 
   bool _isProjectLocal(Uri uri) {

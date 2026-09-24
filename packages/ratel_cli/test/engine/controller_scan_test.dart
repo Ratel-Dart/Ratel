@@ -1,11 +1,13 @@
 import 'package:ratel_cli/src/engine/model/parameter_source.dart';
 import 'package:ratel_cli/src/engine/model/scanned_controller.dart';
+import 'package:ratel_cli/src/engine/model/scanned_dto.dart';
 import 'package:test/test.dart';
 
 import '../support/engine_harness.dart';
 
 void main() {
   late List<ScannedController> controllers;
+  late List<ScannedDto> dtos;
 
   setUpAll(() async {
     final result = await EngineHarness.generate(
@@ -14,6 +16,7 @@ void main() {
     );
     expect(result.hasErrors, isFalse, reason: '${result.diagnostics}');
     controllers = result.app.controllers;
+    dtos = result.app.dtos;
   });
 
   ScannedController named(String name) =>
@@ -22,10 +25,29 @@ void main() {
   test('finds controllers in lib and next to the entrypoint', () {
     expect(
       controllers.map((controller) => controller.element.name),
-      unorderedEquals(
-        ['GreetingController', 'ItemsController', 'HealthController'],
-      ),
+      unorderedEquals([
+        'GreetingController',
+        'ItemsController',
+        'CatalogController',
+        'HealthController',
+      ]),
     );
+  });
+
+  test('records the declared return type of every route', () {
+    final returns = {
+      for (final route in named('CatalogController').routes)
+        route.methodName: route.returnType.getDisplayString(),
+    };
+    expect(returns, {
+      'featured': 'Future<Item>',
+      'all': 'Future<List<Item>>',
+      'page': 'Future<Page<Item>>',
+    });
+    final create = named('ItemsController')
+        .routes
+        .singleWhere((route) => route.methodName == 'create');
+    expect(create.returnType.getDisplayString(), 'Future<Response<Item>>');
   });
 
   test('joins the prefix and resolves protection per route', () {
@@ -80,6 +102,18 @@ void main() {
       ParameterSource.webSocket,
       ParameterSource.context,
     ]);
+  });
+
+  test('collects the DTOs that route signatures reach', () {
+    final found = {
+      for (final dto in dtos)
+        dto.type.getDisplayString(): (dto.encodes, dto.decodes),
+    };
+    expect(found, {
+      'Item': (true, true),
+      'Tag': (true, true),
+      'Page<Item>': (true, false),
+    });
   });
 
   test('knows which controllers it can construct itself', () {

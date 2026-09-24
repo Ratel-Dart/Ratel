@@ -1,7 +1,7 @@
 abstract final class DartLiteral {
   static String string(String value) {
     final escaped = value
-        .replaceAll(r'\', r'\')
+        .replaceAll(r'\', r'\\')
         .replaceAll("'", r"\'")
         .replaceAll(r'$', r'\$')
         .replaceAll('\n', r'\n')
