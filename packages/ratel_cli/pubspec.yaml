@@ -20,6 +20,7 @@ executables:
   ratel:
 
 dependencies:
+  analyzer: ">=14.4.0 <15.0.0"
   path: ^1.9.0
 
 dev_dependencies:
