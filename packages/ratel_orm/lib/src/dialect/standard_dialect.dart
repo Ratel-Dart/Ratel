@@ -3,6 +3,11 @@ import 'sql_dialect.dart';
 class StandardDialect implements SqlDialect {
   const StandardDialect();
 
+  static final RegExp _quoted =
+      RegExp(r'''(?:'(?:[^']|'')*')|(?:"(?:[^"]|"")*")''');
+
+  static final RegExp _returningKeyword = RegExp(r'\bRETURNING\b');
+
   @override
   bool get supportsReturning => true;
 
@@ -17,7 +22,8 @@ class StandardDialect implements SqlDialect {
     final isWrite = upper.startsWith('INSERT') ||
         upper.startsWith('UPDATE') ||
         upper.startsWith('DELETE');
-    if (isWrite && !upper.contains('RETURNING')) {
+    if (isWrite &&
+        !_returningKeyword.hasMatch(upper.replaceAll(_quoted, ' '))) {
       statement += ' RETURNING *';
     }
     return statement;

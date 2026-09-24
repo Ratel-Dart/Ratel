@@ -38,6 +38,52 @@ void main() {
       );
     });
 
+    test('appends when returning only appears inside a longer identifier', () {
+      const dialect = PostgresDialect();
+      expect(
+        dialect.applyReturning(
+          'UPDATE orders SET returning_customer = 1',
+          returning: true,
+        ),
+        'UPDATE orders SET returning_customer = 1 RETURNING *',
+      );
+      expect(
+        dialect.applyReturning(
+          'INSERT INTO orders (is_returning) VALUES (@r)',
+          returning: true,
+        ),
+        'INSERT INTO orders (is_returning) VALUES (@r) RETURNING *',
+      );
+    });
+
+    test('appends when returning only appears inside quotes', () {
+      const dialect = PostgresDialect();
+      expect(
+        dialect.applyReturning(
+          "INSERT INTO notes (body) VALUES ('it''s returning soon')",
+          returning: true,
+        ),
+        "INSERT INTO notes (body) VALUES ('it''s returning soon') RETURNING *",
+      );
+      expect(
+        dialect.applyReturning(
+          'UPDATE t SET "returning" = 1',
+          returning: true,
+        ),
+        'UPDATE t SET "returning" = 1 RETURNING *',
+      );
+    });
+
+    test('recognizes an existing lowercase returning clause', () {
+      expect(
+        const PostgresDialect().applyReturning(
+          "DELETE FROM t WHERE note = 'x' returning id",
+          returning: true,
+        ),
+        "DELETE FROM t WHERE note = 'x' returning id",
+      );
+    });
+
     test('does not append on SELECT and trims a trailing semicolon', () {
       const dialect = PostgresDialect();
       expect(dialect.applyReturning('SELECT 1;', returning: true), 'SELECT 1');
@@ -60,6 +106,10 @@ void main() {
         'LIMIT 10 OFFSET 20',
       );
       expect(const StandardDialect().limitOffset(limit: 5), 'LIMIT 5');
+    });
+
+    test('Postgres keeps OFFSET alone without a limit', () {
+      expect(const PostgresDialect().limitOffset(offset: 20), 'OFFSET 20');
     });
   });
 }
