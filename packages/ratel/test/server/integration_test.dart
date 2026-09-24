@@ -31,12 +31,14 @@ void main() {
     String method,
     String path, {
     String? token,
+    Map<String, String> headers = const {},
   }) async {
     final req =
         await client.openUrl(method, Uri.parse('http://127.0.0.1:$port$path'));
     if (token != null) {
       req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
     }
+    headers.forEach(req.headers.set);
     return req.close();
   }
 
@@ -87,7 +89,14 @@ void main() {
   });
 
   test('CORS preflight is answered with 204 and headers', () async {
-    final res = await send('OPTIONS', '/public');
+    final res = await send(
+      'OPTIONS',
+      '/public',
+      headers: {
+        'Origin': 'https://app.example',
+        'Access-Control-Request-Method': 'GET',
+      },
+    );
     expect(res.statusCode, 204);
     expect(res.headers.value('access-control-allow-origin'), isNotNull);
     await res.drain<void>();

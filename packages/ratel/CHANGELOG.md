@@ -170,6 +170,13 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- CorsMiddleware no longer joins every allowed origin into one
+  Access-Control-Allow-Origin header, which browsers reject. With an origin list
+  it echoes the request's Origin when it is allowed and adds Vary: Origin, sends
+  no CORS headers to other origins, and still sends '*' when the wildcard is
+  configured. It now answers only real preflights (OPTIONS carrying Origin and
+  Access-Control-Request-Method) itself, so @Options routes and 405 responses
+  work again.
 - `HEAD` on a `Response.sse` route answers with the stream's headers and closes,
   instead of streaming the body a `HEAD` must not carry.
 - Requests are dispatched concurrently. The serve loop used to `await` each
