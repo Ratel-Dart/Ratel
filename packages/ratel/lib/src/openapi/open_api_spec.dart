@@ -55,8 +55,11 @@ abstract final class OpenApiSpec {
 
     if (route.isProtected) {
       operation['security'] = [
-        {'bearerAuth': route.requiredRoles},
+        {'bearerAuth': <String>[]},
       ];
+      if (route.requiredRoles.isNotEmpty) {
+        operation['x-required-roles'] = route.requiredRoles;
+      }
     }
 
     return operation;
