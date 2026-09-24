@@ -15,6 +15,18 @@ void main() {
       expect(identical(a, b), isTrue);
     });
 
+    test('put replaces an instance already built by get', () {
+      final injector = Injector.scoped();
+      final first = FakeService();
+      final second = FakeService();
+      injector.put<FakeService>(() => first);
+      expect(identical(injector.get<FakeService>(), first), isTrue);
+
+      injector.put<FakeService>(() => second);
+
+      expect(identical(injector.get<FakeService>(), second), isTrue);
+    });
+
     test('throws when the requested type is not registered', () {
       expect(() => Injector().get<DateTime>(), throwsA(isA<Exception>()));
     });

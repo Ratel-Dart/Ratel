@@ -10,6 +10,7 @@ class Injector {
 
   void put<T>(T Function() factory) {
     _factories[T] = factory;
+    _instances.remove(T);
   }
 
   bool contains<T>() => _instances.containsKey(T) || _factories.containsKey(T);

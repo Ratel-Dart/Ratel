@@ -170,6 +170,8 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- `Injector.put` now drops any instance already cached for that type. The next
+  `get` builds from the new factory instead of returning the old instance.
 - `RatelServer.stop()` is now idempotent: calling it again, or a SIGINT arriving
   mid-shutdown, waits for the shutdown already running. It no longer runs
   `onShutdown` a second time or throws a `ConcurrentModificationError`. The 404
