@@ -2,6 +2,7 @@ import '../binding/route_binder.dart';
 import '../http/socket_handler.dart';
 import '../routing/route.dart';
 import '../routing/route_path.dart';
+import '../routing/socket_route.dart';
 import '../runtime/ratel_manifest.dart';
 import '../runtime/ratel_runtime.dart';
 import '../serialization/json_codecs.dart';
@@ -37,7 +38,7 @@ class RatelRegistry {
 
   final List<Route> routes = [];
 
-  final Map<String, SocketHandler> sockets = {};
+  final Map<String, SocketRoute> sockets = {};
 
   final List<void Function()> _controllerChecks = [];
 
@@ -62,13 +63,23 @@ class RatelRegistry {
     routes.add(route);
   }
 
-  void registerSocket(String path, SocketHandler handler) {
+  void registerSocket(
+    String path,
+    SocketHandler handler, {
+    bool isProtected = false,
+    List<String> requiredRoles = const [],
+  }) {
     final key = RoutePath.normalize(path);
     if (sockets.containsKey(key)) {
       throw StateError('Duplicate socket registered: $key');
     }
-    sockets[key] = handler;
+    sockets[key] = SocketRoute(
+      path: key,
+      handler: handler,
+      isProtected: isProtected,
+      requiredRoles: requiredRoles,
+    );
   }
 
-  SocketHandler? socketFor(String path) => sockets[RoutePath.normalize(path)];
+  SocketRoute? socketFor(String path) => sockets[RoutePath.normalize(path)];
 }

@@ -183,5 +183,30 @@ void main() {
       final socket = await WebSocket.connect('ws://127.0.0.1:$port/items/ws');
       expect(await socket.first, 'hello /items/ws');
     });
+
+    test('refuses a protected socket upgrade without a token', () async {
+      await expectLater(
+        WebSocket.connect('ws://127.0.0.1:$port/items/admin/ws'),
+        throwsA(isA<WebSocketException>().having(
+          (error) => error.httpStatusCode,
+          'httpStatusCode',
+          401,
+        )),
+      );
+    });
+
+    test('refuses a protected socket upgrade with an invalid token', () async {
+      await expectLater(
+        WebSocket.connect(
+          'ws://127.0.0.1:$port/items/member/ws',
+          headers: {HttpHeaders.authorizationHeader: 'Bearer not-a-token'},
+        ),
+        throwsA(isA<WebSocketException>().having(
+          (error) => error.httpStatusCode,
+          'httpStatusCode',
+          401,
+        )),
+      );
+    });
   });
 }

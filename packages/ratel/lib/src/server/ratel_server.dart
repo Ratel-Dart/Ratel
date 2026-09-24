@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../auth/jwt_authorizer.dart';
 import '../auth/jwt_validator.dart';
 import '../dependency_injector/bindings.dart';
 import '../exceptions/http_status_exception.dart';
@@ -16,6 +17,7 @@ import '../middleware/middleware.dart';
 import '../middleware/next.dart';
 import '../routing/route_match.dart';
 import '../routing/router.dart';
+import '../routing/socket_route.dart';
 import 'error_handler.dart';
 import 'ratel_registry.dart';
 
@@ -113,7 +115,7 @@ class RatelServer {
       if (jwtValidator != null) JwtAuthMiddleware.create(jwtValidator),
     ];
 
-    unawaited(_serve(server, chain));
+    unawaited(_serve(server, chain, jwtValidator));
   }
 
   Future<void> stop({bool force = false}) =>
@@ -129,10 +131,14 @@ class RatelServer {
     await onShutdown?.call();
   }
 
-  Future<void> _serve(HttpServer server, List<Middleware> chain) async {
+  Future<void> _serve(
+    HttpServer server,
+    List<Middleware> chain,
+    JwtValidator? jwtValidator,
+  ) async {
     await for (final request in server) {
       if (WebSocketTransformer.isUpgradeRequest(request)) {
-        unawaited(_upgrade(request));
+        unawaited(_upgrade(request, jwtValidator));
         continue;
       }
       unawaited(_dispatch(request, chain));
@@ -147,22 +153,47 @@ class RatelServer {
     }
   }
 
-  Future<void> _upgrade(HttpRequest request) async {
-    final handler = registry.socketFor(request.uri.path);
-    if (handler == null) {
+  Future<void> _upgrade(HttpRequest request, JwtValidator? jwtValidator) async {
+    final route = registry.socketFor(request.uri.path);
+    if (route == null) {
       await Response(
         statusCode: HttpStatus.notFound,
         data: {'error': 'Not Found'},
       ).send(request.response, codecs: registry.codecs);
       return;
     }
+    final ctx = RequestContext(request, registry: registry, limits: limits);
     try {
+      final refusal = await _authorizeSocket(route, ctx, jwtValidator);
+      if (refusal != null) {
+        await refusal.send(request.response, codecs: registry.codecs);
+        return;
+      }
       final socket = await WebSocketTransformer.upgrade(request);
-      await handler(
-          socket, RequestContext(request, registry: registry, limits: limits));
+      await route.handler(socket, ctx);
     } catch (e, stackTrace) {
       RatelLogger.instance
           .severe('Failed to handle a socket upgrade', e, stackTrace);
+    }
+  }
+
+  Future<Response?> _authorizeSocket(
+    SocketRoute route,
+    RequestContext ctx,
+    JwtValidator? jwtValidator,
+  ) async {
+    if (jwtValidator == null || !route.isProtected) return null;
+    try {
+      final claims = await JwtAuthorizer.claims(jwtValidator, ctx.request);
+      ctx.claims = claims;
+      JwtAuthorizer.requireRoles(claims, route.requiredRoles);
+      return null;
+    } on HttpStatusException catch (e) {
+      return Response(
+        statusCode: e.statusCode,
+        data: {'error': e.message},
+        headers: e.headers,
+      );
     }
   }
 

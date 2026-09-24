@@ -123,12 +123,15 @@ abstract final class ControllerScanner {
       routes.addAll(methodRoutes);
       final socket = RatelAnnotations.first(method, 'Socket');
       if (socket != null) {
+        final protection = _protection(method, classProtected);
         sockets.add(ScannedSocket(
           methodName: method.name ?? '',
           path: RoutePath.join(
             prefix,
             ConstantValues.string(socket, 'path') ?? '',
           ),
+          isProtected: protection != null,
+          roles: ConstantValues.strings(protection, 'roles'),
           parameters: ParameterScanner.socket(method),
         ));
       }
@@ -151,9 +154,7 @@ abstract final class ControllerScanner {
         in RatelAnnotations.verbs.entries) {
       final route = RatelAnnotations.first(method, annotationName);
       if (route == null) continue;
-      final methodProtected = RatelAnnotations.first(method, 'Protected');
-      final isPublic = RatelAnnotations.has(method, 'Public');
-      final effective = methodProtected ?? (isPublic ? null : classProtected);
+      final effective = _protection(method, classProtected);
       routes.add(ScannedRoute(
         methodName: method.name ?? '',
         verb: verb,
@@ -165,5 +166,15 @@ abstract final class ControllerScanner {
       ));
     }
     return routes;
+  }
+
+  static DartObject? _protection(
+    MethodElement method,
+    DartObject? classProtected,
+  ) {
+    final methodProtected = RatelAnnotations.first(method, 'Protected');
+    if (methodProtected != null) return methodProtected;
+    if (RatelAnnotations.has(method, 'Public')) return null;
+    return classProtected;
   }
 }

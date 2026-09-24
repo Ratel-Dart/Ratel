@@ -170,6 +170,12 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- @Protected now applies to @Socket routes. A socket on a @Protected controller,
+  or with its own @Protected, was upgraded for anyone. `SocketDefinition` takes
+  `isProtected` and `requiredRoles`, and when `jwtKey` is set `RatelServer`
+  refuses the upgrade with 401 or 403 and passes the token's claims to the
+  socket's `RequestContext`. `RatelRegistry.socketFor` now returns a
+  `SocketRoute`.
 - `startServer` now fails before binding the port when a controller can be
   neither built from the injector nor through a no-argument constructor. Before,
   the server started and every request to that controller answered 500.

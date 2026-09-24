@@ -45,6 +45,7 @@ export 'src/routing/parameter_location.dart';
 export 'src/routing/route.dart';
 export 'src/routing/route_handler.dart';
 export 'src/routing/route_parameter.dart';
+export 'src/routing/socket_route.dart';
 export 'src/serialization/json_codecs.dart';
 export 'src/server/error_handler.dart';
 export 'src/server/ratel_cluster.dart';

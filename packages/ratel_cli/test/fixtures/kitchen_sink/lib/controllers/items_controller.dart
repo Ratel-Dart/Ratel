@@ -36,9 +36,23 @@ class ItemsController {
   @Get('/admin/secret')
   Future<Response> secret() async => Response.json(data: {'secret': true});
 
+  @Public()
   @Socket('/ws')
   Future<void> chat(WebSocket socket, RequestContext ctx) async {
     socket.add('hello ${ctx.path}');
+    await socket.close();
+  }
+
+  @Socket('/admin/ws')
+  Future<void> adminChat(WebSocket socket) async {
+    socket.add('admin');
+    await socket.close();
+  }
+
+  @Protected()
+  @Socket('/member/ws')
+  Future<void> memberChat(WebSocket socket) async {
+    socket.add('member');
     await socket.close();
   }
 }
