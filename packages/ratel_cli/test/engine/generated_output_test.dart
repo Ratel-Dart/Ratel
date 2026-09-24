@@ -16,7 +16,7 @@ import '../support/engine_harness.dart';
 
 void main() {
   final output = EngineHarness.output('kitchen_sink', GenerationMode.build);
-  final manifest = p.join(output, 'manifest.dart');
+  final manifest = p.join(output, 'ratel_app_manifest.dart');
   final entry = p.join(output, 'server.dart');
 
   setUpAll(() async {

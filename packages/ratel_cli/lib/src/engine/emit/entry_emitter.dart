@@ -4,7 +4,7 @@ import 'import_allocator.dart';
 import 'manifest_emitter.dart';
 
 abstract final class EntryEmitter {
-  static const manifestFile = 'manifest.dart';
+  static const manifestFile = 'ratel_app_manifest.dart';
 
   static String emit({
     required String entrypointImport,

@@ -43,6 +43,16 @@ jobs:
       - name: Analyze
         run: dart analyze
 
+      - name: Test the hygiene checker
+        run: dart test
+        working-directory: tool/hygiene
+
+      - name: Check hygiene
+        run: dart run tool/hygiene/bin/check.dart tool/hygiene packages/ratel_cli
+
+      - name: Check that nothing carries comments
+        run: dart run tool/hygiene/bin/check.dart --only dart-comment --only config-comment .
+
       - name: Test ratel
         run: dart test
         working-directory: packages/ratel
@@ -65,6 +75,14 @@ jobs:
       - name: Compile a native binary (AOT guard)
         run: dart run ../ratel_cli/bin/ratel.dart build example/main.dart
         working-directory: packages/ratel
+
+      - name: Check hygiene of the generated code
+        run: dart run tool/hygiene/bin/check.dart packages/ratel/.dart_tool/ratel
+
+      - name: Check hygiene of a scaffolded app
+        run: |
+          dart run packages/ratel_cli/bin/ratel.dart create "$RUNNER_TEMP/hygiene_app"
+          dart run tool/hygiene/bin/check.dart "$RUNNER_TEMP/hygiene_app"
 
   windows:
     runs-on: windows-latest
