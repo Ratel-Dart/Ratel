@@ -16,6 +16,7 @@ abstract final class ProjectScaffold {
       _helloController(name),
     );
     _write(target, p.join('bin', 'server.dart'), _server);
+    _write(target, p.join('test', 'hello_test.dart'), _helloTest);
     _write(target, 'README.md', _readme(name));
   }
 
@@ -101,6 +102,35 @@ Future<void> main() async {
 }
 ''';
 
+  static const _helloTest = '''
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:ratel/ratel.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late RatelServer server;
+
+  setUpAll(() async {
+    server = RatelServer(port: 0);
+    await server.startServer();
+  });
+
+  tearDownAll(() => server.stop(force: true));
+
+  test('GET /hello greets the caller', () async {
+    final client = HttpClient();
+    addTearDown(client.close);
+    final request =
+        await client.get('localhost', server.boundPort!, '/hello?name=Ada');
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+    expect(jsonDecode(body), {'message': 'Hello, Ada!'});
+  });
+}
+''';
+
   static String _readme(String name) => '''
 # $name
 
@@ -117,6 +147,16 @@ a file changes. Set `PORT` to listen elsewhere.
 
 Start the app through `ratel`, not `dart run`: the CLI discovers the
 `@Controller` classes and wires their routes before `main` runs.
+
+## Test
+
+```
+ratel test
+```
+
+`ratel test` wires the routes before each test file runs, so a test can start
+a `RatelServer` and call it over HTTP. A test that calls a controller directly
+also runs with plain `dart test`.
 
 ## Build a native binary
 

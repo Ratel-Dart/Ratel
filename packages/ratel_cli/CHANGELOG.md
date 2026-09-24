@@ -16,7 +16,12 @@
   `--` are forwarded to `main`.
 - `ratel build` compiles to `build/<entrypoint>`, or uses `dart build cli`
   when a dependency ships build hooks.
+- `ratel test` runs each test file through a wrapper in `.dart_tool/ratel/test/`
+  that installs the route manifest first, so HTTP tests reach the app's routes.
+  The wrapper keeps the file's library annotations (`@Tags`, `@Timeout`, and so
+  on), and arguments after `--` go to `dart test`.
 - `ratel create` scaffolds a pubspec without code generation dependencies,
-  the model and the controller in separate files, and no comments anywhere.
+  the model and the controller in separate files, a sample HTTP test, and no
+  comments anywhere.
 - Before it generates anything, the CLI checks that it matches the runtime
   contract of the `ratel` the app resolves.

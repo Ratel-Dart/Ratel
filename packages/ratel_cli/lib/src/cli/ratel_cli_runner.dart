@@ -4,6 +4,7 @@ import 'build_command.dart';
 import 'create_command.dart';
 import 'dev_command.dart';
 import 'ratel_cli_version.dart';
+import 'test_command.dart';
 
 final class RatelCliRunner {
   static const _usage = '''
@@ -15,6 +16,7 @@ Commands:
   create <name>                 Scaffold a new Ratel application.
   dev [entrypoint] [-- args]    Run the app and restart it on every change.
   build [entrypoint]            Compile the app to a native binary in build/.
+  test [paths] [-- args]        Run the tests with the app's routes wired.
 
 Options:
   -h, --help                    Show this help.
@@ -43,6 +45,8 @@ Options:
         return DevCommand.run(rest);
       case 'build':
         return BuildCommand.run(rest);
+      case 'test':
+        return TestCommand.run(rest);
       default:
         stderr
           ..writeln('Unknown command: ${arguments.first}')

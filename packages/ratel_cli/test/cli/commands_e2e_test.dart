@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:ratel_cli/src/process/dart_sdk.dart';
 import 'package:test/test.dart';
 
 import '../support/cli_harness.dart';
@@ -63,6 +64,21 @@ void main() {
     expect(jsonDecode(body), {'message': 'Hello, Ada!'});
   }, timeout: const Timeout(Duration(minutes: 5)));
 
+  test('ratel test wires the routes where plain dart test cannot', () async {
+    final wired = await cli.run(['test'], workingDirectory: app.path);
+    expect(wired.exitCode, 0, reason: '${wired.stdout}${wired.stderr}');
+    final wrapper = File(p.join(app.path, '.dart_tool', 'ratel', 'test',
+        'suites', 'test', 'hello_test.dart'));
+    expect(wrapper.existsSync(), isTrue);
+
+    final plain = await Process.run(
+      DartSdk.dart,
+      ['test'],
+      workingDirectory: app.path,
+    );
+    expect(plain.exitCode, isNot(0));
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
   test(
       'ratel dev serves, restarts on change, survives errors and dies with '
       'the CLI', () async {
@@ -87,6 +103,7 @@ void main() {
     final controller =
         File(p.join(app.path, 'lib', 'controllers', 'hello_controller.dart'));
     final original = controller.readAsStringSync();
+    addTearDown(() => controller.writeAsStringSync(original));
     controller.writeAsStringSync(original.replaceFirst(
       '  @Get(\'/\')',
       "  @Get('/bye')\n"

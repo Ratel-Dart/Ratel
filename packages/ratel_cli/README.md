@@ -12,6 +12,7 @@ dart pub global activate ratel_cli
 | `ratel create <name>` | Scaffold a new application. |
 | `ratel dev [entrypoint] [-- args]` | Run the app and restart it on every change. Arguments after `--` reach the app's `main`. |
 | `ratel build [entrypoint]` | Compile a native binary into `build/`. |
+| `ratel test [paths] [-- args]` | Run the tests with the routes wired. Arguments after `--` go to `dart test`. |
 
 The entrypoint defaults to `bin/server.dart`, or the only file in `bin/`.
 
@@ -21,7 +22,10 @@ The CLI reads the app with the Dart analyzer. It finds every `@Controller` and
 `@Json` class in `lib/` and next to the entrypoint, checks them, and writes a
 route manifest plus an entry that installs it into `.dart_tool/ratel/`. That
 entry is what actually runs, so the app's own code never imports anything
-generated, and no build_runner or extra dependency is needed.
+generated, and no build_runner or extra dependency is needed. `ratel test` runs
+each test file through a wrapper that installs the same manifest first, keeping
+the file's own tags and settings; a test that calls a controller directly also
+runs with plain `dart test`.
 
 Mistakes surface as `file:line` diagnostics before anything starts: a route
 annotation on a class without `@Controller`, a private controller, a `@Body`
