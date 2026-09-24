@@ -20,8 +20,8 @@
 | Package | Version | What it is |
 |---|---|---|
 | [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT and middleware. It has no database layer. |
-| [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev` and `build`. It discovers controllers with the Dart analyzer and keeps the wiring under `.dart_tool/`. Installed globally, released in lockstep with `ratel`. |
-| [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) | `0.1.0-dev.1` | Lives in its own repository. The driver contract, the Postgres and SQLite drivers, repositories, a query builder, dialects and migrations. It does not depend on `ratel`. |
+| [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev`, `build` and `test`. It discovers controllers and `@Entity` classes with the Dart analyzer and keeps the route and entity manifests under `.dart_tool/`, for `ratel` apps, `ratel_orm`-only projects and both together. Installed globally, released in lockstep with `ratel`. |
+| [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) | `0.2.0-dev.1` | Lives in its own repository. The driver contract, the Postgres and SQLite drivers, `@Entity` mapping, repositories, a query builder, dialects and migrations. It does not depend on `ratel`. |
 
 The framework and the ORM are independent projects, like NestJS and Prisma, and
 live in separate repositories. An HTTP app can talk to its database through any
@@ -59,9 +59,22 @@ dart analyze
 
 The `ratel_cli` tests include end-to-end runs tagged `e2e`: they compile the
 CLI, scaffold an app, build it and drive `ratel dev`. Skip them with
-`dart test -x e2e`. The fixture apps under `packages/ratel_cli/test/fixtures`
-are workspace members so they resolve with everything else. Requires the Dart
-SDK `3.6.0` or newer.
+`dart test -x e2e`. Requires the Dart SDK `3.6.0` or newer.
+
+The fixture apps `kitchen_sink` and `broken_app` under
+`packages/ratel_cli/test/fixtures` are workspace members, so they resolve with
+everything else. The ORM fixtures `orm_only`, `orm_app` and `broken_orm` are
+not: the tests tagged `orm` copy each one to a temporary directory and run
+`dart pub get` there, which fetches `ratel_orm` from GitHub at the tag the
+fixture pins. They also need a system SQLite that supports `RETURNING`
+(3.35 or newer; on Debian and Ubuntu, `libsqlite3-dev`). Skip them with
+`dart test -x orm`, as the Windows CI job does. To test against a local
+checkout of `ratel_orm` instead of the pinned tag, point `RATEL_ORM_PATH` at
+it, for example at a clone next to this repository:
+
+```sh
+(cd packages/ratel_cli && RATEL_ORM_PATH=../../../ratel_orm dart test)
+```
 
 CI compiles the example to a native binary, so anything that breaks ahead-of-time compilation fails there rather
 than in a user's deployment.

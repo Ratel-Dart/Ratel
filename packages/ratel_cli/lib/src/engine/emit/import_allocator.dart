@@ -1,13 +1,30 @@
+import '../../project/project_runtimes.dart';
+import '../analysis/runtime_contract_reader.dart';
 import 'import_uris.dart';
 
 final class ImportAllocator {
-  ImportAllocator(this._uris);
+  ImportAllocator(this._uris, {required ProjectRuntimes runtimes})
+      : _runtimes = runtimes;
 
   final ImportUris _uris;
+  final ProjectRuntimes _runtimes;
   final Map<String, String> _prefixes = {};
 
   static const runtimePrefix = 'r';
-  static const runtimeUri = 'package:ratel/runtime.dart';
+  static const runtimeUri = RuntimeContractReader.ratelLibrary;
+  static const ormPrefix = 'o';
+  static const ormUri = RuntimeContractReader.ormLibrary;
+
+  static Map<String, String> runtimeImports(ProjectRuntimes runtimes) => {
+        if (runtimes.framework) runtimeUri: runtimePrefix,
+        if (runtimes.orm) ormUri: ormPrefix,
+      };
+
+  static List<String> runtimeDirectives(ProjectRuntimes runtimes) => [
+        for (final MapEntry(key: uri, value: prefix)
+            in runtimeImports(runtimes).entries)
+          "import '$uri' as $prefix;",
+      ];
 
   String? prefixFor(Uri library) {
     if (library.toString() == 'dart:core') return null;
@@ -19,7 +36,7 @@ final class ImportAllocator {
 
   List<String> directives({Map<String, String?> extra = const {}}) {
     final all = <String, String?>{
-      runtimeUri: runtimePrefix,
+      ...runtimeImports(_runtimes),
       ..._prefixes,
       ...extra,
     };

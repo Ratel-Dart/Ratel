@@ -36,7 +36,8 @@ Options:
       case '-v' || '--version':
         stdout.writeln(
           'ratel_cli ${RatelCliVersion.current} '
-          '(runtime contract ${RatelCliVersion.contract})',
+          '(runtime contract ${RatelCliVersion.contract}, '
+          'ratel_orm contract ${RatelCliVersion.ormContract})',
         );
         return 0;
       case 'create':

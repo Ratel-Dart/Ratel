@@ -14,4 +14,18 @@ abstract final class DiagnosticCodes {
   static const unsupportedMain = 'ratel_unsupported_main';
   static const missingMain = 'ratel_missing_main';
   static const noControllers = 'ratel_no_controllers';
+  static const entityAbstract = 'ratel_entity_abstract';
+  static const entityGeneric = 'ratel_entity_generic';
+  static const entityNoId = 'ratel_entity_no_id';
+  static const entityMultipleIds = 'ratel_entity_multiple_ids';
+  static const entityNotConstructible = 'ratel_entity_not_constructible';
+  static const entityUnsettableField = 'ratel_entity_unsettable_field';
+  static const entityUnsupportedType = 'ratel_entity_unsupported_type';
+  static const entityPrivateField = 'ratel_entity_private_field';
+  static const entityEmptyName = 'ratel_entity_empty_name';
+  static const entityColumnClash = 'ratel_entity_column_clash';
+  static const entityTableClash = 'ratel_entity_table_clash';
+  static const ormAnnotationMisplaced = 'ratel_orm_annotation_misplaced';
+  static const repositoryNotEntity = 'ratel_repository_not_entity';
+  static const repositoryIdMismatch = 'ratel_repository_id_mismatch';
 }

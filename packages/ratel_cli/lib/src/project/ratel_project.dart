@@ -10,8 +10,9 @@ final class RatelProject {
   final String root;
   final String name;
 
-  static const entrypointHelp = 'Could not find the application entrypoint.\n'
-      'Create bin/server.dart, or pass one explicitly: ratel dev <path>';
+  static const entrypointHelp = 'Could not find the entrypoint.\n'
+      'Create bin/server.dart, keep a single .dart file in bin/, or pass it '
+      'explicitly: ratel dev <path> or ratel build <path>';
 
   static RatelProject? locate(Directory from) {
     var directory = Directory(from.absolute.resolveSymbolicLinksSync());

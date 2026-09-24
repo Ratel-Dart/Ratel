@@ -7,6 +7,7 @@ import 'package:ratel_cli/src/process/dart_sdk.dart';
 import 'package:test/test.dart';
 
 import '../support/engine_harness.dart';
+import '../support/orm_fixture.dart';
 
 void main() {
   String versionOf(String pubspecPath) =>
@@ -29,8 +30,33 @@ void main() {
     );
     addTearDown(analyzer.dispose);
     expect(
-      await RuntimeContractReader.read(analyzer.session),
+      await RuntimeContractReader.read(
+        analyzer.session,
+        library: RuntimeContractReader.ratelLibrary,
+        runtime: RuntimeContractReader.ratelRuntime,
+      ),
       RatelCliVersion.contract,
     );
   });
+
+  test(
+    'the CLI generates for the contract ratel_orm declares',
+    () async {
+      final workspace =
+          await Directory.systemTemp.createTemp('ratel_orm_contract');
+      addTearDown(() => workspace.delete(recursive: true));
+      final app = await OrmFixture.copy('orm_only', workspace);
+      final analyzer = ProjectAnalyzer(root: app.path, sdkPath: DartSdk.root);
+      addTearDown(analyzer.dispose);
+      expect(
+        await RuntimeContractReader.read(
+          analyzer.session,
+          library: RuntimeContractReader.ormLibrary,
+          runtime: RuntimeContractReader.ormRuntime,
+        ),
+        RatelCliVersion.ormContract,
+      );
+    },
+    tags: 'orm',
+  );
 }

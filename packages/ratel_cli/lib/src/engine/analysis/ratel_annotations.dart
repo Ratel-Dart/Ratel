@@ -2,7 +2,11 @@ import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 
+import 'package_annotations.dart';
+
 abstract final class RatelAnnotations {
+  static const package = 'ratel';
+
   static const verbs = {
     'Get': 'GET',
     'Post': 'POST',
@@ -13,27 +17,17 @@ abstract final class RatelAnnotations {
     'Options': 'OPTIONS',
   };
 
-  static DartObject? first(Element element, String name) {
-    for (final annotation in element.metadata.annotations) {
-      final value = annotation.computeConstantValue();
-      final type = value?.type;
-      if (type != null && isRatelType(type, name)) return value;
-    }
-    return null;
-  }
+  static DartObject? first(Element element, String name) =>
+      PackageAnnotations.first(element, package, name);
 
-  static bool has(Element element, String name) => first(element, name) != null;
+  static bool has(Element element, String name) =>
+      PackageAnnotations.has(element, package, name);
 
-  static bool isRatelType(DartType type, String name) {
-    if (type is! InterfaceType) return false;
-    final element = type.element;
-    return element.name == name && isRatelLibrary(element.library.uri);
-  }
+  static bool isRatelType(DartType type, String name) =>
+      PackageAnnotations.isType(type, package, name);
 
   static bool isRatelLibrary(Uri uri) =>
-      uri.isScheme('package') &&
-      uri.pathSegments.isNotEmpty &&
-      uri.pathSegments.first == 'ratel';
+      PackageAnnotations.isLibrary(uri, package);
 
   static bool isWebSocket(DartType type) {
     if (type is! InterfaceType) return false;

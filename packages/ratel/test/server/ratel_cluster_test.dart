@@ -7,7 +7,6 @@ import 'package:test/test.dart';
 
 import '../support/cluster_probe.dart';
 import '../support/cluster_run_recorder.dart';
-import '../support/fixtures/definitions/binding_controller_definition.dart';
 
 void main() {
   Route pingRoute() => Route(
@@ -107,22 +106,26 @@ void main() {
   });
 
   test('every isolate of a cluster gets the installed manifest', () async {
-    RatelRuntime.install(
-      const RatelManifest(controllers: [BindingControllerDefinition.value]),
-    );
+    RatelRuntime.install(ClusterProbe.manifest);
     final dir = await Directory.systemTemp.createTemp('ratel_cluster');
     addTearDown(() => dir.delete(recursive: true));
 
     await RatelCluster.run(ClusterProbe.record, isolates: 3, args: [dir.path]);
 
-    final deadline = DateTime.now().add(const Duration(seconds: 10));
-    while (dir.listSync().length < 3 && DateTime.now().isBefore(deadline)) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-    final counts = [
-      for (final file in dir.listSync().whereType<File>())
-        file.readAsStringSync(),
-    ];
-    expect(counts, ['5', '5', '5']);
+    expect(await ClusterProbe.recordsIn(dir, 3), ['5', '5', '5']);
+  });
+
+  test('every isolate of a cluster runs the isolate setup once', () async {
+    RatelRuntime.install(ClusterProbe.manifest);
+    final dir = await Directory.systemTemp.createTemp('ratel_cluster');
+    addTearDown(() => dir.delete(recursive: true));
+
+    await RatelCluster.run(
+      ClusterProbe.recordSetups,
+      isolates: 3,
+      args: [dir.path],
+    );
+
+    expect(await ClusterProbe.recordsIn(dir, 3), ['1', '1', '1']);
   });
 }

@@ -10,6 +10,7 @@ import 'package:ratel_cli/src/engine/model/generation_mode.dart';
 import 'package:ratel_cli/src/engine/output_writer.dart';
 import 'package:ratel_cli/src/engine/project_analyzer.dart';
 import 'package:ratel_cli/src/process/dart_sdk.dart';
+import 'package:ratel_cli/src/project/runtime_compatibility.dart';
 
 final class ScratchProject {
   ScratchProject._(this.root, this.name)
@@ -23,10 +24,14 @@ final class ScratchProject {
 
   String get output => p.join(root, '.dart_tool', 'ratel', 'build');
 
+  ProjectAnalyzer get analyzer => _analyzer;
+
   static Future<ScratchProject> create(
     String name,
     Map<String, String> files, {
     Map<String, Map<String, String>> packages = const {},
+    Map<String, String> external = const {},
+    bool framework = true,
   }) async {
     final temp = await Directory.systemTemp.createTemp('ratel_$name');
     final root = p.normalize(temp.resolveSymbolicLinksSync());
@@ -49,15 +54,27 @@ final class ScratchProject {
     if (workspace == null) {
       throw StateError('Run the tests from inside the Ratel workspace.');
     }
+    final hidden = {
+      ...roots.keys,
+      ...external.keys,
+      if (!framework) 'ratel',
+    };
     final config = PackageConfig([
       for (final package in workspace.packages)
-        if (!roots.containsKey(package.name)) package,
+        if (!hidden.contains(package.name)) package,
       for (final MapEntry(key: package, value: directory) in roots.entries)
         Package(
           package,
           Uri.directory(directory),
           packageUriRoot: Uri.directory(p.join(directory, 'lib')),
           languageVersion: LanguageVersion(3, 13),
+        ),
+      for (final MapEntry(key: package, value: directory) in external.entries)
+        Package(
+          package,
+          Uri.directory(directory),
+          packageUriRoot: Uri.directory(p.join(directory, 'lib')),
+          languageVersion: LanguageVersion(3, 6),
         ),
     ]);
     final buffer = StringBuffer();
@@ -66,11 +83,18 @@ final class ScratchProject {
     return ScratchProject._(root, name);
   }
 
-  Future<GenerationResult> generate({bool write = false}) async {
+  Future<GenerationResult> generate({
+    bool write = false,
+    String? entrypoint,
+  }) async {
+    final (:runtimes, :error) = await RuntimeCompatibility.check(_analyzer);
+    if (runtimes == null) throw StateError('$error');
     final run = GenerationRun(
       analyzer: _analyzer,
       packageName: name,
       mode: GenerationMode.build,
+      runtimes: runtimes,
+      entrypoint: entrypoint == null ? null : p.join(root, entrypoint),
     );
     final result = await run.run();
     if (write && !result.hasErrors) {

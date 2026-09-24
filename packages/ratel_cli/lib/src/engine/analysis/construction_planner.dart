@@ -8,7 +8,11 @@ import '../model/scanned_field.dart';
 import 'element_queries.dart';
 
 abstract final class ConstructionPlanner {
-  static ({ConstructionPlan? plan, String? problem}) plan(InterfaceType type) {
+  static ({ConstructionPlan? plan, String? problem}) plan(
+    InterfaceType type, {
+    List<ScannedField>? properties,
+    String matched = 'field or getter',
+  }) {
     final element = type.element;
     final name = element.name ?? '';
     if (element is! ClassElement || element.isAbstract || element.isSealed) {
@@ -21,14 +25,14 @@ abstract final class ConstructionPlanner {
     if (constructor == null) {
       return (plan: null, problem: '$name has no public unnamed constructor');
     }
-    final properties = {
-      for (final property in ElementQueries.properties(type))
+    final byName = {
+      for (final property in properties ?? ElementQueries.properties(type))
         property.name: property,
     };
     final arguments = <ConstructorArgument>[];
     final skipped = <ConstructorArgument>[];
     for (final parameter in constructor.formalParameters) {
-      final property = _property(parameter, properties);
+      final property = _property(parameter, byName);
       final argument = ConstructorArgument(
         element: parameter,
         name: parameter.name ?? '',
@@ -43,7 +47,7 @@ abstract final class ConstructionPlanner {
           return (
             plan: null,
             problem: 'the required constructor parameter ${argument.name} '
-                'matches no field or getter of $name',
+                'matches no $matched of $name',
           );
         }
         if (!argument.isNamed) skipped.add(argument);
@@ -62,7 +66,8 @@ abstract final class ConstructionPlanner {
         arguments: arguments,
         assignments: [
           for (final field in ElementQueries.assignableFields(type))
-            if (!covered.contains(field.name)) field,
+            if (!covered.contains(field.name) && byName.containsKey(field.name))
+              field,
         ],
       ),
       problem: null,

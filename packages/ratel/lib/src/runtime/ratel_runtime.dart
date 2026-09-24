@@ -11,6 +11,9 @@ abstract final class RatelRuntime {
     final current = _installed;
     if (current == null) {
       _installed = manifest;
+      for (final setup in manifest.isolateSetup) {
+        setup();
+      }
       return;
     }
     if (identical(current, manifest)) return;

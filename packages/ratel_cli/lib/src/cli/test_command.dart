@@ -49,6 +49,7 @@ abstract final class TestCommand {
             suite: suite,
             wrapperDirectory: p.dirname(wrapper),
             manifestDirectory: run.outputDirectory,
+            runtimes: prepared.runtimes,
           ),
         ));
       }

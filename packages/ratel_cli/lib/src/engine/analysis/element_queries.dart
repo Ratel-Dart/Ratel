@@ -33,6 +33,12 @@ abstract final class ElementQueries {
             constructor.isDefaultConstructor && !constructor.isPrivate,
       );
 
+  static bool declaresName(DartType type) {
+    if (type is! InterfaceType) return false;
+    final getter = type.lookUpGetter('name', type.element.library);
+    return getter != null && !getter.library.uri.isScheme('dart');
+  }
+
   static List<InterfaceType> lineage(InterfaceType type) {
     final chain = <InterfaceType>[];
     InterfaceType? current = type;

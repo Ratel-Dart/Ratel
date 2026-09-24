@@ -1,10 +1,12 @@
 import 'package:analyzer/dart/element/type.dart';
 
+import '../../project/project_runtimes.dart';
 import '../model/parameter_source.dart';
 import '../model/scanned_app.dart';
 import '../model/scanned_controller.dart';
 import '../model/scanned_parameter.dart';
 import 'dart_literal.dart';
+import 'entity_manifest_emitter.dart';
 import 'import_allocator.dart';
 import 'import_uris.dart';
 import 'json_codec_emitter.dart';
@@ -12,18 +14,26 @@ import 'name_allocator.dart';
 import 'type_emitter.dart';
 
 final class ManifestEmitter {
-  ManifestEmitter(ImportUris uris) : _imports = ImportAllocator(uris) {
+  ManifestEmitter(ImportUris uris, {bool entities = false})
+      : _entities = entities,
+        _imports = ImportAllocator(
+          uris,
+          runtimes: ProjectRuntimes(framework: true, orm: entities),
+        ) {
     _types = TypeEmitter(_imports);
   }
 
   static const className = 'RatelAppManifest';
+  static const file = 'ratel_app_manifest.dart';
 
+  final bool _entities;
   final ImportAllocator _imports;
   late final TypeEmitter _types;
   final NameAllocator _names = NameAllocator();
   final List<String> _members = [];
 
   static const _r = ImportAllocator.runtimePrefix;
+  static const _o = ImportAllocator.ormPrefix;
 
   String emit(ScannedApp app) {
     final controllers = [for (final c in app.controllers) _controller(c)];
@@ -38,15 +48,27 @@ final class ManifestEmitter {
       ..writeln('    ],')
       ..writeln('    jsonCodecs: [')
       ..write(codecs)
-      ..writeln('    ],')
-      ..writeln('  );');
+      ..writeln('    ],');
+    if (_entities) {
+      final install = _names.allocate(['install', 'Entities']);
+      body.writeln('    isolateSetup: [$install],');
+      _members.add(
+        '  static void $install() =>\n'
+        '      $_o.RatelOrmRuntime.install('
+        '${EntityManifestEmitter.className}.manifest);\n',
+      );
+    }
+    body.writeln('  );');
     for (final member in _members) {
       body
         ..writeln()
         ..write(member);
     }
     body.writeln('}');
-    return '${_imports.directives().join('\n\n')}\n\n$body';
+    final directives = _imports.directives(
+      extra: {if (_entities) EntityManifestEmitter.file: null},
+    );
+    return '${directives.join('\n\n')}\n\n$body';
   }
 
   String _controller(ScannedController controller) {

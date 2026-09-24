@@ -1,6 +1,10 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  exclude:
+    - test/fixtures/broken_orm/**
+    - test/fixtures/orm_app/**
+    - test/fixtures/orm_only/**
   errors:
     avoid_print: warning
     empty_catches: warning
