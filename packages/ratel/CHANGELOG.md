@@ -170,6 +170,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- A missing required path, query, header or cookie parameter now gets a 400 that
+  names the parameter instead of a 500. A JSON body whose field types do not
+  match the model (for example `"id":"x"` for an int field) now gets a 400 that
+  names the body type instead of a 500.
 - OpenAPI output is now valid for routes that require roles. The bearerAuth
   security requirement uses an empty scope list, as OpenAPI 3.0 requires for
   http bearer schemes. The roles now appear in an `x-required-roles` extension

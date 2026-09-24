@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../exceptions/bad_request_exception.dart';
 import '../http/multipart_data.dart';
 import '../http/multipart_parser.dart';
 import '../http/request_body_reader.dart';
@@ -48,25 +49,19 @@ abstract final class ArgumentResolver {
     MultipartData? multipart,
   ) async =>
       switch (parameter.location) {
-        ParameterLocation.path => RequestParameters.coerce(
-            parameter.name,
-            ctx.pathParams[parameter.name],
-            parameter.type,
-          ),
-        ParameterLocation.query => RequestParameters.coerce(
-            parameter.name,
+        ParameterLocation.path =>
+          _coerce(parameter, ctx.pathParams[parameter.name]),
+        ParameterLocation.query => _coerce(
+            parameter,
             ctx.request.uri.queryParameters[parameter.name],
-            parameter.type,
           ),
-        ParameterLocation.header => RequestParameters.coerce(
-            parameter.name,
+        ParameterLocation.header => _coerce(
+            parameter,
             ctx.request.headers.value(parameter.name),
-            parameter.type,
           ),
-        ParameterLocation.cookie => RequestParameters.coerce(
-            parameter.name,
+        ParameterLocation.cookie => _coerce(
+            parameter,
             RequestParameters.cookieValue(ctx.request.cookies, parameter.name),
-            parameter.type,
           ),
         ParameterLocation.body =>
           _decodeBody(parameter, await _bodyJson(ctx, multipart), codecs),
@@ -74,6 +69,13 @@ abstract final class ArgumentResolver {
         ParameterLocation.multipart => multipart,
         ParameterLocation.webSocket => null,
       };
+
+  static Object? _coerce(RouteParameter parameter, String? value) {
+    if (value == null && parameter.isRequired) {
+      throw BadRequestException('Parameter "${parameter.name}" is required');
+    }
+    return RequestParameters.coerce(parameter.name, value, parameter.type);
+  }
 
   static Future<Map<String, dynamic>> _bodyJson(
     RequestContext ctx,
@@ -102,6 +104,12 @@ abstract final class ArgumentResolver {
         'parameter "${parameter.name}".',
       );
     }
-    return decode(json);
+    try {
+      return decode(json);
+    } on TypeError {
+      throw BadRequestException(
+        'Request body does not match ${parameter.type}',
+      );
+    }
   }
 }
