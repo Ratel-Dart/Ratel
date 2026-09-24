@@ -24,7 +24,7 @@ void main() {
         jsonCodecs: [NewUserCodec.definition],
       ),
     );
-    spec = openApiSpec(registry.routes, title: 'Users', version: '2.0');
+    spec = OpenApiSpec.build(registry.routes, title: 'Users', version: '2.0');
   });
 
   test('describes itself with the given title and version', () {

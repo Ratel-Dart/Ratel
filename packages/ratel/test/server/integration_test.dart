@@ -12,7 +12,7 @@ void main() {
   final server = RatelServer(
     port: 0,
     jwtKey: 'secret',
-    middlewares: [corsMiddleware(), securityHeadersMiddleware()],
+    middlewares: [CorsMiddleware.create(), SecurityHeadersMiddleware.create()],
     registry: RatelRegistry.fromManifest(
       const RatelManifest(controllers: [SecuredApiControllerDefinition.value]),
     ),

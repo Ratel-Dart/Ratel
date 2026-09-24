@@ -124,26 +124,26 @@ void main() {
     });
   });
 
-  group('JwtAuthMiddleware.validateToken', () {
-    final middleware = JwtAuthMiddleware('secret');
+  group('JwtValidator.validateToken', () {
+    final validator = JwtValidator('secret');
 
     String token({Duration? expiresIn}) =>
         JWT({'sub': 'user-1'}).sign(SecretKey('secret'), expiresIn: expiresIn);
 
     test('accepts a valid token carrying exp', () {
       final claims =
-          middleware.validateToken(token(expiresIn: Duration(hours: 1)));
+          validator.validateToken(token(expiresIn: Duration(hours: 1)));
       expect(claims, isNotNull);
       expect(claims!['sub'], 'user-1');
     });
 
     test('rejects a token without exp when expiry is required', () {
-      expect(middleware.validateToken(token()), isNull);
+      expect(validator.validateToken(token()), isNull);
     });
 
     test('rejects an expired token', () {
       expect(
-        middleware.validateToken(token(expiresIn: Duration(seconds: -10))),
+        validator.validateToken(token(expiresIn: Duration(seconds: -10))),
         isNull,
       );
     });
@@ -151,11 +151,11 @@ void main() {
     test('rejects a token signed with a different secret', () {
       final other = JWT({'sub': 'x'})
           .sign(SecretKey('wrong'), expiresIn: Duration(hours: 1));
-      expect(middleware.validateToken(other), isNull);
+      expect(validator.validateToken(other), isNull);
     });
 
     test('accepts a token without exp when requireExpiry is false', () {
-      final lenient = JwtAuthMiddleware('secret', requireExpiry: false);
+      final lenient = JwtValidator('secret', requireExpiry: false);
       expect(lenient.validateToken(token()), isNotNull);
     });
   });

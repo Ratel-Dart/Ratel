@@ -4,7 +4,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
 import '../logging/ratel_logger.dart';
 
-class JwtAuthMiddleware {
+class JwtValidator {
   final String secret;
 
   final String? issuer;
@@ -13,7 +13,7 @@ class JwtAuthMiddleware {
 
   final bool requireExpiry;
 
-  JwtAuthMiddleware(
+  JwtValidator(
     this.secret, {
     this.issuer,
     this.audience,
@@ -39,19 +39,21 @@ class JwtAuthMiddleware {
 
       final payload = jwt.payload;
       if (payload is! Map<String, dynamic>) {
-        ratelLogger.warning('JWT rejected: payload is not a JSON object');
+        RatelLogger.instance
+            .warning('JWT rejected: payload is not a JSON object');
         return null;
       }
       if (requireExpiry && !payload.containsKey('exp')) {
-        ratelLogger.warning('JWT rejected: missing required "exp" claim');
+        RatelLogger.instance
+            .warning('JWT rejected: missing required "exp" claim');
         return null;
       }
       return payload;
     } on JWTExpiredException {
-      ratelLogger.info('JWT rejected: expired');
+      RatelLogger.instance.info('JWT rejected: expired');
       return null;
     } on JWTException catch (e) {
-      ratelLogger.info('JWT rejected: ${e.message}');
+      RatelLogger.instance.info('JWT rejected: ${e.message}');
       return null;
     }
   }

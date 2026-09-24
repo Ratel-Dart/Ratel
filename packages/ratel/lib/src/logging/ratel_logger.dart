@@ -1,3 +1,5 @@
 import 'package:logging/logging.dart';
 
-final Logger ratelLogger = Logger('ratel');
+abstract final class RatelLogger {
+  static final Logger instance = Logger('ratel');
+}

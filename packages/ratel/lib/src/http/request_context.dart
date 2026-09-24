@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../annotations/annotations.dart';
+import '../routing/route.dart';
 import '../server/ratel_registry.dart';
 import 'request_limits.dart';
 

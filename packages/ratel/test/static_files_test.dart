@@ -22,7 +22,8 @@ void main() {
       port: 0,
       registry: RatelRegistry(),
       middlewares: [
-        staticFiles(directory: publicDir.path, urlPrefix: '/static'),
+        StaticFilesMiddleware.create(
+            directory: publicDir.path, urlPrefix: '/static'),
       ],
     );
     await server.startServer();

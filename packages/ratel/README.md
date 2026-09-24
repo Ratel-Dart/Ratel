@@ -242,14 +242,15 @@ final server = RatelServer(port: 8080, jwtKey: 'your-secret');
 
 Cross-cutting concerns are composable middleware. Register global middleware on
 the server; the JWT auth middleware is appended automatically when `jwtKey` is
-set. Built-in middleware includes `corsMiddleware`, `securityHeadersMiddleware`,
-`rateLimitMiddleware` and `staticFiles`.
+set. Built-in middleware comes from `CorsMiddleware.create`,
+`SecurityHeadersMiddleware.create`, `RateLimitMiddleware.create` and
+`StaticFilesMiddleware.create`.
 
 ```dart
 final server = RatelServer(
   port: 8080,
   jwtKey: 'your-secret',
-  middlewares: [corsMiddleware(), securityHeadersMiddleware()],
+  middlewares: [CorsMiddleware.create(), SecurityHeadersMiddleware.create()],
   onStartup: () async => print('starting'),
   onShutdown: () async => print('bye'),
 );
@@ -277,14 +278,16 @@ class ChatController {
 
 ## API documentation
 
-`openApiSpec` turns the registered routes into an OpenAPI 3 document. The
+`OpenApiSpec.build` turns the registered routes into an OpenAPI 3 document. The
 generator resolved each handler's inputs at build time, so the spec needs no
 reflection and stays in step with the code.
 
 ```dart
 @Get('/openapi.json')
 Future<Response> spec(RequestContext ctx) async =>
-    Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
+    Response.json(
+      data: OpenApiSpec.build(ctx.registry.routes, title: 'Orders'),
+    );
 ```
 
 ## Scaling across cores
@@ -307,13 +310,15 @@ Isolates share no memory, so the entry point does the whole startup, bindings
 and server included, on each one. The routes follow on their own: the cluster
 hands every isolate the route manifest the CLI installed.
 
-Files on disk are served by `staticFiles`, which falls through to the router
+Files on disk are served by `StaticFilesMiddleware.create`, which falls through to the router
 when no file matches and refuses paths that escape the directory.
 
 ```dart
 final server = RatelServer(
   port: 8080,
-  middlewares: [staticFiles(directory: 'public', urlPrefix: '/assets')],
+  middlewares: [
+    StaticFilesMiddleware.create(directory: 'public', urlPrefix: '/assets'),
+  ],
 );
 ```
 

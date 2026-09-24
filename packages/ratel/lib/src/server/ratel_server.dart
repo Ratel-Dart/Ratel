@@ -3,12 +3,17 @@ import 'dart:io';
 
 import '../auth/jwt_validator.dart';
 import '../dependency_injector/bindings.dart';
-import '../exceptions/exceptions.dart';
+import '../exceptions/http_status_exception.dart';
+import '../exceptions/method_not_allowed_exception.dart';
+import '../exceptions/not_found_exception.dart';
 import '../http/request_context.dart';
 import '../http/request_limits.dart';
 import '../http/response.dart';
 import '../logging/ratel_logger.dart';
+import '../middleware/jwt_auth_middleware.dart';
 import '../middleware/middleware.dart';
+import '../middleware/next.dart';
+import '../routing/route_match.dart';
 import '../routing/router.dart';
 import 'error_handler.dart';
 import 'ratel_registry.dart';
@@ -73,7 +78,7 @@ class RatelServer {
   Future<void> startServer() async {
     await onStartup?.call();
 
-    final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
+    final jwtValidator = jwtKey != null ? JwtValidator(jwtKey!) : null;
     final server = securityContext != null
         ? await HttpServer.bindSecure(
             InternetAddress.anyIPv4,
@@ -89,7 +94,7 @@ class RatelServer {
     }
 
     if (securityContext == null && jwtKey != null) {
-      ratelLogger.warning(
+      RatelLogger.instance.warning(
         'Server is running over plain HTTP while JWT auth is enabled; bearer '
         'tokens will travel in cleartext. Provide a SecurityContext or '
         'terminate TLS at a trusted proxy.',
@@ -101,7 +106,7 @@ class RatelServer {
 
     final chain = <Middleware>[
       ...middlewares,
-      if (jwtMiddleware != null) jwtAuthMiddleware(jwtMiddleware),
+      if (jwtValidator != null) JwtAuthMiddleware.create(jwtValidator),
     ];
 
     unawaited(_serve(server, chain));
@@ -131,7 +136,7 @@ class RatelServer {
     try {
       await _handleRequest(request, chain);
     } catch (e, stackTrace) {
-      ratelLogger.severe('Failed to handle request', e, stackTrace);
+      RatelLogger.instance.severe('Failed to handle request', e, stackTrace);
     }
   }
 
@@ -149,7 +154,8 @@ class RatelServer {
       await handler(
           socket, RequestContext(request, registry: registry, limits: limits));
     } catch (e, stackTrace) {
-      ratelLogger.severe('Failed to handle a socket upgrade', e, stackTrace);
+      RatelLogger.instance
+          .severe('Failed to handle a socket upgrade', e, stackTrace);
     }
   }
 
@@ -195,7 +201,7 @@ class RatelServer {
       );
     } catch (e, stackTrace) {
       final correlationId = _nextCorrelationId();
-      ratelLogger.severe(
+      RatelLogger.instance.severe(
         'Unhandled error [$correlationId] ${ctx.method} ${ctx.path}',
         e,
         stackTrace,
@@ -221,7 +227,7 @@ class RatelServer {
     try {
       return await hook(error, stackTrace, ctx);
     } catch (hookError, hookStack) {
-      ratelLogger.severe('onError hook threw', hookError, hookStack);
+      RatelLogger.instance.severe('onError hook threw', hookError, hookStack);
       return null;
     }
   }
@@ -242,7 +248,7 @@ class RatelServer {
   void _installSignalHandlers() {
     void handle(ProcessSignal signal) {
       _signalSubs.add(signal.watch().listen((_) async {
-        ratelLogger.info('Received $signal, shutting down');
+        RatelLogger.instance.info('Received $signal, shutting down');
         await stop();
       }));
     }

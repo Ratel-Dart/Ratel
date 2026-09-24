@@ -1,23 +1,25 @@
 import 'package:ratel/ratel.dart';
+import 'package:ratel/src/routing/route_path.dart';
+import 'package:ratel/src/routing/router.dart';
 import 'package:test/test.dart';
 
-Route _route(String method, String path) =>
-    Route(method: method, path: path, handler: (_) async => null);
-
 void main() {
-  group('splitPath', () {
+  Route route(String method, String path) =>
+      Route(method: method, path: path, handler: (_) async => null);
+
+  group('RoutePath.split', () {
     test('splits a path and trims slashes', () {
-      expect(splitPath('/users/42'), ['users', '42']);
-      expect(splitPath('/users/'), ['users']);
-      expect(splitPath('/'), isEmpty);
+      expect(RoutePath.split('/users/42'), ['users', '42']);
+      expect(RoutePath.split('/users/'), ['users']);
+      expect(RoutePath.split('/'), isEmpty);
     });
   });
 
   group('Router.match', () {
     final router = Router([
-      _route('GET', '/users'),
-      _route('GET', '/users/:id'),
-      _route('POST', '/users'),
+      route('GET', '/users'),
+      route('GET', '/users/:id'),
+      route('POST', '/users'),
     ]);
 
     test('matches a static route with no params', () {
@@ -43,9 +45,9 @@ void main() {
 
   group('Router.allowedMethods', () {
     final router = Router([
-      _route('GET', '/users'),
-      _route('POST', '/users'),
-      _route('GET', '/users/:id'),
+      route('GET', '/users'),
+      route('POST', '/users'),
+      route('GET', '/users/:id'),
     ]);
 
     test('lists methods for a static path', () {
