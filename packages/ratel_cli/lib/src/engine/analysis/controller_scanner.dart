@@ -12,6 +12,7 @@ import 'constant_values.dart';
 import 'element_queries.dart';
 import 'parameter_scanner.dart';
 import 'ratel_annotations.dart';
+import 'route_parameter_checks.dart';
 
 abstract final class ControllerScanner {
   static List<ScannedController> scan(
@@ -97,7 +98,17 @@ abstract final class ControllerScanner {
     final routes = <ScannedRoute>[];
     final sockets = <ScannedSocket>[];
     for (final method in element.methods) {
-      if (method.isStatic || !RatelAnnotations.hasRoute(method)) continue;
+      if (!RatelAnnotations.hasRoute(method)) continue;
+      if (method.isStatic) {
+        diagnostics.add(ElementDiagnostics.at(
+          method,
+          DiagnosticCodes.staticRoute,
+          'The route method ${element.name}.${method.name} is static, but '
+          'Ratel calls routes on a controller instance. Remove the static '
+          'modifier.',
+        ));
+        continue;
+      }
       if (method.isPrivate) {
         diagnostics.add(ElementDiagnostics.at(
           method,
@@ -107,7 +118,9 @@ abstract final class ControllerScanner {
         ));
         continue;
       }
-      routes.addAll(_routes(method, prefix, classProtected));
+      final methodRoutes = _routes(method, prefix, classProtected);
+      RouteParameterChecks.check(element, methodRoutes, diagnostics);
+      routes.addAll(methodRoutes);
       final socket = RatelAnnotations.first(method, 'Socket');
       if (socket != null) {
         sockets.add(ScannedSocket(
