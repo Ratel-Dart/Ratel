@@ -12,8 +12,8 @@ driver in.
 
 - **`RatelRepository<T>`** — `execute` for SQL with `@name` parameters and an
   opt-in `returning:`, and `find` for queries built with the query builder.
-- **Row mapping** — annotate entity fields with `@Column`; the generated mapper
-  is resolved by type, so a repository declares no mapper of its own.
+- **Row mapping** — each repository implements `fromRow`, so mapping is plain
+  Dart with nothing generated.
 - **Query builder** — `Query.from(...).select(...).where(...).orderBy(...)`,
   rendered per dialect.
 - **Dialect layer** — identifier quoting, `LIMIT`/`OFFSET`, upserts and
@@ -30,33 +30,45 @@ driver in.
 
 ## Setup
 
-Entities and repositories rely on generated code, so the build step is **not
-optional**. Under the Ratel CLI (`ratel dev` / `ratel build`) it is handled for
-you; standalone, run `dart run build_runner build --delete-conflicting-outputs`
-and call the generated `$registerRatel()` before the first query.
+A repository receives its driver in the constructor and maps each row itself.
+Nothing is generated and there is no build step, so the same code runs under
+`dart run`, `dart test` and `dart compile exe`.
 
 ```dart
-import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/postgres.dart';
+import 'package:ratel_orm/ratel_orm.dart';
 
-class User {
-  @Column(name: 'id')
-  int id = 0;
+final class User {
+  const User({required this.id, required this.email});
 
-  @Column(name: 'email')
-  String email = '';
+  final int id;
+  final String email;
 }
 
-class UserRepository extends RatelRepository<User> {
+final class UserRepository extends RatelRepository<User> {
+  UserRepository(super.driver);
+
+  @override
+  User fromRow(Map<String, Object?> row) =>
+      User(id: row['id'] as int, email: row['email'] as String);
+
   Future<List<User>?> byEmail(String email) => execute(
         'SELECT * FROM users WHERE email = @email',
-        substitutionValues: {'email': email},
+        parameters: {'email': email},
       );
 }
 
-// The server opens and closes the driver as part of its lifecycle.
-final server = RatelServer(database: PostgresDriver.fromEnv());
+Future<void> main() async {
+  final driver = PostgresDriver.fromEnv();
+  await driver.open();
+  final users = await UserRepository(driver).byEmail('ada@example.com');
+  print(users);
+  await driver.close();
+}
 ```
+
+A row that `fromRow` cannot map raises a `MappingException`, and a query that
+returns no rows yields `null`.
 
 ## Status
 

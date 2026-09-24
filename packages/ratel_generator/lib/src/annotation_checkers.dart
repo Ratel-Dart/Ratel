@@ -6,9 +6,6 @@ const handlerChecker = TypeChecker.fromUrl(
   'package:ratel/http/handler.dart#RatelHandler',
 );
 const jsonChecker = TypeChecker.fromUrl('$_annotations#Json');
-const columnChecker = TypeChecker.fromUrl(
-  'package:ratel_orm/annotations.dart#Column',
-);
 const controllerChecker = TypeChecker.fromUrl('$_annotations#Controller');
 const protectedChecker = TypeChecker.fromUrl('$_annotations#Protected');
 const publicChecker = TypeChecker.fromUrl('$_annotations#Public');

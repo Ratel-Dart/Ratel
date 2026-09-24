@@ -3,8 +3,6 @@ const stubPackages = <String, String>{
   'ratel|lib/core/request_context.dart': _requestContext,
   'ratel|lib/http/handler.dart': _handler,
   'ratel|lib/http/multipart_data.dart': _multipartData,
-  'ratel_orm|lib/annotations.dart': _ormAnnotations,
-  'ratel_orm|lib/ratel_orm.dart': _orm,
 };
 
 const _annotations = '''
@@ -120,17 +118,6 @@ abstract class RatelHandler {
 
   static void register(Route route) => routesList.add(route);
 }
-''';
-
-const _ormAnnotations = '''
-class Column {
-  final String name;
-  const Column({required this.name});
-}
-''';
-
-const _orm = '''
-export 'annotations.dart';
 ''';
 
 const _multipartData = '''

@@ -10,13 +10,5 @@ Iterable<GetterElement> serializableGetters(ClassElement element) =>
       (g) => !g.isStatic && !g.isPrivate && g.isOriginDeclaration,
     );
 
-Iterable<FieldElement> columnFields(
-  ClassElement element,
-  bool Function(FieldElement field) isColumn,
-) =>
-    element.fields.where(
-      (f) => !f.isStatic && f.isOriginDeclaration && isColumn(f),
-    );
-
 bool canConstruct(ClassElement element) =>
     element.constructors.any((c) => c.isDefaultConstructor);

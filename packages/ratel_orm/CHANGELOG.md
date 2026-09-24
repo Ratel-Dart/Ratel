@@ -1,12 +1,11 @@
 ## 0.1.0-dev.1 (unreleased)
 
-- `Column` moved to `package:ratel_orm/annotations.dart`, a stable public
-  path the code generator can match against. It is still exported from
-  `package:ratel_orm/ratel_orm.dart`.
-- Row mappers are generated and resolved from a registry instead of
-  `dart:mirrors`, so the ORM no longer blocks `dart compile exe`.
-  `RatelRepository`'s mapper argument became optional — a repository that
-  relies on `@Column` now needs no constructor at all.
+- Row mapping is explicit. A repository implements `T fromRow(Map<String,
+  Object?> row)` and takes its driver in the constructor:
+  `UserRepository(driver)`. Nothing is generated or reflected, so the ORM runs
+  in any Dart program, JIT or AOT, with no build step. `@Column`,
+  `RatelRowMappers` and `RatelRepository.configure` are gone, and
+  `execute`'s `substitutionValues:` is now `parameters:`.
 - Fluent `SELECT` query builder, reached through `RatelRepository.find`.
 - Schema migration engine: ordered application against a bookkeeping table,
   each migration in its own transaction.
@@ -18,5 +17,5 @@
 - Postgres driver at `package:ratel_orm/postgres.dart`, over a connection pool,
   with `PostgresDriver.fromEnv()`.
 - `FakeDriver` and a driver conformance suite for testing without a database.
-- Initial package scaffold: `RatelRepository<T>`, `@Column` and
-  `MappingException` extracted from the `ratel` core.
+- Initial package scaffold: `RatelRepository<T>` and `MappingException`
+  extracted from the `ratel` core.

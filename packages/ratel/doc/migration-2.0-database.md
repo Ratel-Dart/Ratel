@@ -2,7 +2,7 @@
 
 The database layer moved out of `ratel` so the core no longer depends on
 `package:postgres`. The core now owns only the **driver contract** and a
-**raw-SQL facade**; the ORM (`RatelRepository`, `@Column`) and the concrete
+**raw-SQL facade**; the ORM (`RatelRepository`) and the concrete
 Postgres driver live in the separate [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm)
 package.
 
@@ -18,7 +18,7 @@ package.
 | Concern | Package |
 |---|---|
 | `RatelDriver`, `QueryResult`, `RatelSession`, `transaction`, `DatabaseException` (+ subclasses), `Db` / `server.db` | `ratel` (core) |
-| `RatelRepository<T>`, `@Column`, `MappingException` | `ratel_orm` |
+| `RatelRepository<T>`, `MappingException` | `ratel_orm` |
 | `PostgresDriver`, `SslMode` | `ratel_orm` — `package:ratel_orm/postgres.dart` |
 
 ## Add the dependency
@@ -38,11 +38,13 @@ dart pub add ratel_orm
 | `RatelDatabase.fromEnv()` | `PostgresDriver.fromEnv()` |
 | `RatelServer(database: ratelDatabase)` | `RatelServer(database: postgresDriver)` |
 | `RatelDatabase(...)` auto-registered the driver in its constructor | `RatelServer` now registers and opens the driver in `startServer()` (no constructor side effect) |
-| `@Column` / `RatelRepository` imported from `package:ratel/ratel.dart` | imported from `package:ratel_orm/ratel_orm.dart` |
+| `@Column` fields mapped by reflection | a `fromRow` override on the repository, which takes its driver in the constructor |
+| `RatelRepository` imported from `package:ratel/ratel.dart` | imported from `package:ratel_orm/ratel_orm.dart` |
 | `repository.connection` (a `postgres` `Connection`) | removed — use `execute(...)` or `server.db.query(...)` |
 | `catch` of `package:postgres` exceptions | catch `DatabaseException` (and subclasses) from `package:ratel` |
 
-`RatelRepository.execute(sql, {substitutionValues})` keeps the same signature.
+`RatelRepository.execute(sql, {substitutionValues})` became
+`execute(sql, {parameters})`.
 
 ## Behavior change: `RETURNING *` is no longer implicit
 
@@ -51,10 +53,9 @@ automatically on Postgres. SQL now passes through **verbatim**. To get the row
 back, add the clause yourself:
 
 ```dart
-// before: execute('INSERT INTO users (name) VALUES (@n)', substitutionValues: {'n': name});
 await execute(
   'INSERT INTO users (name) VALUES (@n) RETURNING *',
-  substitutionValues: {'n': name},
+  parameters: {'n': name},
 );
 ```
 
@@ -63,7 +64,7 @@ Or let the dialect add it, which keeps the SQL portable:
 ```dart
 await execute(
   'INSERT INTO users (name) VALUES (@n)',
-  substitutionValues: {'n': name},
+  parameters: {'n': name},
   returning: true,
 );
 ```

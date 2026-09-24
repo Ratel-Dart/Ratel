@@ -1,33 +1,11 @@
 import 'dart:io';
 
 import 'package:ratel_orm/postgres.dart';
-import 'package:ratel_orm/ratel_orm.dart';
 import 'package:test/test.dart';
 
-import 'postgres_integration_test.ratel.dart';
-
-class Widget {
-  @Column(name: 'id')
-  int id = 0;
-
-  @Column(name: 'label')
-  String label = '';
-}
-
-class WidgetRepo extends RatelRepository<Widget> {
-  Future<List<Widget>?> insert(int id, String label) => execute(
-        'INSERT INTO ratel_repo_widgets (id, label) VALUES (@id, @label)',
-        substitutionValues: {'id': id, 'label': label},
-        returning: true,
-      );
-}
+import '../support/fixtures/repositories/labeled_widget_repository.dart';
 
 void main() {
-  setUpAll(() {
-    RatelRowMappers.reset();
-    $registerRatel();
-  });
-
   final skip = Platform.environment['DB_HOST'] == null
       ? 'set DB_HOST/DB_NAME/DB_USER/DB_PASSWORD to run the Postgres integration'
       : false;
@@ -76,14 +54,13 @@ void main() {
     test('RatelRepository maps rows and honours returning:', () async {
       final driver = PostgresDriver.fromEnv();
       await driver.open();
-      RatelRepository.configure(driver);
 
       await driver.query('DROP TABLE IF EXISTS ratel_repo_widgets');
       await driver.query(
         'CREATE TABLE ratel_repo_widgets (id int PRIMARY KEY, label text)',
       );
 
-      final rows = await WidgetRepo().insert(7, 'omega');
+      final rows = await LabeledWidgetRepository(driver).insert(7, 'omega');
       expect(rows, isNotNull);
       expect(rows!.single.id, 7);
       expect(rows.single.label, 'omega');

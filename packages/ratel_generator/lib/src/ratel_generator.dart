@@ -7,7 +7,6 @@ import 'generation_context.dart';
 import 'header_emitter.dart';
 import 'json_emitter.dart';
 import 'library_scanner.dart';
-import 'row_mapper_emitter.dart';
 
 class RatelGenerator extends Generator {
   @override
@@ -35,16 +34,6 @@ class RatelGenerator extends Generator {
       );
     }
 
-    for (final entry in scanned.entities.entries) {
-      declarations
-        ..writeln(emitFromRow(entry.key, entry.value))
-        ..writeln();
-      registrations.add(
-        '  _orm.RatelRowMappers.register<${entry.key.displayName}>'
-        '(\$${entry.key.displayName}FromRow);',
-      );
-    }
-
     for (final element in scanned.controllers) {
       declarations
         ..writeln(emitRoutes(element, ctx))
@@ -61,7 +50,7 @@ class RatelGenerator extends Generator {
       );
     }
 
-    return '${emitHeader(scanned, ctx, buildStep)}\n'
+    return '${emitHeader(ctx, buildStep)}\n'
         '$declarations'
         'void \$registerRatel() {\n'
         '${registrations.join('\n')}\n'

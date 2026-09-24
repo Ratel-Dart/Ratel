@@ -1,34 +1,12 @@
-import 'dart:ffi';
-
 import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/sqlite.dart';
-import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 
-import 'query_test.ratel.dart';
-
-class Person {
-  @Column(name: 'id')
-  int id = 0;
-
-  @Column(name: 'name')
-  String name = '';
-
-  @Column(name: 'age')
-  int age = 0;
-}
-
-class PersonRepo extends RatelRepository<Person> {}
+import '../support/fixtures/repositories/person_repository.dart';
+import '../support/sqlite_test_library.dart';
 
 void main() {
-  setUpAll(() {
-    RatelRowMappers.reset();
-    $registerRatel();
-    open.overrideFor(
-      OperatingSystem.linux,
-      () => DynamicLibrary.open('libsqlite3.so.0'),
-    );
-  });
+  setUpAll(SqliteTestLibrary.useSystemLibrary);
 
   group('build', () {
     test('Postgres quotes identifiers and parameterizes values', () {
@@ -71,7 +49,6 @@ void main() {
   test('runs a built query end-to-end via repository.find (SQLite)', () async {
     final driver = SqliteDriver.memory();
     await driver.open();
-    RatelRepository.configure(driver);
     await driver.query(
       'CREATE TABLE person (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)',
     );
@@ -82,7 +59,7 @@ void main() {
     await driver
         .query("INSERT INTO person (id, name, age) VALUES (3, 'cid', 40)");
 
-    final adults = await PersonRepo()
+    final adults = await PersonRepository(driver)
         .find(Query.from('person').where('age', '>=', 30).orderBy('name'));
 
     expect(adults, isNotNull);
