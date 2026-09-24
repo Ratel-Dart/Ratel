@@ -49,6 +49,7 @@ class RatelServer {
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
+  Future<void>? _stopping;
   int _errorCounter = 0;
 
   RatelServer({
@@ -89,6 +90,7 @@ class RatelServer {
           )
         : await HttpServer.bind(InternetAddress.anyIPv4, port, shared: shared);
     _server = server;
+    _stopping = null;
     server.autoCompress = gzip;
     if (idleTimeout != null) {
       server.idleTimeout = idleTimeout!;
@@ -113,7 +115,10 @@ class RatelServer {
     unawaited(_serve(server, chain));
   }
 
-  Future<void> stop({bool force = false}) async {
+  Future<void> stop({bool force = false}) =>
+      _stopping ??= _shutdown(force: force);
+
+  Future<void> _shutdown({required bool force}) async {
     for (final sub in _signalSubs) {
       await sub.cancel();
     }
@@ -144,7 +149,7 @@ class RatelServer {
   Future<void> _upgrade(HttpRequest request) async {
     final handler = registry.socketFor(request.uri.path);
     if (handler == null) {
-      Response(
+      await Response(
         statusCode: HttpStatus.notFound,
         data: {'error': 'Not Found'},
       ).send(request.response, codecs: registry.codecs);
