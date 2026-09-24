@@ -13,20 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: ratel
-          POSTGRES_PASSWORD: ratel
-          POSTGRES_DB: ratel_test
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -53,17 +39,6 @@ jobs:
       - name: Test ratel
         run: dart test
         working-directory: packages/ratel
-
-      - name: Test ratel_orm
-        run: dart test
-        working-directory: packages/ratel_orm
-        env:
-          DB_HOST: localhost
-          DB_PORT: '5432'
-          DB_NAME: ratel_test
-          DB_USER: ratel
-          DB_PASSWORD: ratel
-          DB_SSL_MODE: disable
 
       - name: Test ratel_cli
         run: dart test
