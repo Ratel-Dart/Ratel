@@ -2,15 +2,16 @@ import 'dart:io';
 
 import 'package:postgres/postgres.dart';
 
-import '../dialect.dart';
+import '../dialect/postgres_dialect.dart';
+import '../dialect/sql_dialect.dart';
 import '../driver/query_result.dart';
 import '../driver/ratel_driver.dart';
 import '../driver/ratel_session.dart';
 import '../exceptions/database_exception.dart';
 import '../exceptions/query_execution_exception.dart';
+import 'postgres_result_mapper.dart';
 import 'postgres_session.dart';
-import 'query_result_mapper.dart';
-import 'ssl_mode.dart';
+import 'ssl_mode_parser.dart';
 
 class PostgresDriver extends RatelDriver {
   final String host;
@@ -66,7 +67,7 @@ class PostgresDriver extends RatelDriver {
       databaseName: required('DB_NAME'),
       username: required('DB_USER'),
       password: required('DB_PASSWORD'),
-      sslMode: parseSslMode(env['DB_SSL_MODE']),
+      sslMode: SslModeParser.parse(env['DB_SSL_MODE']),
       maxConnections: poolMax,
     );
   }
@@ -110,7 +111,7 @@ class PostgresDriver extends RatelDriver {
       final result = (parameters == null || parameters.isEmpty)
           ? await pool.execute(sql)
           : await pool.execute(Sql.named(sql), parameters: parameters);
-      return toQueryResult(result);
+      return PostgresResultMapper.toQueryResult(result);
     } on DatabaseException {
       rethrow;
     } catch (e) {

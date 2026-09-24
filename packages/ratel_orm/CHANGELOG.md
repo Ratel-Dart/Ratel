@@ -1,5 +1,10 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- The unused MySQL path is gone: `MysqlDialect`, the placeholder translator,
+  `RewrittenSql` and `SqlDialect.rewrite`, `upsert` and `encode`, none of
+  which any driver called. `applyReturningClause` is gone as well; it
+  duplicated `PostgresDialect.applyReturning`. `SqlDialect` is now an
+  interface with the four members the query builder and repository use.
 - `ratel_orm` no longer depends on `ratel`. The driver contract moved here from
   the framework: `RatelDriver`, `RatelSession`, `QueryResult`,
   `DatabaseException`, `QueryExecutionException` and
@@ -21,7 +26,7 @@
 - Schema migration engine: ordered application against a bookkeeping table,
   each migration in its own transaction.
 - SQL dialect layer (`SqlDialect`) covering identifier quoting,
-  `LIMIT`/`OFFSET`, upserts, and an opt-in `returning:` on `execute`. SQL is
+  `LIMIT`/`OFFSET`, and an opt-in `returning:` on `execute`. SQL is
   otherwise passed through verbatim — the automatic `RETURNING *` the old
   repository appended is gone.
 - SQLite driver at `package:ratel_orm/sqlite.dart`.
