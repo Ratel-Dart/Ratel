@@ -1,0 +1,1 @@
+enum ArchiveStatus { active, archived }
