@@ -64,6 +64,10 @@ All notable changes to this project are documented here. This project follows
   `RatelRepository`.
 
 ### Added
+- `Response` is generic. `Response<T>` types its `data` and keeps the type
+  through `withHeaders` and `withCookie`, the way Spring's `ResponseEntity<T>`
+  does, so a handler can declare `Future<Response<Item>>`. A raw `Response` is
+  `Response<dynamic>` and works as before.
 - **The route manifest runtime** (`package:ratel/runtime.dart`): const
   `ControllerDefinition`, `RouteDefinition`, `SocketDefinition` and
   `JsonCodecDefinition` values that `RatelRegistry.fromManifest` binds into

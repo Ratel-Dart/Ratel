@@ -173,7 +173,17 @@ Future<Response> avatar(MultipartData form) async {
 
 ## Responses
 
-A handler returns a `Response` (or any value, which is wrapped as JSON).
+A handler returns a value, which is sent as a `200` JSON response, or a
+`Response` when it needs another status, headers or representation.
+`Response<T>` carries the payload type, the way Spring's `ResponseEntity<T>`
+does:
+
+```dart
+@Post('/')
+Future<Response<Item>> create(@Body() Item item) async =>
+    Response.json(statusCode: 201, data: item);
+```
+
 `Response.json`, `Response.text`, `Response.html` and `Response.bytes` pick the
 representation, `Response.redirect` sends a `Location`, and `withCookie`
 attaches a `Set-Cookie` header built with the flags the response needs.

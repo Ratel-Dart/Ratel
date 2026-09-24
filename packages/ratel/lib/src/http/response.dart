@@ -4,11 +4,11 @@ import 'dart:io';
 import '../exceptions/ratel_serialization_exception.dart';
 import '../serialization/json_codecs.dart';
 
-class Response {
+class Response<T> {
   static const _sseOpening = ':\n\n';
 
   final int statusCode;
-  final dynamic data;
+  final T? data;
   final Map<String, String> headers;
   final String contentType;
 
@@ -67,7 +67,7 @@ class Response {
         cookies = const [],
         events = null;
 
-  static Response from(dynamic value) {
+  static Response<Object?> from(Object? value) {
     if (value is Response) return value;
     return Response.json(
       statusCode: HttpStatus.ok,
@@ -94,8 +94,8 @@ class Response {
     );
   }
 
-  Response withHeaders(Map<String, String> extra) {
-    return Response(
+  Response<T> withHeaders(Map<String, String> extra) {
+    return Response<T>(
       statusCode: statusCode,
       data: data,
       headers: {...headers, ...extra},
@@ -105,8 +105,8 @@ class Response {
     );
   }
 
-  Response withCookie(Cookie cookie) {
-    return Response(
+  Response<T> withCookie(Cookie cookie) {
+    return Response<T>(
       statusCode: statusCode,
       data: data,
       headers: headers,
