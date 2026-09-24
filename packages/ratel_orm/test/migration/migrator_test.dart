@@ -1,18 +1,12 @@
-import 'dart:ffi';
-
 import 'package:ratel/ratel.dart' show QueryExecutionException;
 import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/sqlite.dart';
-import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 
+import '../support/sqlite_test_library.dart';
+
 void main() {
-  setUpAll(() {
-    open.overrideFor(
-      OperatingSystem.linux,
-      () => DynamicLibrary.open('libsqlite3.so.0'),
-    );
-  });
+  setUpAll(SqliteTestLibrary.useSystemLibrary);
 
   test('applies pending migrations in order and is idempotent', () async {
     final driver = SqliteDriver.memory();

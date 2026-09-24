@@ -1,56 +1,27 @@
-import 'dart:ffi';
-
-import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/sqlite.dart';
-import 'package:sqlite3/open.dart';
 import 'package:test/test.dart';
 
-import 'support/conformance.dart';
-
-import 'sqlite_driver_test.ratel.dart';
-
-class Note {
-  @Column(name: 'id')
-  int id = 0;
-
-  @Column(name: 'body')
-  String body = '';
-}
-
-class NoteRepo extends RatelRepository<Note> {
-  Future<List<Note>?> insert(int id, String body) => execute(
-        'INSERT INTO notes (id, body) VALUES (@id, @body)',
-        substitutionValues: {'id': id, 'body': body},
-        returning: true,
-      );
-
-  Future<List<Note>?> all() => execute('SELECT * FROM notes ORDER BY id');
-}
+import '../support/driver_conformance.dart';
+import '../support/fixtures/repositories/note_repository.dart';
+import '../support/sqlite_test_library.dart';
 
 void main() {
-  setUpAll(() {
-    RatelRowMappers.reset();
-    $registerRatel();
-    open.overrideFor(
-      OperatingSystem.linux,
-      () => DynamicLibrary.open('libsqlite3.so.0'),
-    );
-  });
+  setUpAll(SqliteTestLibrary.useSystemLibrary);
 
   test('in-memory CRUD via repository with @name params and returning',
       () async {
     final driver = SqliteDriver.memory();
     await driver.open();
-    RatelRepository.configure(driver);
     await driver
         .query('CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)');
 
-    final inserted = await NoteRepo().insert(1, 'hello');
+    final notes = NoteRepository(driver);
+    final inserted = await notes.insert(1, 'hello');
     expect(inserted, isNotNull);
     expect(inserted!.single.id, 1);
     expect(inserted.single.body, 'hello');
 
-    final all = await NoteRepo().all();
+    final all = await notes.all();
     expect(all!.single.body, 'hello');
     await driver.close();
   });
@@ -90,6 +61,6 @@ void main() {
   });
 
   group('driver conformance', () {
-    runDriverConformanceTests(SqliteDriver.memory);
+    DriverConformance.run(SqliteDriver.memory);
   });
 }

@@ -341,20 +341,19 @@ final users = await server.db.query(
 // users.rows / users.affectedRows
 ```
 
-For entity mapping, add `ratel_orm` and extend `RatelRepository<T>`, mapping
-fields with `@Column` (both imported from `package:ratel_orm/ratel_orm.dart`):
+For entity mapping, add `ratel_orm` and extend `RatelRepository<T>`. The
+repository takes the driver in its constructor and maps rows in `fromRow`:
 
 ```dart
 import 'package:ratel_orm/ratel_orm.dart';
 
-class User {
-  @Column(name: 'id')
-  int id = 0;
-  @Column(name: 'name')
-  String name = '';
-}
+final class UserRepository extends RatelRepository<User> {
+  UserRepository(super.driver);
 
-class UserRepository extends RatelRepository<User> {
+  @override
+  User fromRow(Map<String, Object?> row) =>
+      User(id: row['id'] as int, name: row['name'] as String);
+
   Future<List<User>?> all() => execute('SELECT id, name FROM users');
 }
 ```
