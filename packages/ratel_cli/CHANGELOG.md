@@ -1,5 +1,11 @@
 ## 2.0.0-dev.8 (unreleased)
 
+- The engine now rejects route methods it would call wrongly. A route parameter
+  with no binding annotation reports `ratel_unbound_parameter` and lists the
+  annotations it could use; before, it was given `null`. A static route method
+  reports `ratel_static_route`; before, it was skipped without a message. A
+  `@PathParam` whose name is not a `:segment` of its route path reports
+  `ratel_unknown_path_param`.
 - The `ratel` executable moved here from the `ratel` package, so an
   application's dependencies no longer carry the CLI. Install it with
   `dart pub global activate ratel_cli`. It is released in lockstep with
