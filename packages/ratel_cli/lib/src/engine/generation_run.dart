@@ -12,6 +12,7 @@ import 'diagnostics/diagnostic_codes.dart';
 import 'diagnostics/diagnostic_severity.dart';
 import 'diagnostics/element_diagnostics.dart';
 import 'diagnostics/ratel_diagnostic.dart';
+import 'emit/dev_watchdog_emitter.dart';
 import 'emit/entry_emitter.dart';
 import 'emit/import_uris.dart';
 import 'emit/manifest_emitter.dart';
@@ -41,6 +42,11 @@ final class GenerationRun {
   String get root => analyzer.root;
 
   String get outputDirectory => p.join(root, '.dart_tool', 'ratel', mode.name);
+
+  String get entryFileName =>
+      '${p.basenameWithoutExtension(entrypoint ?? 'main')}.dart';
+
+  String get entryPath => p.join(outputDirectory, entryFileName);
 
   Future<GenerationResult> run() async {
     final diagnostics = <RatelDiagnostic>[];
@@ -94,12 +100,15 @@ final class GenerationRun {
       ),
       if (entry != null && signature != null && mode != GenerationMode.test)
         GeneratedFile(
-          '${p.basenameWithoutExtension(entry)}.dart',
+          entryFileName,
           EntryEmitter.emit(
             entrypointImport: _importFor(entry, uris),
             signature: signature,
+            watchdog: mode == GenerationMode.dev,
           ),
         ),
+      if (mode == GenerationMode.dev)
+        GeneratedFile(DevWatchdogEmitter.file, DevWatchdogEmitter.emit()),
     ];
     return GenerationResult(app: app, files: files, diagnostics: diagnostics);
   }

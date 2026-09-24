@@ -24,7 +24,5 @@ dependencies:
   path: ^1.9.0
 
 dev_dependencies:
-  build_runner: ^2.4.0
   lints: ^4.0.0
-  ratel_generator: ^0.1.0-dev.1
   test: ^1.25.0

@@ -4,8 +4,6 @@ analyzer:
   errors:
     avoid_print: warning
     empty_catches: warning
-  exclude:
-    - "**/*.ratel.dart"
 
 linter:
   rules:
