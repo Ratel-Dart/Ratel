@@ -170,6 +170,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- OpenAPI output is now valid for routes that require roles. The bearerAuth
+  security requirement uses an empty scope list, as OpenAPI 3.0 requires for
+  http bearer schemes. The roles now appear in an `x-required-roles` extension
+  on the operation.
 - CorsMiddleware no longer joins every allowed origin into one
   Access-Control-Allow-Origin header, which browsers reject. With an origin list
   it echoes the request's Origin when it is allowed and adds Vary: Origin, sends

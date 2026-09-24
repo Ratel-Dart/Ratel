@@ -73,16 +73,23 @@ void main() {
     expect(schema['schema'], {'type': 'object', 'title': 'NewUser'});
   });
 
-  test('carries the required roles on a protected operation', () {
+  test('requires bearerAuth with an empty scope list on a protected route', () {
     expect(operation(spec, '/api/users', 'post')['security'], [
-      {
-        'bearerAuth': ['admin'],
-      },
+      {'bearerAuth': <String>[]},
+    ]);
+  });
+
+  test('carries the required roles as an x-required-roles extension', () {
+    expect(operation(spec, '/api/users', 'post')['x-required-roles'], [
+      'admin',
     ]);
   });
 
   test('leaves a public route unsecured', () {
-    expect(operation(spec, '/api/users/{id}')['security'], isNull);
+    final get = operation(spec, '/api/users/{id}');
+
+    expect(get['security'], isNull);
+    expect(get.containsKey('x-required-roles'), isFalse);
   });
 
   test('declares the bearerAuth security scheme', () {
