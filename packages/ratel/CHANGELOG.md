@@ -15,6 +15,18 @@ All notable changes to this project are documented here. This project follows
   `RatelRepository`.
 
 ### Added
+- **The route manifest runtime** (`package:ratel/runtime.dart`): const
+  `ControllerDefinition`, `RouteDefinition`, `SocketDefinition` and
+  `JsonCodecDefinition` values that `RatelRegistry.fromManifest` binds into
+  routes. All request binding now lives in the runtime, where plain `dart test`
+  can exercise it with hand-built definitions: parameter coercion, JSON and form
+  bodies, multipart, `RequestContext` injection and sockets. This is the target
+  the `ratel` CLI will generate against, so generation never has to be visible.
+- `@Controller()` takes an optional prefix, `Injector.contains<T>()` reports a
+  registration, and `RatelCluster.run` forwards the installed manifest to every
+  isolate (`runCluster` delegates to it).
+- Request body limits travel on `RequestContext.limits` as `RequestLimits`,
+  owned by the server that set them.
 - **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from
   the registered routes — `:id` becomes `{id}`, every bound parameter becomes an
   operation parameter with its location and type, a `@Body` route gains a JSON

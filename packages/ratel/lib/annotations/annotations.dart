@@ -91,7 +91,7 @@ class PathParam {
 class Controller {
   final String prefix;
 
-  const Controller(this.prefix);
+  const Controller([this.prefix = '']);
 }
 
 class Protected {

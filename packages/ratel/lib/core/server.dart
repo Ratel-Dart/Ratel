@@ -4,6 +4,8 @@ import 'dart:io';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../jwt.dart';
+import '../src/http/request_limits.dart';
+import '../src/runtime/ratel_runtime.dart';
 import 'error_handler.dart';
 import 'logger.dart';
 import 'middleware.dart';
@@ -35,6 +37,8 @@ class RatelServer {
 
   final RatelRegistry registry;
 
+  final RequestLimits limits;
+
   final ErrorHandler? onError;
 
   HttpServer? _server;
@@ -55,15 +59,23 @@ class RatelServer {
     this.onError,
     this.shared = false,
     RatelRegistry? registry,
-    int maxRequestBodyBytes = RatelRegistry.defaultMaxRequestBodyBytes,
-    int maxBodyDrainBytes = RatelRegistry.defaultMaxBodyDrainBytes,
-  }) : registry = registry ?? RatelRegistry.current {
+    int maxRequestBodyBytes = RequestLimits.defaultBytes,
+    int maxBodyDrainBytes = RequestLimits.defaultBytes,
+  })  : registry = registry ?? _defaultRegistry(),
+        limits = RequestLimits(
+          maxRequestBodyBytes: maxRequestBodyBytes,
+          maxBodyDrainBytes: maxBodyDrainBytes,
+        ) {
     this.registry.maxRequestBodyBytes = maxRequestBodyBytes;
     this.registry.maxBodyDrainBytes = maxBodyDrainBytes;
     bindings?.dependencies();
   }
 
   int? get boundPort => _server?.port;
+
+  static RatelRegistry _defaultRegistry() => RatelRuntime.installed == null
+      ? RatelRegistry.current
+      : RatelRegistry.installed();
 
   Future<void> startServer() async {
     await onStartup?.call();
@@ -136,12 +148,13 @@ class RatelServer {
       Response(
         statusCode: HttpStatus.notFound,
         data: {'error': 'Not Found'},
-      ).send(request.response);
+      ).send(request.response, codecs: registry.codecs);
       return;
     }
     try {
       final socket = await WebSocketTransformer.upgrade(request);
-      await handler(socket, RequestContext(request, registry: registry));
+      await handler(
+          socket, RequestContext(request, registry: registry, limits: limits));
     } catch (e, stackTrace) {
       ratelLogger.severe('Failed to handle a socket upgrade', e, stackTrace);
     }
@@ -151,14 +164,18 @@ class RatelServer {
     HttpRequest request,
     List<Middleware> chain,
   ) async {
-    final ctx = RequestContext(request, registry: registry);
+    final ctx = RequestContext(request, registry: registry, limits: limits);
     final match = _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
     if (match != null) {
       ctx.route = match.route;
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    await response.send(request.response, includeBody: ctx.method != 'HEAD');
+    await response.send(
+      request.response,
+      includeBody: ctx.method != 'HEAD',
+      codecs: registry.codecs,
+    );
   }
 
   RouteMatch? _getRouteForHead(RequestContext ctx) {

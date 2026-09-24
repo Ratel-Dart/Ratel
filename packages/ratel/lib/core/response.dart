@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../exceptions/exceptions.dart';
+import '../src/serialization/json_codecs.dart';
 import 'serialization.dart';
 
 class Response {
@@ -114,15 +115,20 @@ class Response {
     );
   }
 
-  String toJson() {
+  String toJson({JsonCodecs codecs = const JsonCodecs.empty()}) {
     if (data == null) return '';
     if (contentType != 'application/json') return data.toString();
     final payload = data;
     if (payload is String) return payload;
-    return jsonEncode(payload, toEncodable: _toEncodable);
+    return jsonEncode(
+      payload,
+      toEncodable: (object) => _toEncodable(object, codecs),
+    );
   }
 
-  static Object? _toEncodable(dynamic object) {
+  static Object? _toEncodable(dynamic object, JsonCodecs codecs) {
+    final codec = codecs.forType(object.runtimeType);
+    if (codec != null) return codec.encodeObject(object as Object);
     final encode = RatelJson.encoderFor(object.runtimeType);
     if (encode != null) return encode(object as Object);
     if (object is DateTime) return object.toIso8601String();
@@ -135,7 +141,11 @@ class Response {
     }
   }
 
-  Future<void> send(HttpResponse response, {bool includeBody = true}) async {
+  Future<void> send(
+    HttpResponse response, {
+    bool includeBody = true,
+    JsonCodecs codecs = const JsonCodecs.empty(),
+  }) async {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
@@ -148,7 +158,7 @@ class Response {
     }
 
     if (includeBody) {
-      _writeBody(response);
+      _writeBody(response, codecs);
     }
     await response.close();
   }
@@ -164,14 +174,15 @@ class Response {
     await response.close();
   }
 
-  void _writeBody(HttpResponse response) {
+  void _writeBody(HttpResponse response, JsonCodecs codecs) {
     final body = data;
     if (body is List<int>) {
       response.add(body);
       return;
     }
-    final responseData =
-        contentType == 'application/json' ? toJson() : body.toString();
+    final responseData = contentType == 'application/json'
+        ? toJson(codecs: codecs)
+        : body.toString();
     if (responseData.isNotEmpty) {
       response.write(responseData);
     }

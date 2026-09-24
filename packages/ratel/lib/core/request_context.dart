@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import '../annotations/annotations.dart';
+import '../src/http/request_limits.dart';
 import 'ratel_registry.dart';
 
 class RequestContext {
   final HttpRequest request;
 
   final RatelRegistry registry;
+
+  final RequestLimits limits;
 
   Route? route;
 
@@ -20,6 +23,7 @@ class RequestContext {
     this.request, {
     this.pathParams = const {},
     RatelRegistry? registry,
+    this.limits = const RequestLimits(),
   }) : registry = registry ?? RatelRegistry.current;
 
   String get path => request.uri.path;
