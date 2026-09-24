@@ -1,5 +1,11 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- A Query with only `offset()` now runs on SQLite, which rejects a bare
+  `OFFSET`: `SqliteDialect` now renders `LIMIT -1 OFFSET n`, while Postgres
+  still renders `OFFSET n` alone. `applyReturning` now looks for `RETURNING` as
+  a whole keyword outside quoted literals and identifiers, so writes that touch
+  a column like `returning_customer` or a string containing the word get
+  `RETURNING *` appended.
 - SqliteDriver now reports 0 affected rows and a null insert id for read-only
   statements such as SELECT, instead of the previous write's values. A
   driver-level query waits for an open transaction to finish instead of joining
