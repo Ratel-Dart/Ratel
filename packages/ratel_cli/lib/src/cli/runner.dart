@@ -27,7 +27,7 @@ class RatelCliRunner {
         return 0;
       case '-v':
       case '--version':
-        stdout.writeln('ratel ${await ratelVersion()}');
+        stdout.writeln('ratel ${RatelCliVersion.current}');
         return 0;
       case 'create':
         return _create(rest);
@@ -52,7 +52,7 @@ class RatelCliRunner {
       stderr.writeln('Cannot create: ${target.path} exists and is not empty.');
       return 1;
     }
-    await scaffold(target, await ratelVersion());
+    await scaffold(target, RatelCliVersion.current);
     final name = p.basename(p.absolute(target.path));
     stdout
       ..writeln('Created $name.')

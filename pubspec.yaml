@@ -6,5 +6,6 @@ environment:
 
 workspace:
   - packages/ratel
+  - packages/ratel_cli
   - packages/ratel_generator
   - packages/ratel_orm

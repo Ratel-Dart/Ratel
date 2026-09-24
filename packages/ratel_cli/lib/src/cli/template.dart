@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'version.dart' show generatorVersion;
+import 'version.dart';
 
 Future<void> scaffold(Directory target, String version) async {
   final name = _packageName(p.basename(p.absolute(target.path)));
@@ -22,7 +22,7 @@ dependencies:
 dev_dependencies:
   build_runner: ^2.4.0
   lints: ^4.0.0
-  ratel_generator: ^$generatorVersion
+  ratel_generator: ^${RatelCliVersion.generator}
   test: ^1.25.0
 ''');
 
