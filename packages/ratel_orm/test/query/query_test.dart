@@ -25,13 +25,6 @@ void main() {
       expect(built.parameters, {'p0': 18});
     });
 
-    test('MySQL quotes identifiers with backticks', () {
-      final built =
-          Query.from('users').where('id', '=', 1).build(const MysqlDialect());
-      expect(built.sql, 'SELECT * FROM `users` WHERE `id` = @p0');
-      expect(built.parameters, {'p0': 1});
-    });
-
     test('combines AND/OR conditions in order', () {
       final built = Query.from('t')
           .where('a', '=', 1)

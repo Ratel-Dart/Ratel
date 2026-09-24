@@ -16,8 +16,8 @@ next to NestJS: the two fit together, and neither needs the other.
   Dart with nothing generated.
 - **Query builder** — `Query.from(...).select(...).where(...).orderBy(...)`,
   rendered per dialect.
-- **Dialect layer** — identifier quoting, `LIMIT`/`OFFSET`, upserts and
-  `RETURNING`, for Postgres, SQLite and MySQL.
+- **Dialect layer** — identifier quoting, `LIMIT`/`OFFSET` and an opt-in
+  `RETURNING`, for Postgres and SQLite.
 - **Migrations** — an ordered `Migrator` with a bookkeeping table, each
   migration in its own transaction.
 - **Drivers**, as sub-libraries so each stays the only place its client package

@@ -1,4 +1,4 @@
-import '../dialect.dart';
+import '../dialect/sql_dialect.dart';
 import 'built_query.dart';
 import 'condition.dart';
 import 'order.dart';

@@ -1,12 +1,7 @@
-import 'rewritten_sql.dart';
 import 'sql_dialect.dart';
 
 class StandardDialect implements SqlDialect {
   const StandardDialect();
-
-  @override
-  RewrittenSql rewrite(String sql, Map<String, Object?>? parameters) =>
-      RewrittenSql(sql, parameters);
 
   @override
   bool get supportsReturning => true;
@@ -38,20 +33,4 @@ class StandardDialect implements SqlDialect {
 
   @override
   String quoteIdentifier(String name) => '"$name"';
-
-  @override
-  String upsert({
-    required String table,
-    required List<String> columns,
-    required List<String> conflictKeys,
-  }) {
-    final keys = conflictKeys.map(quoteIdentifier).join(', ');
-    final assignments = columns
-        .map((c) => '${quoteIdentifier(c)} = EXCLUDED.${quoteIdentifier(c)}')
-        .join(', ');
-    return 'ON CONFLICT ($keys) DO UPDATE SET $assignments';
-  }
-
-  @override
-  Object? encode(Object? value) => value;
 }

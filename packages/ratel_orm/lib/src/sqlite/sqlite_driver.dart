@@ -1,6 +1,7 @@
 import 'package:sqlite3/sqlite3.dart';
 
-import '../dialect.dart';
+import '../dialect/sql_dialect.dart';
+import '../dialect/sqlite_dialect.dart';
 import '../driver/query_result.dart';
 import '../driver/ratel_driver.dart';
 import '../driver/ratel_session.dart';
