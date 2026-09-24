@@ -1,7 +1,10 @@
+import '../dialect/sql_dialect.dart';
 import 'query_result.dart';
-import 'session.dart';
+import 'ratel_session.dart';
 
 abstract class RatelDriver {
+  SqlDialect get dialect;
+
   Future<void> open();
 
   Future<void> close();

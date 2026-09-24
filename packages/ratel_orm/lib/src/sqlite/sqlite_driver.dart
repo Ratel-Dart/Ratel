@@ -1,12 +1,13 @@
-import 'package:ratel/ratel.dart'
-    show QueryExecutionException, QueryResult, RatelSession;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../dialect.dart';
-import '../orm_driver.dart';
+import '../driver/query_result.dart';
+import '../driver/ratel_driver.dart';
+import '../driver/ratel_session.dart';
+import '../exceptions/query_execution_exception.dart';
 import 'sqlite_session.dart';
 
-class SqliteDriver extends OrmDriver {
+class SqliteDriver extends RatelDriver {
   final String path;
 
   Database? _db;

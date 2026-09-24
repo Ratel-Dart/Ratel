@@ -1,9 +1,6 @@
-import 'package:ratel/ratel.dart' show QueryResult, RatelDriver;
-
-import '../dialect.dart';
-import '../exceptions.dart';
-import '../orm_driver.dart';
-import '../query.dart';
+import '../driver/ratel_driver.dart';
+import '../exceptions/mapping_exception.dart';
+import '../query/query.dart';
 
 abstract class RatelRepository<T> {
   RatelRepository(this.driver);
@@ -17,21 +14,16 @@ abstract class RatelRepository<T> {
     Map<String, Object?>? parameters,
     bool returning = false,
   }) async {
-    final current = driver;
-    final finalSql = current is OrmDriver
-        ? current.dialect.applyReturning(sql, returning: returning)
-        : sql;
-    final QueryResult result =
-        await current.query(finalSql, parameters: parameters);
+    final result = await driver.query(
+      driver.dialect.applyReturning(sql, returning: returning),
+      parameters: parameters,
+    );
     if (result.rows.isEmpty) return null;
     return [for (final row in result.rows) _map(row)];
   }
 
   Future<List<T>?> find(Query query) {
-    final current = driver;
-    final dialect =
-        current is OrmDriver ? current.dialect : const StandardDialect();
-    final built = query.build(dialect);
+    final built = query.build(driver.dialect);
     return execute(built.sql, parameters: built.parameters);
   }
 
@@ -39,7 +31,10 @@ abstract class RatelRepository<T> {
     try {
       return fromRow(row);
     } catch (error) {
-      throw MappingException('Failed to map a row onto $T: $error');
+      throw MappingException(
+        'Failed to map a row onto $T: $error',
+        cause: error,
+      );
     }
   }
 }

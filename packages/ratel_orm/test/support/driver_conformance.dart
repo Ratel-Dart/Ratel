@@ -1,4 +1,4 @@
-import 'package:ratel/ratel.dart' show QueryResult, RatelDriver;
+import 'package:ratel_orm/ratel_orm.dart';
 import 'package:test/test.dart';
 
 abstract final class DriverConformance {

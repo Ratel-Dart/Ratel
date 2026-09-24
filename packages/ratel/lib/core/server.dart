@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import '../database/db.dart';
-import '../database/driver.dart';
 import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../jwt.dart';
@@ -16,8 +14,6 @@ import 'router.dart';
 
 class RatelServer {
   final int port;
-
-  final RatelDriver? database;
 
   final String? jwtKey;
 
@@ -48,7 +44,6 @@ class RatelServer {
 
   RatelServer({
     this.port = 8080,
-    this.database,
     this.jwtKey,
     this.bindings,
     this.securityContext,
@@ -70,15 +65,7 @@ class RatelServer {
 
   int? get boundPort => _server?.port;
 
-  Db get db => Db(database);
-
   Future<void> startServer() async {
-    final driver = database;
-    if (driver != null) {
-      Db.configure(driver);
-      await driver.open();
-    }
-
     await onStartup?.call();
 
     final jwtMiddleware = jwtKey != null ? JwtAuthMiddleware(jwtKey!) : null;
@@ -123,7 +110,6 @@ class RatelServer {
     await _server?.close(force: force);
     _server = null;
     await onShutdown?.call();
-    await database?.close();
   }
 
   Future<void> _serve(HttpServer server, List<Middleware> chain) async {

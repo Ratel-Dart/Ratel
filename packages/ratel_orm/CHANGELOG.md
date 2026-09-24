@@ -1,5 +1,16 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- `ratel_orm` no longer depends on `ratel`. The driver contract moved here from
+  the framework: `RatelDriver`, `RatelSession`, `QueryResult`,
+  `DatabaseException`, `QueryExecutionException` and
+  `DriverConnectionException` are exported from
+  `package:ratel_orm/ratel_orm.dart`. `DatabaseNotConfiguredException` is gone,
+  together with the framework's `Db` it belonged to.
+- `OrmDriver` merged into `RatelDriver`, which now declares `SqlDialect get
+  dialect`. `FakeDriver` uses the standard dialect, so `returning: true` on a
+  repository backed by it now appends `RETURNING *` as it does on a real driver.
+- `cause` moved onto `DatabaseException`, and `MappingException` now keeps
+  the error that broke the mapping.
 - Row mapping is explicit. A repository implements `T fromRow(Map<String,
   Object?> row)` and takes its driver in the constructor:
   `UserRepository(driver)`. Nothing is generated or reflected, so the ORM runs
@@ -9,7 +20,7 @@
 - Fluent `SELECT` query builder, reached through `RatelRepository.find`.
 - Schema migration engine: ordered application against a bookkeeping table,
   each migration in its own transaction.
-- SQL dialect layer (`SqlDialect`, `OrmDriver`) covering identifier quoting,
+- SQL dialect layer (`SqlDialect`) covering identifier quoting,
   `LIMIT`/`OFFSET`, upserts, and an opt-in `returning:` on `execute`. SQL is
   otherwise passed through verbatim — the automatic `RETURNING *` the old
   repository appended is gone.

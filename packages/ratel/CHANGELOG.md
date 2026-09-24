@@ -5,6 +5,15 @@ All notable changes to this project are documented here. This project follows
 
 ## 2.0.0-dev.8 (unreleased)
 
+### Removed
+- **The framework has no database layer any more** (breaking). `RatelDriver`,
+  `RatelSession`, `QueryResult`, the database exceptions, `Db`,
+  `RatelServer(database:)` and `server.db` moved to or were replaced in
+  `ratel_orm`, which no longer depends on `ratel`. Open a client in `onStartup`,
+  close it in `onShutdown` and provide it through `Bindings`. The README shows
+  this with `package:postgres`, and `ratel_orm`'s README shows it with
+  `RatelRepository`.
+
 ### Added
 - **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from
   the registered routes — `:id` becomes `{id}`, every bound parameter becomes an
@@ -91,9 +100,6 @@ All notable changes to this project are documented here. This project follows
   a single server; `RatelServer(registry: ...)` opts out. A handler reads its
   limit from `ctx.registry`, so the last server constructed no longer decides
   the body limit for every other one.
-- **`server.db` runs on the server's own driver** instead of the last driver
-  passed to `Db.configure`. `Db.driver` stays ambient for the ORM repository,
-  which resolves through it.
 - **`Injector` can be scoped.** `Injector.scoped()` builds an isolated one,
   `Injector.ambient` chooses which `Injector()` hands out, and `clear()` forgets
   its registrations — so a test no longer inherits another test's bindings.

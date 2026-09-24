@@ -1,8 +1,7 @@
 name: ratel
 description: >-
   Ratel is a lightweight, annotation-driven backend framework for Dart with HTTP
-  routing, dependency injection, a database-agnostic driver contract and JWT
-  authentication.
+  routing, dependency injection, middleware and JWT authentication.
 version: 2.0.0-dev.8
 repository: https://github.com/Ratel-Dart/Ratel
 issue_tracker: https://github.com/Ratel-Dart/Ratel/issues
@@ -12,7 +11,6 @@ topics:
   - http
   - framework
   - rest
-  - database
 
 resolution: workspace
 
