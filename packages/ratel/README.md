@@ -99,6 +99,7 @@ controller and the model sit in their own folders, found without any import.
 | `ratel create <name>` | Scaffold a new application. |
 | `ratel dev [entrypoint] [-- args]` | Run the app and restart it on every change. |
 | `ratel build [entrypoint]` | Compile a native binary into `build/`. |
+| `ratel test [paths] [-- args]` | Run the tests with the routes wired, so a test can start a `RatelServer` and call it. |
 
 Ratel finds every `@Controller` class in `lib/` and next to the entrypoint,
 including files nothing imports, and wires their routes before `main` runs. It
