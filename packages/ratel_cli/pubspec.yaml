@@ -21,7 +21,10 @@ executables:
 
 dependencies:
   analyzer: ">=14.4.0 <15.0.0"
+  package_config: ^2.1.0
   path: ^1.9.0
+  watcher: ^1.1.0
+  yaml: ^3.1.0
 
 dev_dependencies:
   lints: ^4.0.0

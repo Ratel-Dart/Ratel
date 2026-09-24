@@ -41,18 +41,28 @@ cd my_api
 ratel dev
 ```
 
-Define a JSON model and a controller — that is all the code there is:
+A JSON model and a controller, each in its own file, are all the code there is.
+`lib/models/greeting.dart`:
 
 ```dart
 import 'package:ratel/ratel.dart';
 
 @Json()
 class Greeting {
-  String message;
   Greeting({this.message = ''});
-}
 
-class HelloController extends RatelHandler {
+  String message;
+}
+```
+
+`lib/controllers/hello_controller.dart`:
+
+```dart
+import 'package:my_api/models/greeting.dart';
+import 'package:ratel/ratel.dart';
+
+@Controller()
+class HelloController {
   @Get('/hello')
   Future<Response> hello(@Param() String? name) async {
     return Response.json(data: Greeting(message: 'Hello, ${name ?? 'world'}!'));
@@ -78,22 +88,29 @@ Future<void> main() async {
 curl "http://localhost:8080/hello?name=Ada"   # {"message":"Hello, Ada!"}
 ```
 
-`ratel dev` reloads on every change. A complete runnable version lives in
-[`example/main.dart`](example/main.dart).
+`ratel dev` restarts the server on every change. A complete runnable version
+lives in [`example/`](example): `main.dart` starts the server, and the
+controller and the model sit in their own folders, found without any import.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
 | `ratel create <name>` | Scaffold a new application. |
-| `ratel dev` | Run the app, rebuilding and restarting on change. |
-| `ratel build` | Compile a native binary to `build/server`. |
+| `ratel dev [entrypoint] [-- args]` | Run the app and restart it on every change. |
+| `ratel build [entrypoint]` | Compile a native binary into `build/`. |
 
-Ratel reads your annotations at build time rather than through reflection, which
-is what lets an app compile to a native binary. The CLI runs that step for you —
-`ratel dev` and `ratel build` regenerate before they run, so there is no
-generation command to remember and no generated code to write by hand. The
-`.ratel.dart` files it produces are build output; leave them gitignored.
+Ratel finds every `@Controller` class in `lib/` and next to the entrypoint,
+including files nothing imports, and wires their routes before `main` runs. It
+reads the annotations with the Dart analyzer instead of reflection, which is
+what lets an app compile to a native binary, and it keeps the wiring under
+`.dart_tool/ratel/`: nothing is generated into your project, there is no
+build_runner, and there is no step to run by hand. Start the app through
+`ratel`; a plain `dart run bin/server.dart` skips discovery.
+
+When a file changes, `ratel dev` re-analyzes only what changed and restarts
+the server. If the change does not compile, it prints the errors as
+`file:line` and keeps the previous server running.
 
 ## Routing
 
@@ -104,7 +121,7 @@ known path with an unsupported method returns `405` with an `Allow` header.
 
 ```dart
 @Controller('/api/v1')
-class UserController extends RatelHandler {
+class UserController {
   @Get('/users/:id')
   Future<Response> byId(@PathParam('id') int id) async =>
       Response.json(data: {'id': id});
@@ -190,8 +207,9 @@ Protected routes require an `Authorization: Bearer <token>` header. `@Public`
 opts a single route out of a protected controller.
 
 ```dart
+@Controller()
 @Protected()
-class AccountController extends RatelHandler {
+class AccountController {
   @Get('/me')
   Future<Response> me() async => Response.json(data: {});
 
@@ -231,7 +249,8 @@ match exactly, and upgrades do not run the middleware chain — authenticate
 inside the handler, from the query string or the first message.
 
 ```dart
-class ChatController extends RatelHandler {
+@Controller()
+class ChatController {
   @Socket('/ws')
   Future<void> chat(WebSocket socket) async {
     socket.listen((message) => socket.add('echo: $message'));
@@ -253,22 +272,23 @@ Future<Response> spec(RequestContext ctx) async =>
 
 ## Scaling across cores
 
-A Dart isolate uses one core. `runCluster` runs the application's startup on one
-isolate per core, and `shared: true` lets every one of them bind the same port,
-with the OS spreading connections across them.
+A Dart isolate uses one core. `RatelCluster.run` runs the application's
+startup on one isolate per core, and `shared: true` lets every one of them bind
+the same port, with the OS spreading connections across them.
 
 ```dart
-void main() => runCluster(serve);
+Future<void> main() => RatelCluster.run(AppServer.start);
 
-void serve(List<String> args) {
-  $registerRatel();
-  RatelServer(port: 8080, shared: true).startServer();
+abstract final class AppServer {
+  static void start(List<String> args) {
+    RatelServer(port: 8080, shared: true).startServer();
+  }
 }
 ```
 
-Isolates share no memory, so the entry point does the whole startup — routes,
-bindings and the server — on each one. It must be a top-level or static
-function.
+Isolates share no memory, so the entry point does the whole startup, bindings
+and server included, on each one. The routes follow on their own: the cluster
+hands every isolate the route manifest the CLI installed.
 
 Files on disk are served by `staticFiles`, which falls through to the router
 when no file matches and refuses paths that escape the directory.
@@ -296,7 +316,7 @@ final server = RatelServer(
 | `onError` | none | Maps an unhandled error to a response (see [Errors](#errors)). |
 | `gzip` | `true` | Compresses responses for clients that send `Accept-Encoding: gzip`. |
 | `idleTimeout` | `dart:io` default | Keep-alive idle timeout. |
-| `shared` | `false` | Binds the port shared, for `runCluster`. |
+| `shared` | `false` | Binds the port shared, for `RatelCluster.run`. |
 | `maxRequestBodyBytes` | 1 MiB | Larger bodies are answered with `413`. |
 | `maxBodyDrainBytes` | 1 MiB | How much of an oversized body is read and discarded so the `413` still reaches the client. |
 
@@ -304,14 +324,15 @@ final server = RatelServer(
 
 `Injector` holds lazily built singletons. Register factories in a `Bindings`
 subclass and pass it to the server. A controller whose constructor takes
-arguments is registered with `RatelControllers.register`:
+arguments is registered in the injector too; Ratel builds it from there, and
+builds any other controller through its no-argument constructor:
 
 ```dart
 class AppBindings extends Bindings {
   @override
   void dependencies() {
     Injector().put<UserService>(() => UserService());
-    RatelControllers.register<UserController>(
+    Injector().put<UserController>(
       () => UserController(Injector().get<UserService>()),
     );
   }
@@ -336,7 +357,8 @@ import 'dart:io';
 import 'package:postgres/postgres.dart';
 import 'package:ratel/ratel.dart';
 
-class UserController extends RatelHandler {
+@Controller()
+class UserController {
   UserController(this.pool);
 
   final Pool pool;
@@ -359,7 +381,7 @@ class AppBindings extends Bindings {
 
   @override
   void dependencies() {
-    RatelControllers.register<UserController>(() => UserController(pool));
+    Injector().put<UserController>(() => UserController(pool));
   }
 }
 
@@ -374,7 +396,7 @@ Future<void> main() async {
 }
 ```
 
-Under `runCluster`, each isolate builds its own client inside the entry
+Under `RatelCluster.run`, each isolate builds its own client inside the entry
 function. For repositories, migrations and a query builder, add
 [`ratel_orm`](https://pub.dev/packages/ratel_orm), which works with or without Ratel. Its README
 shows the same wiring with `RatelRepository`.

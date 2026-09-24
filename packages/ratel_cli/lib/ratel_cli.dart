@@ -1,1 +1,1 @@
-export 'src/cli/runner.dart';
+export 'src/cli/ratel_cli_runner.dart';

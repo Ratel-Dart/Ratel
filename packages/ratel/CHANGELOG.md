@@ -6,6 +6,19 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Removed
+- **No more build_runner, generated files or `$registerRatel()`** (breaking).
+  Controllers are discovered by `@Controller` and wired by the `ratel` CLI,
+  which reads them with the Dart analyzer and keeps the wiring under
+  `.dart_tool/ratel/`. It finds controllers in `lib/` and next to the
+  entrypoint even when nothing imports them. `ratel_generator` is retired.
+  To migrate:
+  - Annotate each controller with `@Controller()`; `extends RatelHandler` is
+    no longer needed.
+  - Register a controller that takes constructor arguments with
+    `Injector().put<C>(() => C(...))` instead of `RatelControllers.register`.
+  - Delete the `*.ratel.dart` files and drop `build_runner` and
+    `ratel_generator` from `dev_dependencies`. `ratel dev` lists any it
+    finds.
 - **The `ratel` executable moved to the `ratel_cli` package** (breaking for
   installs): `dart pub global deactivate ratel`, then
   `dart pub global activate ratel_cli`. Applications no longer carry the CLI in

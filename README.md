@@ -20,9 +20,8 @@
 | Package | Version | What it is |
 |---|---|---|
 | [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT and middleware. It has no database layer. |
-| [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev` and `build`. Installed globally, released in lockstep with `ratel`. |
+| [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev` and `build`. It discovers controllers with the Dart analyzer and keeps the wiring under `.dart_tool/`. Installed globally, released in lockstep with `ratel`. |
 | [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | The driver contract, the Postgres and SQLite drivers, repositories with explicit row mapping, a query builder, dialects and migrations. It does not depend on `ratel`. |
-| [`ratel_generator`](packages/ratel_generator) | `0.1.0-dev.1` | The `build_runner` generator that replaces `dart:mirrors`, so applications compile with `dart compile exe`. Wired in for you by the CLI. |
 
 The framework and the ORM are independent, like NestJS and Prisma. An HTTP app
 can talk to its database through any client, and a plain Dart program can use
@@ -44,24 +43,26 @@ authentication, middleware and database usage.
 
 ## Working on this repository
 
-The three packages form a single [pub workspace](https://dart.dev/tools/pub/workspaces),
+The packages form a single [pub workspace](https://dart.dev/tools/pub/workspaces),
 so one resolve covers all of them and they see each other without path
 dependencies:
 
-Run `dart pub get` once at the root, generate code in the two packages that use
-it, then analyze the whole workspace and test each package:
+Nothing is generated into the source tree, so a fresh clone analyzes and tests
+right after `dart pub get` at the root:
 
 ```sh
 dart pub get
-(cd packages/ratel && dart run build_runner build --delete-conflicting-outputs)
-(cd packages/ratel_orm && dart run build_runner build --delete-conflicting-outputs)
 dart analyze
 (cd packages/ratel && dart test)
+(cd packages/ratel_cli && dart test)
+(cd packages/ratel_orm && dart test)
 ```
 
-Generated `*.ratel.dart` files sit next to their sources and are gitignored, so
-**code generation has to run before `dart analyze` or `dart test`** on a fresh
-clone. Requires the Dart SDK `3.6.0` or newer.
+The `ratel_cli` tests include end-to-end runs tagged `e2e`: they compile the
+CLI, scaffold an app, build it and drive `ratel dev`. Skip them with
+`dart test -x e2e`. The fixture apps under `packages/ratel_cli/test/fixtures`
+are workspace members so they resolve with everything else. Requires the Dart
+SDK `3.6.0` or newer.
 
 The Postgres tests in `ratel_orm` skip themselves unless `DB_HOST` is set, and
 they are the only tests that exercise the driver's real wire protocol. CI runs

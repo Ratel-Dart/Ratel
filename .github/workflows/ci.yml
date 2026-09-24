@@ -58,9 +58,30 @@ jobs:
           DB_PASSWORD: ratel
           DB_SSL_MODE: disable
 
-      - name: Test ratel_generator
+      - name: Test ratel_cli
         run: dart test
-        working-directory: packages/ratel_generator
+        working-directory: packages/ratel_cli
+
+      - name: Compile a native binary (AOT guard)
+        run: dart run ../ratel_cli/bin/ratel.dart build example/main.dart
+        working-directory: packages/ratel
+
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.2
+
+      - name: Install workspace dependencies
+        run: dart pub get
+
+      - name: Test ratel
+        run: dart test
+        working-directory: packages/ratel
 
       - name: Test ratel_cli
         run: dart test
