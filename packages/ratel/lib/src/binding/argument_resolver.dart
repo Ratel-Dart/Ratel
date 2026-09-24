@@ -19,7 +19,10 @@ abstract final class ArgumentResolver {
     final multipart = parameters.any(
             (parameter) => parameter.location == ParameterLocation.multipart)
         ? await MultipartParser.read(
-            ctx.request, ctx.limits.maxRequestBodyBytes)
+            ctx.request,
+            ctx.limits.maxRequestBodyBytes,
+            maxDrainBytes: ctx.limits.maxBodyDrainBytes,
+          )
         : null;
     final arguments = <Object?>[];
     for (final parameter in parameters) {

@@ -9,7 +9,11 @@ import 'multipart_data.dart';
 import 'uploaded_file.dart';
 
 abstract final class MultipartParser {
-  static Future<MultipartData> read(HttpRequest request, int maxBytes) async {
+  static Future<MultipartData> read(
+    HttpRequest request,
+    int maxBytes, {
+    required int maxDrainBytes,
+  }) async {
     final contentType = request.headers.contentType;
     if (contentType?.mimeType != 'multipart/form-data') {
       throw const BadRequestException(
@@ -25,7 +29,10 @@ abstract final class MultipartParser {
     final fields = <String, String>{};
     final files = <UploadedFile>[];
     var total = 0;
+    var discarded = 0;
+    var drained = true;
 
+    parts:
     await for (final part in MimeMultipartTransformer(boundary).bind(request)) {
       final disposition = part.headers['content-disposition'] ?? '';
       final name = _dispositionValue(disposition, 'name');
@@ -35,13 +42,17 @@ abstract final class MultipartParser {
       await for (final chunk in part) {
         total += chunk.length;
         if (total > maxBytes) {
-          throw PayloadTooLargeException(
-            'Multipart body exceeds the limit of $maxBytes bytes',
-          );
+          discarded += chunk.length;
+          if (discarded > maxDrainBytes) {
+            drained = false;
+            break parts;
+          }
+          continue;
         }
         bytes.addAll(chunk);
       }
 
+      if (total > maxBytes) continue;
       if (filename != null) {
         files.add(UploadedFile(
           field: name ?? '',
@@ -54,6 +65,12 @@ abstract final class MultipartParser {
       }
     }
 
+    if (total > maxBytes) {
+      throw PayloadTooLargeException(
+        'Multipart body exceeds the limit of $maxBytes bytes',
+        drained ? const {} : const {HttpHeaders.connectionHeader: 'close'},
+      );
+    }
     return MultipartData(fields: fields, files: files);
   }
 

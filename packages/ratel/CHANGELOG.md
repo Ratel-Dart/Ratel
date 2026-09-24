@@ -170,6 +170,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- A multipart upload over `maxRequestBodyBytes` now gets its 413 instead of a
+  connection reset. The parser reads and discards the rest of the body, up to
+  `maxBodyDrainBytes`, before rejecting it, and adds `Connection: close` when
+  the body goes past that bound too, the same as plain request bodies.
 - `Response.send` now encodes the body before writing any headers. A body the
   serializer cannot encode, such as an object with no JSON codec and no
   `toJson`, now gets a 500 with a logged correlation id instead of leaving the
