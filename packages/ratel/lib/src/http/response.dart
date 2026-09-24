@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../exceptions/exceptions.dart';
-import '../src/serialization/json_codecs.dart';
+import '../serialization/json_codecs.dart';
 
 class Response {
   final int statusCode;

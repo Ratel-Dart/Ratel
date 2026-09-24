@@ -4,8 +4,8 @@ import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 
 import '../exceptions/exceptions.dart';
+import '../http/response.dart';
 import 'middleware.dart';
-import 'response.dart';
 
 Middleware staticFiles({
   required String directory,

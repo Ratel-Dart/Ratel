@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
-import 'core/logger.dart';
+import '../logging/ratel_logger.dart';
 
 class JwtAuthMiddleware {
   final String secret;

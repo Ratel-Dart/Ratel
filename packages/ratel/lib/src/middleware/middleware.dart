@@ -1,9 +1,9 @@
 import 'dart:io';
 
+import '../auth/jwt_validator.dart';
 import '../exceptions/exceptions.dart';
-import '../jwt.dart';
-import 'request_context.dart';
-import 'response.dart';
+import '../http/request_context.dart';
+import '../http/response.dart';
 
 typedef Next = Future<Response> Function();
 

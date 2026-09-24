@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../exceptions/exceptions.dart';
+import '../exceptions/exceptions.dart';
 
 abstract final class RequestBodyReader {
   static Future<String> readLimited(

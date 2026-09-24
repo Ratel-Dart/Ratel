@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:mime/mime.dart';
 
-import '../../exceptions/exceptions.dart';
-import '../../http/multipart_data.dart';
-import '../../http/uploaded_file.dart';
+import '../exceptions/exceptions.dart';
+import 'multipart_data.dart';
+import 'uploaded_file.dart';
 
 abstract final class MultipartParser {
   static Future<MultipartData> read(HttpRequest request, int maxBytes) async {

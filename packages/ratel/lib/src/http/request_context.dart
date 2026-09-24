@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import '../annotations/annotations.dart';
-import '../src/http/request_limits.dart';
-import 'ratel_registry.dart';
+import '../server/ratel_registry.dart';
+import 'request_limits.dart';
 
 class RequestContext {
   final HttpRequest request;

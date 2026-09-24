@@ -1,5 +1,5 @@
-import '../core/request_context.dart';
-import '../core/route_parameter.dart';
+import '../http/request_context.dart';
+import '../routing/route_parameter.dart';
 
 typedef RouteHandler = Future<Object?> Function(RequestContext ctx);
 

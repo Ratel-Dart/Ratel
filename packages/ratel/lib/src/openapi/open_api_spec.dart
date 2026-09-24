@@ -1,5 +1,5 @@
 import '../annotations/annotations.dart';
-import 'route_parameter.dart';
+import '../routing/route_parameter.dart';
 
 Map<String, dynamic> openApiSpec(
   List<Route> routes, {
