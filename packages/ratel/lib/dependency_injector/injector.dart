@@ -12,6 +12,8 @@ class Injector {
     _factories[T] = factory;
   }
 
+  bool contains<T>() => _instances.containsKey(T) || _factories.containsKey(T);
+
   T get<T>() {
     if (_instances.containsKey(T)) {
       return _instances[T] as T;
