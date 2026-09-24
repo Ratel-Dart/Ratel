@@ -1,0 +1,4 @@
+enum DiagnosticSeverity {
+  error,
+  warning,
+}

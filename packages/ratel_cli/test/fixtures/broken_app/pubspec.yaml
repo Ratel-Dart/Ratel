@@ -1,0 +1,10 @@
+name: broken_app
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  ratel: ^2.0.0-dev.8
