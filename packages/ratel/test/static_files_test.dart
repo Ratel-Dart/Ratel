@@ -20,6 +20,7 @@ void main() {
 
     server = RatelServer(
       port: 0,
+      registry: RatelRegistry(),
       middlewares: [
         staticFiles(directory: publicDir.path, urlPrefix: '/static'),
       ],

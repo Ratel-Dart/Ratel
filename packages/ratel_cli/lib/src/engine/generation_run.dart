@@ -198,7 +198,10 @@ final class GenerationRun {
           final location = unit.lineInfo.getLocation(diagnostic.offset);
           errors.add(RatelDiagnostic(
             code: diagnostic.diagnosticCode.lowerCaseName,
-            message: diagnostic.message,
+            message: diagnostic.message.contains("'RatelHandler'")
+                ? '${diagnostic.message} RatelHandler was removed: annotate '
+                    'the class with @Controller() instead of extending it.'
+                : diagnostic.message,
             path: unit.path,
             line: location.lineNumber,
             column: location.columnNumber,

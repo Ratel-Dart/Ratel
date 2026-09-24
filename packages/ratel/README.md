@@ -109,6 +109,22 @@ what lets an app compile to a native binary, and it keeps the wiring under
 build_runner, and there is no step to run by hand. Start the app through
 `ratel`; a plain `dart run bin/server.dart` skips discovery.
 
+Started any other way, `RatelServer` stops with an error that points at
+`ratel dev` instead of serving nothing. A test or tool that wants routes
+without the CLI builds them by hand and passes them in:
+
+```dart
+final server = RatelServer(
+  port: 0,
+  registry: RatelRegistry()
+    ..register(Route(
+      method: 'GET',
+      path: '/ping',
+      handler: (ctx) async => Response.json(data: {'ok': true}),
+    )),
+);
+```
+
 When a file changes, `ratel dev` re-analyzes only what changed and restarts
 the server. If the change does not compile, it prints the errors as
 `file:line` and keeps the previous server running.

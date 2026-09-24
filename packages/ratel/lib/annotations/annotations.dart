@@ -1,6 +1,7 @@
+import '../core/request_context.dart';
 import '../core/route_parameter.dart';
 
-typedef RouteHandler = Future<dynamic> Function([dynamic request]);
+typedef RouteHandler = Future<Object?> Function(RequestContext ctx);
 
 class Route {
   final String path;

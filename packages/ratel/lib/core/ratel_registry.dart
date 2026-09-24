@@ -33,31 +33,11 @@ class RatelRegistry {
       '`registry:` to RatelServer. In an isolate you spawn yourself, start it '
       'through RatelCluster.run so the manifest is forwarded.';
 
-  static RatelRegistry current = RatelRegistry();
-
   final JsonCodecs codecs;
 
   final List<Route> routes = [];
 
   final Map<String, SocketHandler> sockets = {};
-
-  int maxRequestBodyBytes = defaultMaxRequestBodyBytes;
-
-  static const int defaultMaxRequestBodyBytes = 1024 * 1024;
-
-  int maxBodyDrainBytes = defaultMaxBodyDrainBytes;
-
-  static const int defaultMaxBodyDrainBytes = 1024 * 1024;
-
-  static T runScoped<T>(RatelRegistry registry, T Function() register) {
-    final previous = current;
-    current = registry;
-    try {
-      return register();
-    } finally {
-      current = previous;
-    }
-  }
 
   void register(Route route) {
     final clash = routes.any(
@@ -80,9 +60,4 @@ class RatelRegistry {
   }
 
   SocketHandler? socketFor(String path) => sockets[normaliseSocketPath(path)];
-
-  void reset() {
-    routes.clear();
-    sockets.clear();
-  }
 }

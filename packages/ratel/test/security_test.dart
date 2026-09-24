@@ -3,52 +3,64 @@ import 'dart:io';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:ratel/ratel.dart';
+import 'package:ratel/src/http/request_body_reader.dart';
+import 'package:ratel/src/http/request_parameters.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('coerceParam', () {
+  group('RequestParameters.coerce', () {
     test('parses a valid integer', () {
-      expect(coerceParam('id', '42', int), 42);
+      expect(RequestParameters.coerce('id', '42', int), 42);
     });
 
     test('rejects a non-integer with BadRequestException', () {
       expect(
-        () => coerceParam('id', 'abc', int),
+        () => RequestParameters.coerce('id', 'abc', int),
         throwsA(isA<BadRequestException>()),
       );
     });
 
     test('parses a valid double', () {
-      expect(coerceParam('x', '3.5', double), 3.5);
+      expect(RequestParameters.coerce('x', '3.5', double), 3.5);
     });
 
     test('rejects a non-number double with BadRequestException', () {
       expect(
-        () => coerceParam('x', 'abc', double),
+        () => RequestParameters.coerce('x', 'abc', double),
         throwsA(isA<BadRequestException>()),
       );
     });
 
     test('parses bool true/false case-insensitively', () {
-      expect(coerceParam('f', 'true', bool), isTrue);
-      expect(coerceParam('f', 'FALSE', bool), isFalse);
+      expect(RequestParameters.coerce('f', 'true', bool), isTrue);
+      expect(RequestParameters.coerce('f', 'FALSE', bool), isFalse);
     });
 
     test('passes strings through unchanged', () {
-      expect(coerceParam('q', 'hello', String), 'hello');
+      expect(RequestParameters.coerce('q', 'hello', String), 'hello');
     });
   });
 
-  group('readBodyLimited', () {
+  group('RequestBodyReader.readLimited', () {
     test('returns the decoded body when within the limit', () async {
       final stream = Stream<List<int>>.fromIterable([utf8.encode('hello')]);
-      expect(await readBodyLimited(stream, 1024), 'hello');
+      expect(
+          await RequestBodyReader.readLimited(
+            stream,
+            1024,
+            maxDrainBytes: RequestLimits.defaultBytes,
+          ),
+          'hello');
     });
 
     test('throws PayloadTooLargeException when over the limit', () async {
       final stream = Stream<List<int>>.fromIterable([utf8.encode('too big')]);
       await expectLater(
-        readBodyLimited(stream, 4),
+        RequestBodyReader.readLimited(
+          stream,
+          4,
+          maxDrainBytes: RequestLimits.defaultBytes,
+        ),
         throwsA(isA<PayloadTooLargeException>()),
       );
     });
@@ -64,22 +76,23 @@ void main() {
         return chunk;
       });
       await expectLater(
-        readBodyLimited(stream, 4),
+        RequestBodyReader.readLimited(
+          stream,
+          4,
+          maxDrainBytes: RequestLimits.defaultBytes,
+        ),
         throwsA(isA<PayloadTooLargeException>()),
       );
       expect(delivered, 24);
     });
 
     test('closes the connection when the drain limit is passed', () async {
-      final previous = RatelHandler.maxBodyDrainBytes;
-      RatelHandler.maxBodyDrainBytes = 8;
-      addTearDown(() => RatelHandler.maxBodyDrainBytes = previous);
       final stream = Stream<List<int>>.fromIterable([
         utf8.encode('a' * 8),
         utf8.encode('b' * 16),
       ]);
       await expectLater(
-        readBodyLimited(stream, 4),
+        RequestBodyReader.readLimited(stream, 4, maxDrainBytes: 8),
         throwsA(
           isA<PayloadTooLargeException>().having(
             (e) => e.headers,
@@ -91,21 +104,21 @@ void main() {
     });
   });
 
-  group('decodeJsonObject', () {
+  group('RequestBodyReader.decodeJsonObject', () {
     test('decodes a JSON object', () {
-      expect(decodeJsonObject('{"a":1}'), {'a': 1});
+      expect(RequestBodyReader.decodeJsonObject('{"a":1}'), {'a': 1});
     });
 
     test('rejects invalid JSON with BadRequestException', () {
       expect(
-        () => decodeJsonObject('{not json'),
+        () => RequestBodyReader.decodeJsonObject('{not json'),
         throwsA(isA<BadRequestException>()),
       );
     });
 
     test('rejects a top-level JSON array with BadRequestException', () {
       expect(
-        () => decodeJsonObject('[1,2,3]'),
+        () => RequestBodyReader.decodeJsonObject('[1,2,3]'),
         throwsA(isA<BadRequestException>()),
       );
     });

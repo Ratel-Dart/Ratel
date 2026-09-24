@@ -22,9 +22,9 @@ class RequestContext {
   RequestContext(
     this.request, {
     this.pathParams = const {},
-    RatelRegistry? registry,
+    required this.registry,
     this.limits = const RequestLimits(),
-  }) : registry = registry ?? RatelRegistry.current;
+  });
 
   String get path => request.uri.path;
 

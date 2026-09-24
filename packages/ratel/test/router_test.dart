@@ -2,7 +2,7 @@ import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
 Route _route(String method, String path) =>
-    Route(method: method, path: path, handler: ([_]) async => null);
+    Route(method: method, path: path, handler: (_) async => null);
 
 void main() {
   group('splitPath', () {
