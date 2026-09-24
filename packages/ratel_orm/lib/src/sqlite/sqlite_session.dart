@@ -1,5 +1,5 @@
-import 'package:ratel/ratel.dart' show QueryResult, RatelSession;
-
+import '../driver/query_result.dart';
+import '../driver/ratel_session.dart';
 import 'sqlite_driver.dart';
 
 class SqliteSession implements RatelSession {

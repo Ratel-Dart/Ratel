@@ -1,30 +1,25 @@
 # Migration — database layer (2.0.0-dev)
 
-The database layer moved out of `ratel` so the core no longer depends on
-`package:postgres`. The core now owns only the **driver contract** and a
-**raw-SQL facade**; the ORM (`RatelRepository`) and the concrete
-Postgres driver live in the separate [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm)
-package.
+Ratel no longer has a database layer. Everything about databases lives in
+[`ratel_orm`](https://pub.dev/packages/ratel_orm), which does not depend on
+`ratel`. The two work together through dependency injection and the server's
+startup and shutdown hooks, and each is usable without the other.
 
 > **This is half of the release.** The same version also replaced `dart:mirrors`
 > with code generation, which changes how controllers and `@Json` models are
-> written and how an application is run — `RatelServer(handlers:)` is gone,
-> annotated classes must be public, and `ratel dev` / `ratel build` replace
-> `dart run`. Following this guide alone will not get you compiling; see the
-> `2.0.0-dev` entry in [`CHANGELOG.md`](../CHANGELOG.md) for that half.
+> written and how an application is run. See the `2.0.0-dev` entries in
+> [`CHANGELOG.md`](../CHANGELOG.md) for that half.
 
 ## What lives where now
 
-| Concern | Package |
+| Concern | Import |
 |---|---|
-| `RatelDriver`, `QueryResult`, `RatelSession`, `transaction`, `DatabaseException` (+ subclasses), `Db` / `server.db` | `ratel` (core) |
-| `RatelRepository<T>`, `MappingException` | `ratel_orm` |
-| `PostgresDriver`, `SslMode` | `ratel_orm` — `package:ratel_orm/postgres.dart` |
+| `RatelDriver`, `RatelSession`, `QueryResult`, `DatabaseException` and its subclasses, `RatelRepository<T>`, `MappingException`, `Query`, `Migrator` | `package:ratel_orm/ratel_orm.dart` |
+| `PostgresDriver`, `SslMode` | `package:ratel_orm/postgres.dart` |
+| `SqliteDriver` | `package:ratel_orm/sqlite.dart` |
+| `FakeDriver` | `package:ratel_orm/testing.dart` |
 
 ## Add the dependency
-
-Raw SQL alone needs only a driver; the ORM needs the repository too. Both come
-from `ratel_orm`:
 
 ```sh
 dart pub add ratel_orm
@@ -34,21 +29,48 @@ dart pub add ratel_orm
 
 | Before (`ratel` 2.0.0-dev.6 and earlier) | After |
 |---|---|
-| `RatelDatabase(host: ..., databaseName: ..., username: ..., password: ...)` | `PostgresDriver(host: ..., databaseName: ..., username: ..., password: ...)` from `package:ratel_orm/postgres.dart` |
+| `RatelDatabase(host: ..., databaseName: ..., username: ..., password: ...)` | `PostgresDriver(host: ..., databaseName: ..., username: ..., password: ...)` |
 | `RatelDatabase.fromEnv()` | `PostgresDriver.fromEnv()` |
-| `RatelServer(database: ratelDatabase)` | `RatelServer(database: postgresDriver)` |
-| `RatelDatabase(...)` auto-registered the driver in its constructor | `RatelServer` now registers and opens the driver in `startServer()` (no constructor side effect) |
-| `@Column` fields mapped by reflection | a `fromRow` override on the repository, which takes its driver in the constructor |
-| `RatelRepository` imported from `package:ratel/ratel.dart` | imported from `package:ratel_orm/ratel_orm.dart` |
-| `repository.connection` (a `postgres` `Connection`) | removed — use `execute(...)` or `server.db.query(...)` |
-| `catch` of `package:postgres` exceptions | catch `DatabaseException` (and subclasses) from `package:ratel` |
+| `RatelServer(database: ratelDatabase)` | `RatelServer(onStartup: driver.open, onShutdown: driver.close, bindings: ...)` |
+| `server.db.query(...)` | `driver.query(...)` on the driver you created |
+| `@Column` fields mapped by reflection | a `fromRow` override on the repository |
+| a repository that found the driver on its own | a repository that takes the driver in its constructor: `UserRepository(driver)` |
+| `repository.connection` (a `postgres` `Connection`) | removed; use `execute(...)` or `driver.query(...)` |
+| `catch` of `package:postgres` exceptions | `catch` of `DatabaseException` and its subclasses |
 
-`RatelRepository.execute(sql, {substitutionValues})` became
-`execute(sql, {parameters})`.
+`execute(sql, {substitutionValues})` became `execute(sql, {parameters})`.
+
+```dart
+import 'package:ratel/ratel.dart';
+import 'package:ratel_orm/postgres.dart';
+import 'package:ratel_orm/ratel_orm.dart';
+
+class AppBindings extends Bindings {
+  AppBindings(this.driver);
+
+  final RatelDriver driver;
+
+  @override
+  void dependencies() {
+    Injector().put<UserRepository>(() => UserRepository(driver));
+  }
+}
+
+Future<void> main() async {
+  final driver = PostgresDriver.fromEnv();
+  final server = RatelServer(
+    port: 8080,
+    bindings: AppBindings(driver),
+    onStartup: driver.open,
+    onShutdown: driver.close,
+  );
+  await server.startServer();
+}
+```
 
 ## Behavior change: `RETURNING *` is no longer implicit
 
-Writes ran through `execute(...)` previously had `RETURNING *` appended
+Writes run through `execute(...)` used to have `RETURNING *` appended
 automatically on Postgres. SQL now passes through **verbatim**. To get the row
 back, add the clause yourself:
 
@@ -67,22 +89,4 @@ await execute(
   parameters: {'n': name},
   returning: true,
 );
-```
-
-## Raw SQL from the core
-
-The core exposes the configured driver through `server.db`, without the ORM:
-
-```dart
-import 'package:ratel/ratel.dart';
-import 'package:ratel_orm/postgres.dart';
-
-final server = RatelServer(database: PostgresDriver.fromEnv());
-await server.startServer();
-
-final result = await server.db.query(
-  'SELECT id, name FROM users WHERE id = @id',
-  parameters: {'id': 1},
-);
-// result.rows / result.affectedRows
 ```

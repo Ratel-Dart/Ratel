@@ -1,4 +1,4 @@
-import 'package:ratel/ratel.dart' show RatelDriver;
+import '../driver/ratel_driver.dart';
 
 import 'migration.dart';
 

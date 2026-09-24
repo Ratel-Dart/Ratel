@@ -1,12 +1,12 @@
 <h1 align="center">Ratel ORM</h1>
 
-Database ORM layer for the [Ratel](https://github.com/Ratel-Dart/Ratel) framework.
+A standalone SQL toolkit for Dart: a driver contract with Postgres and SQLite
+drivers, repositories with explicit row mapping, a query builder and
+migrations.
 
-`ratel` (the core framework) owns the database **contract** — `RatelDriver`,
-`QueryResult`, transactions, typed exceptions and a raw-SQL facade — and stays
-database-agnostic: it depends on no database package. `ratel_orm` depends on
-`ratel`, implements that contract, and is the only package that pulls a real
-driver in.
+It depends on no web framework. It works in a CLI, a worker or a test, and it
+works next to [Ratel](https://github.com/Ratel-Dart/Ratel) the way Prisma works
+next to NestJS: the two fit together, and neither needs the other.
 
 ## What it provides
 
@@ -69,6 +69,63 @@ Future<void> main() async {
 
 A row that `fromRow` cannot map raises a `MappingException`, and a query that
 returns no rows yields `null`.
+
+## Using it with Ratel
+
+Ratel has no database layer. The server's startup and shutdown hooks open and
+close the driver, and `Bindings` hands repositories to controllers:
+
+```dart
+import 'package:ratel/ratel.dart';
+import 'package:ratel_orm/postgres.dart';
+import 'package:ratel_orm/ratel_orm.dart';
+
+class AppBindings extends Bindings {
+  AppBindings(this.driver);
+
+  final RatelDriver driver;
+
+  @override
+  void dependencies() {
+    Injector().put<UserRepository>(() => UserRepository(driver));
+  }
+}
+
+Future<void> main() async {
+  final driver = PostgresDriver.fromEnv();
+  final server = RatelServer(
+    port: 8080,
+    bindings: AppBindings(driver),
+    onStartup: driver.open,
+    onShutdown: driver.close,
+  );
+  await server.startServer();
+}
+```
+
+## The driver contract
+
+`RatelDriver` is a base class that drivers extend, so members can be added
+without breaking them. Every driver follows these rules, and the conformance
+suite in this repository checks them:
+
+- Parameters use named placeholders (`@name`) matching the keys of the
+  `parameters` map. With no parameters, the SQL runs verbatim.
+- Accepted parameter values are `null`, `bool`, `int`, `double`, `String`,
+  `DateTime` and `List<int>` (bytes).
+- Native engine errors surface as a `DatabaseException`.
+- `open` is idempotent. `close` releases every resource.
+- `transaction` runs its action on one connection, commits when the action
+  completes and rolls back when it throws.
+- `dialect` tells the query builder how to quote identifiers and render
+  `LIMIT`, `OFFSET` and `RETURNING`.
+
+## Testing
+
+`package:ratel_orm/testing.dart` ships `FakeDriver`, an in-memory driver:
+queue results with `enqueue` or `enqueueRows`, inspect the last call through
+`lastSql` and `lastParameters`, and force a failure with `errorToThrow`. It
+does not import `package:test`, so it is safe to use outside tests.
 
 ## Status
 

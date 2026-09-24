@@ -13,9 +13,10 @@ a clean way to build RESTful APIs, with built-in support for:
 - **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` / `@Patch` /
   `@Head` / `@Options`, with path parameters (`/users/:id`) and `@Controller`
   prefixes
-- **Database-agnostic** access: a pluggable driver contract and raw SQL in the
-  core (the ORM and the Postgres driver ship in
-  [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm))
+- **No database lock-in**: the framework has no database layer, so any client
+  plugs in through dependency injection and the startup and shutdown hooks.
+  The separate [`ratel_orm`](https://pub.dev/packages/ratel_orm) package is
+  one option.
 - **Dependency injection**
 - **JWT authentication**
 - **Native binaries**: `ratel build` compiles the whole app ahead of time
@@ -322,41 +323,59 @@ final server = RatelServer(port: 8080, bindings: AppBindings());
 
 ## Database
 
-The core is database-agnostic: it defines the `RatelDriver` contract and runs
-**raw SQL** through it, with no database dependency of its own. Pass a driver to
-the server and reach it via `server.db`. Concrete drivers (and the ORM) live in
-the [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) package:
+Ratel has no database layer of its own, the way NestJS has none: open whatever
+client you use in `onStartup`, close it in `onShutdown`, and hand it to your
+controllers through `Bindings`. With [`package:postgres`](https://pub.dev/packages/postgres)
+directly:
 
 ```dart
+import 'dart:io';
+
+import 'package:postgres/postgres.dart';
 import 'package:ratel/ratel.dart';
-import 'package:ratel_orm/postgres.dart'; // PostgresDriver
 
-final server = RatelServer(database: PostgresDriver.fromEnv());
-await server.startServer();
+class UserController extends RatelHandler {
+  UserController(this.pool);
 
-final users = await server.db.query(
-  'SELECT id, name FROM users WHERE id = @id',
-  parameters: {'id': 1},
-);
-// users.rows / users.affectedRows
-```
+  final Pool pool;
 
-For entity mapping, add `ratel_orm` and extend `RatelRepository<T>`. The
-repository takes the driver in its constructor and maps rows in `fromRow`:
+  @Get('/users/:id')
+  Future<Response> byId(@PathParam('id') int id) async {
+    final result = await pool.execute(
+      Sql.named('SELECT id, name FROM users WHERE id = @id'),
+      parameters: {'id': id},
+    );
+    if (result.isEmpty) throw const NotFoundException();
+    return Response.json(data: result.first.toColumnMap());
+  }
+}
 
-```dart
-import 'package:ratel_orm/ratel_orm.dart';
+class AppBindings extends Bindings {
+  AppBindings(this.pool);
 
-final class UserRepository extends RatelRepository<User> {
-  UserRepository(super.driver);
+  final Pool pool;
 
   @override
-  User fromRow(Map<String, Object?> row) =>
-      User(id: row['id'] as int, name: row['name'] as String);
+  void dependencies() {
+    RatelControllers.register<UserController>(() => UserController(pool));
+  }
+}
 
-  Future<List<User>?> all() => execute('SELECT id, name FROM users');
+Future<void> main() async {
+  final pool = Pool.withUrl(Platform.environment['DATABASE_URL']!);
+  final server = RatelServer(
+    port: 8080,
+    bindings: AppBindings(pool),
+    onShutdown: pool.close,
+  );
+  await server.startServer();
 }
 ```
+
+Under `runCluster`, each isolate builds its own client inside the entry
+function. For repositories, migrations and a query builder, add
+[`ratel_orm`](https://pub.dev/packages/ratel_orm), which works with or without Ratel. Its README
+shows the same wiring with `RatelRepository`.
 
 Migrating from `RatelDatabase`? See
 [`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).

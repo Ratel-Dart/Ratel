@@ -1,6 +1,9 @@
-import 'package:ratel/ratel.dart'
-    show DatabaseException, QueryResult, RatelDriver, RatelSession;
-
+import '../dialect/sql_dialect.dart';
+import '../dialect/standard_dialect.dart';
+import '../driver/query_result.dart';
+import '../driver/ratel_driver.dart';
+import '../driver/ratel_session.dart';
+import '../exceptions/database_exception.dart';
 import 'fake_session.dart';
 
 class FakeDriver extends RatelDriver {
@@ -15,6 +18,9 @@ class FakeDriver extends RatelDriver {
   DatabaseException? errorToThrow;
 
   final List<QueryResult> _queued = [];
+
+  @override
+  SqlDialect get dialect => const StandardDialect();
 
   void enqueue(QueryResult result) => _queued.add(result);
 

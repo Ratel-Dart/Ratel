@@ -19,13 +19,15 @@
 
 | Package | Version | What it is |
 |---|---|---|
-| [`ratel`](packages/ratel) | `2.0.0-dev.7` | The HTTP framework: routing, DI, JWT, middleware, the database driver contract, and the `ratel` CLI. Depends on no database package. |
-| [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | Repository, row mapping, query builder, dialects, migrations, and the Postgres and SQLite drivers. Optional — add it only if you want the data layer. |
+| [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT, middleware, and the `ratel` CLI. It has no database layer. |
+| [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | The driver contract, the Postgres and SQLite drivers, repositories with explicit row mapping, a query builder, dialects and migrations. It does not depend on `ratel`. |
 | [`ratel_generator`](packages/ratel_generator) | `0.1.0-dev.1` | The `build_runner` generator that replaces `dart:mirrors`, so applications compile with `dart compile exe`. Wired in for you by the CLI. |
 
-The core owns the database **contract** and the ORM implements it, so the
-framework never pulls a database driver into an application that does not ask
-for one — the `database/sql`, JDBC and PDO arrangement.
+The framework and the ORM are independent, like NestJS and Prisma. An HTTP app
+can talk to its database through any client, and a plain Dart program can use
+`ratel_orm` without pulling in an HTTP framework. Used together, the server's
+startup and shutdown hooks open and close the driver, and dependency injection
+hands repositories to controllers.
 
 ## Quick start
 

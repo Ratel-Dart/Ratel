@@ -1,4 +1,3 @@
-import 'package:ratel/ratel.dart' show QueryExecutionException;
 import 'package:ratel_orm/ratel_orm.dart';
 import 'package:ratel_orm/testing.dart';
 import 'package:test/test.dart';

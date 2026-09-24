@@ -4,32 +4,6 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-class _NamedDriver extends RatelDriver {
-  _NamedDriver(this.name);
-
-  final String name;
-  String? lastSql;
-
-  @override
-  Future<void> open() async {}
-
-  @override
-  Future<void> close() async {}
-
-  @override
-  Future<QueryResult> query(String sql,
-      {Map<String, Object?>? parameters}) async {
-    lastSql = sql;
-    return QueryResult(rows: [
-      {'driver': name},
-    ]);
-  }
-
-  @override
-  Future<T> transaction<T>(Future<T> Function(RatelSession session) action) =>
-      throw UnimplementedError();
-}
-
 Route _name(String name) => Route(
       path: '/who',
       method: 'GET',
@@ -128,19 +102,6 @@ void main() {
     expect(scoped.routes, hasLength(1));
     expect(RatelRegistry.current, isNot(same(scoped)));
     expect(RatelHandler.routes, isEmpty);
-  });
-
-  test('server.db runs on the server driver, not the configured one', () async {
-    final own = _NamedDriver('own');
-    final ambient = _NamedDriver('ambient');
-    Db.configure(ambient);
-
-    final server = RatelServer(port: 0, database: own);
-    final result = await server.db.query('SELECT 1');
-
-    expect(result.rows.single['driver'], 'own');
-    expect(own.lastSql, 'SELECT 1');
-    expect(ambient.lastSql, isNull);
   });
 
   test('an isolated injector keeps its registrations to itself', () {

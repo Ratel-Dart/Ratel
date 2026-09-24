@@ -1,6 +1,5 @@
-import 'package:ratel/ratel.dart' show RatelDriver;
 import 'package:ratel_orm/postgres.dart';
-import 'package:ratel_orm/ratel_orm.dart' show OrmDriver;
+import 'package:ratel_orm/ratel_orm.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -39,7 +38,7 @@ void main() {
         password: 'secret',
       );
       expect(driver, isA<RatelDriver>());
-      expect(driver, isA<OrmDriver>());
+      expect(driver.dialect, isA<PostgresDialect>());
       expect(driver.port, 5432);
       expect(driver.sslMode, SslMode.require);
     });

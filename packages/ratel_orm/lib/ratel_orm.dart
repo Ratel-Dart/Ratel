@@ -1,6 +1,11 @@
 export 'src/dialect.dart';
-export 'src/exceptions.dart';
+export 'src/driver/query_result.dart';
+export 'src/driver/ratel_driver.dart';
+export 'src/driver/ratel_session.dart';
+export 'src/exceptions/database_exception.dart';
+export 'src/exceptions/driver_connection_exception.dart';
+export 'src/exceptions/mapping_exception.dart';
+export 'src/exceptions/query_execution_exception.dart';
 export 'src/migration.dart';
-export 'src/orm_driver.dart';
 export 'src/query.dart';
 export 'src/repository/ratel_repository.dart';

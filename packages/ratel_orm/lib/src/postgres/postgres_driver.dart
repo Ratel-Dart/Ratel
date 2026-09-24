@@ -1,16 +1,18 @@
 import 'dart:io';
 
 import 'package:postgres/postgres.dart';
-import 'package:ratel/ratel.dart'
-    show DatabaseException, QueryExecutionException, QueryResult, RatelSession;
 
 import '../dialect.dart';
-import '../orm_driver.dart';
+import '../driver/query_result.dart';
+import '../driver/ratel_driver.dart';
+import '../driver/ratel_session.dart';
+import '../exceptions/database_exception.dart';
+import '../exceptions/query_execution_exception.dart';
 import 'postgres_session.dart';
 import 'query_result_mapper.dart';
 import 'ssl_mode.dart';
 
-class PostgresDriver extends OrmDriver {
+class PostgresDriver extends RatelDriver {
   final String host;
 
   final int port;
