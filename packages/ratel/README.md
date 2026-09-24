@@ -27,8 +27,10 @@ a clean way to build RESTful APIs, with built-in support for:
 
 ## Install
 
+The `ratel` command comes from the [`ratel_cli`](https://pub.dev/packages/ratel_cli) package:
+
 ```sh
-dart pub global activate ratel
+dart pub global activate ratel_cli
 ```
 
 ## Quick start

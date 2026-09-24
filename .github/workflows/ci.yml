@@ -62,6 +62,10 @@ jobs:
         run: dart test
         working-directory: packages/ratel_generator
 
+      - name: Test ratel_cli
+        run: dart test
+        working-directory: packages/ratel_cli
+
       - name: Compile a native binary (AOT guard)
-        run: dart run bin/ratel.dart build example/main.dart
+        run: dart run ../ratel_cli/bin/ratel.dart build example/main.dart
         working-directory: packages/ratel

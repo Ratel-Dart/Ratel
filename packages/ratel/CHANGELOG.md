@@ -6,6 +6,10 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Removed
+- **The `ratel` executable moved to the `ratel_cli` package** (breaking for
+  installs): `dart pub global deactivate ratel`, then
+  `dart pub global activate ratel_cli`. Applications no longer carry the CLI in
+  their dependency graph.
 - **The framework has no database layer any more** (breaking). `RatelDriver`,
   `RatelSession`, `QueryResult`, the database exceptions, `Db`,
   `RatelServer(database:)` and `server.db` moved to or were replaced in

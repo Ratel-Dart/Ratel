@@ -19,7 +19,8 @@
 
 | Package | Version | What it is |
 |---|---|---|
-| [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT, middleware, and the `ratel` CLI. It has no database layer. |
+| [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT and middleware. It has no database layer. |
+| [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev` and `build`. Installed globally, released in lockstep with `ratel`. |
 | [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | The driver contract, the Postgres and SQLite drivers, repositories with explicit row mapping, a query builder, dialects and migrations. It does not depend on `ratel`. |
 | [`ratel_generator`](packages/ratel_generator) | `0.1.0-dev.1` | The `build_runner` generator that replaces `dart:mirrors`, so applications compile with `dart compile exe`. Wired in for you by the CLI. |
 
@@ -32,7 +33,7 @@ hands repositories to controllers.
 ## Quick start
 
 ```sh
-dart pub global activate ratel
+dart pub global activate ratel_cli
 ratel create my_api
 cd my_api
 ratel dev
