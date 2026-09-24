@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 abstract final class ScanScope {
-  static const _skippedDirectories = {'build'};
-
   static List<String> files(String root, {String? entrypoint}) {
     final directories = <String>{p.join(root, 'lib')};
     final extra = <String>{};
@@ -33,9 +31,6 @@ abstract final class ScanScope {
   static bool _isCandidate(String path, String root) {
     if (!path.endsWith('.dart') || path.endsWith('.ratel.dart')) return false;
     final segments = p.split(p.relative(path, from: root));
-    return !segments.any(
-      (segment) =>
-          segment.startsWith('.') || _skippedDirectories.contains(segment),
-    );
+    return !segments.any((segment) => segment.startsWith('.'));
   }
 }

@@ -43,8 +43,8 @@ final class ProjectWatcher {
 
   bool _isRelevant(String path) {
     final segments = p.split(p.relative(path, from: root));
-    if (segments
-        .any((segment) => segment.startsWith('.') || segment == 'build')) {
+    if (segments.first == 'build' ||
+        segments.any((segment) => segment.startsWith('.'))) {
       return false;
     }
     if (path.endsWith('.ratel.dart')) return false;

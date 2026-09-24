@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../build/native_compiler.dart';
+import '../compile/native_compiler.dart';
 import '../engine/diagnostics/diagnostic_printer.dart';
 import '../engine/model/generation_mode.dart';
 import '../engine/output_writer.dart';
