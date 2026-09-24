@@ -125,14 +125,20 @@ class PostgresDriver extends RatelDriver {
     Future<T> Function(RatelSession session) action,
   ) async {
     final pool = await _openPool;
+    String? statement = 'BEGIN';
     try {
-      return await pool.runTx((tx) => action(PostgresSession(tx)));
-    } on DatabaseException {
-      rethrow;
+      return await pool.runTx((tx) async {
+        statement = null;
+        final result = await action(PostgresSession(tx));
+        statement = 'COMMIT';
+        return result;
+      });
     } catch (e) {
+      final failed = statement;
+      if (failed == null) rethrow;
       throw QueryExecutionException(
         'Postgres transaction failed',
-        sql: '',
+        sql: failed,
         cause: e,
       );
     }
