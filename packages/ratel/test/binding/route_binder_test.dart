@@ -129,33 +129,34 @@ void main() {
   });
 
   group('a controller without a no-argument constructor', () {
-    late RatelServer server;
-    late HttpProbe probe;
+    setUp(() => Injector.ambient = Injector.scoped());
 
-    setUp(() async {
-      Injector.ambient = Injector.scoped();
-      server = RatelServer(
-        port: 0,
-        registry: RatelRegistry.fromManifest(
-          const RatelManifest(controllers: [GreeterControllerDefinition.value]),
-        ),
-      );
-      await server.startServer();
-      probe = HttpProbe(server.boundPort!);
-    });
-
-    tearDown(() => server.stop(force: true));
+    RatelServer greeterServer() => RatelServer(
+          port: 0,
+          registry: RatelRegistry.fromManifest(
+            const RatelManifest(
+              controllers: [GreeterControllerDefinition.value],
+            ),
+          ),
+        );
 
     test('is built by the injector', () async {
       Injector().put<GreeterController>(() => GreeterController('ahoy'));
-      final (status, body) = await probe.send('GET', '/greet');
+      final server = greeterServer();
+      await server.startServer();
+      addTearDown(() => server.stop(force: true));
+
+      final (status, body) =
+          await HttpProbe(server.boundPort!).send('GET', '/greet');
       expect(status, 200);
       expect(body, 'ahoy');
     });
 
-    test('fails the request when nothing can build it', () async {
-      final (status, _) = await probe.send('GET', '/greet');
-      expect(status, 500);
+    test('stops startServer when nothing can build it', () async {
+      final server = greeterServer();
+
+      await expectLater(server.startServer(), throwsStateError);
+      expect(server.boundPort, isNull);
     });
   });
 }

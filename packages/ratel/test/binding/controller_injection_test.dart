@@ -17,14 +17,10 @@ void main() {
     return body;
   }
 
-  Future<RatelServer> serve(
-    RatelManifest manifest, {
-    ErrorHandler? onError,
-  }) async {
+  Future<RatelServer> serve(RatelManifest manifest) async {
     final started = RatelServer(
       port: 0,
       registry: RatelRegistry.fromManifest(manifest),
-      onError: onError,
     );
     await started.startServer();
     addTearDown(() => started.stop(force: true));
@@ -84,29 +80,50 @@ void main() {
     expect(overrides, 1);
   });
 
-  test('creating an unregistered controller explains what to do', () async {
+  test('startServer refuses an unregistered controller before binding',
+      () async {
     useInjector(Injector.scoped());
-    Object? failure;
-    final unregistered = await serve(
-      const RatelManifest(
-        controllers: [InjectedGreetingControllerDefinition.value],
+    final unregistered = RatelServer(
+      port: 0,
+      registry: RatelRegistry.fromManifest(
+        const RatelManifest(
+          controllers: [InjectedGreetingControllerDefinition.value],
+        ),
       ),
-      onError: (error, stackTrace, ctx) {
-        failure = error;
-        return Response(statusCode: 500);
-      },
     );
-    await get(HttpProbe(unregistered.boundPort!), '/di/hello');
-    expect(
-      failure,
-      isA<StateError>().having(
+    addTearDown(() => unregistered.stop(force: true));
+
+    await expectLater(
+      unregistered.startServer(),
+      throwsA(isA<StateError>().having(
         (e) => e.message,
         'message',
         allOf(
           contains('InjectedGreetingController'),
           contains('Injector().put<InjectedGreetingController>'),
         ),
+      )),
+    );
+    expect(unregistered.boundPort, isNull);
+  });
+
+  test('a controller registered in onStartup is accepted', () async {
+    useInjector(Injector.scoped());
+    final started = RatelServer(
+      port: 0,
+      registry: RatelRegistry.fromManifest(
+        const RatelManifest(
+          controllers: [InjectedGreetingControllerDefinition.value],
+        ),
       ),
+      onStartup: () async => InjectedGreetingBindings().dependencies(),
+    );
+    await started.startServer();
+    addTearDown(() => started.stop(force: true));
+
+    expect(
+      await get(HttpProbe(started.boundPort!), '/di/hello'),
+      '{"greeting":"injected"}',
     );
   });
 }

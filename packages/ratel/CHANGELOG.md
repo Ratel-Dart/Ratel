@@ -170,6 +170,9 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- `startServer` now fails before binding the port when a controller can be
+  neither built from the injector nor through a no-argument constructor. Before,
+  the server started and every request to that controller answered 500.
 - `Injector.put` now drops any instance already cached for that type. The next
   `get` builds from the new factory instead of returning the old instance.
 - `RatelServer.stop()` is now idempotent: calling it again, or a SIGINT arriving

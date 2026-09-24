@@ -79,6 +79,7 @@ class RatelServer {
 
   Future<void> startServer() async {
     await onStartup?.call();
+    registry.verifyControllers();
 
     final jwtValidator = jwtKey != null ? JwtValidator(jwtKey!) : null;
     final server = securityContext != null
