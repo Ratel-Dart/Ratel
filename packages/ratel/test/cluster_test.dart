@@ -4,29 +4,15 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-Route get _ping => Route(
-      path: '/ping',
-      method: 'GET',
-      handler: (_) async => Response.json(data: {'ok': true}),
-    );
-
-void recordRun(List<String> args) {
-  final name = '${DateTime.now().microsecondsSinceEpoch}-${Object().hashCode}';
-  File('${args.first}/$name').writeAsStringSync('.');
-}
-
-int runsIn(Directory dir) => dir.listSync().length;
-
-Future<void> waitForRuns(Directory dir, int expected) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 10));
-  while (DateTime.now().isBefore(deadline)) {
-    if (runsIn(dir) >= expected) return;
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-  }
-  fail('only ${runsIn(dir)} of $expected runs recorded');
-}
+import 'support/cluster_run_recorder.dart';
 
 void main() {
+  Route pingRoute() => Route(
+        path: '/ping',
+        method: 'GET',
+        handler: (_) async => Response.json(data: {'ok': true}),
+      );
+
   final client = HttpClient();
 
   tearDownAll(() => client.close(force: true));
@@ -51,7 +37,7 @@ void main() {
     final server = RatelServer(
       port: 0,
       shared: true,
-      registry: RatelRegistry()..register(_ping),
+      registry: RatelRegistry()..register(pingRoute()),
     );
     await server.startServer();
 
@@ -63,7 +49,7 @@ void main() {
     final first = RatelServer(
       port: 0,
       shared: true,
-      registry: RatelRegistry()..register(_ping),
+      registry: RatelRegistry()..register(pingRoute()),
     );
     await first.startServer();
     final port = first.boundPort!;
@@ -71,7 +57,7 @@ void main() {
     final second = RatelServer(
       port: port,
       shared: true,
-      registry: RatelRegistry()..register(_ping),
+      registry: RatelRegistry()..register(pingRoute()),
     );
     await second.startServer();
 
@@ -86,13 +72,13 @@ void main() {
   test('without shared, a second server cannot take the port', () async {
     final first = RatelServer(
       port: 0,
-      registry: RatelRegistry()..register(_ping),
+      registry: RatelRegistry()..register(pingRoute()),
     );
     await first.startServer();
 
     final second = RatelServer(
       port: first.boundPort!,
-      registry: RatelRegistry()..register(_ping),
+      registry: RatelRegistry()..register(pingRoute()),
     );
     await expectLater(second.startServer(), throwsA(isA<SocketException>()));
 
@@ -101,17 +87,19 @@ void main() {
 
   test('RatelCluster.run runs the entry point on every isolate', () async {
     await withTempDir((dir) async {
-      await RatelCluster.run(recordRun, isolates: 3, args: [dir.path]);
-      await waitForRuns(dir, 3);
-      expect(runsIn(dir), 3);
+      await RatelCluster.run(ClusterRunRecorder.record,
+          isolates: 3, args: [dir.path]);
+      await ClusterRunRecorder.waitForRuns(dir, 3);
+      expect(ClusterRunRecorder.runsIn(dir), 3);
     });
   });
 
   test('RatelCluster.run with a single isolate spawns none', () async {
     await withTempDir((dir) async {
-      await RatelCluster.run(recordRun, isolates: 1, args: [dir.path]);
+      await RatelCluster.run(ClusterRunRecorder.record,
+          isolates: 1, args: [dir.path]);
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(runsIn(dir), 1);
+      expect(ClusterRunRecorder.runsIn(dir), 1);
     });
   });
 }

@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../exceptions/exceptions.dart';
+import '../exceptions/ratel_serialization_exception.dart';
 import '../serialization/json_codecs.dart';
 
 class Response {
+  static const _sseOpening = ':\n\n';
+
   final int statusCode;
   final dynamic data;
   final Map<String, String> headers;
@@ -185,5 +187,3 @@ class Response {
     }
   }
 }
-
-const _sseOpening = ':\n\n';

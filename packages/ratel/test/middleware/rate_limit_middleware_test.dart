@@ -13,7 +13,7 @@ void main() {
       const RatelManifest(controllers: [PingControllerDefinition.value]),
     ),
     middlewares: [
-      rateLimitMiddleware(maxRequests: 2, window: Duration(minutes: 1)),
+      RateLimitMiddleware.create(maxRequests: 2, window: Duration(minutes: 1)),
     ],
   );
   final client = HttpClient();

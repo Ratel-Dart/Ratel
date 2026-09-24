@@ -4,30 +4,30 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-Route _name(String name) => Route(
-      path: '/who',
-      method: 'GET',
-      handler: (_) async => Response.json(data: {'server': name}),
-    );
-
-Route get _limit => Route(
-      path: '/limit',
-      method: 'GET',
-      handler: (ctx) async => Response.json(
-        data: {
-          'limit': ctx.limits.maxRequestBodyBytes,
-          'drain': ctx.limits.maxBodyDrainBytes,
-        },
-      ),
-    );
-
 void main() {
+  Route named(String name) => Route(
+        path: '/who',
+        method: 'GET',
+        handler: (_) async => Response.json(data: {'server': name}),
+      );
+
+  Route limits() => Route(
+        path: '/limit',
+        method: 'GET',
+        handler: (ctx) async => Response.json(
+          data: {
+            'limit': ctx.limits.maxRequestBodyBytes,
+            'drain': ctx.limits.maxBodyDrainBytes,
+          },
+        ),
+      );
+
   final alpha = RatelRegistry()
-    ..register(_name('alpha'))
-    ..register(_limit);
+    ..register(named('alpha'))
+    ..register(limits());
   final beta = RatelRegistry()
-    ..register(_name('beta'))
-    ..register(_limit);
+    ..register(named('beta'))
+    ..register(limits());
 
   final alphaServer = RatelServer(
     port: 0,

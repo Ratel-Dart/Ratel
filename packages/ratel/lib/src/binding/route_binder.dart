@@ -1,6 +1,6 @@
-import '../annotations/annotations.dart';
 import '../dependency_injector/injector.dart';
 import '../routing/parameter_location.dart';
+import '../routing/route.dart';
 import '../routing/route_parameter.dart';
 import '../runtime/controller_definition.dart';
 import '../server/ratel_registry.dart';

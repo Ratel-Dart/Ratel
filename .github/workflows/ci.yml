@@ -48,10 +48,7 @@ jobs:
         working-directory: tool/hygiene
 
       - name: Check hygiene
-        run: dart run tool/hygiene/bin/check.dart tool/hygiene packages/ratel_cli packages/ratel_orm
-
-      - name: Check that nothing carries comments
-        run: dart run tool/hygiene/bin/check.dart --only dart-comment --only config-comment .
+        run: dart run tool/hygiene/bin/check.dart .
 
       - name: Test ratel
         run: dart test

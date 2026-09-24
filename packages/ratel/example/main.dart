@@ -5,7 +5,7 @@ import 'package:ratel/ratel.dart';
 Future<void> main() async {
   final server = RatelServer(
     port: 8080,
-    middlewares: [corsMiddleware(), securityHeadersMiddleware()],
+    middlewares: [CorsMiddleware.create(), SecurityHeadersMiddleware.create()],
   );
 
   await server.startServer();

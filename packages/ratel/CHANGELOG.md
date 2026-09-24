@@ -6,6 +6,22 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Removed
+- **One declaration per file, no top-level functions** (breaking renames). The
+  public API is the same, reached through classes:
+  - `corsMiddleware` → `CorsMiddleware.create`,
+    `securityHeadersMiddleware` → `SecurityHeadersMiddleware.create`,
+    `rateLimitMiddleware` → `RateLimitMiddleware.create`,
+    `staticFiles` → `StaticFilesMiddleware.create`,
+    `jwtAuthMiddleware` → `JwtAuthMiddleware.create`.
+  - `openApiSpec` → `OpenApiSpec.build`.
+  - The token checker class `JwtAuthMiddleware` is now `JwtValidator`.
+  - `ratelLogger` is no longer exported; `Logger('ratel')` returns the same
+    logger.
+  - `Router`, `RouteMatch`, `splitPath` and `normaliseSocketPath` were
+    internals and are no longer exported.
+  - The sources live under `lib/src`. `package:ratel/ratel.dart` exports
+    the public API, and `package:ratel/runtime.dart` exports what generated
+    code uses.
 - **The registration API that only generated code used** (breaking):
   - `RatelHandler` and its statics, and `RatelRegistry.current`,
     `runScoped` and `reset`.

@@ -1,7 +1,7 @@
-import '../annotations/annotations.dart';
 import '../binding/route_binder.dart';
 import '../http/socket_handler.dart';
-import '../routing/router.dart';
+import '../routing/route.dart';
+import '../routing/route_path.dart';
 import '../runtime/ratel_manifest.dart';
 import '../runtime/ratel_runtime.dart';
 import '../serialization/json_codecs.dart';
@@ -52,12 +52,12 @@ class RatelRegistry {
   }
 
   void registerSocket(String path, SocketHandler handler) {
-    final key = normaliseSocketPath(path);
+    final key = RoutePath.normalize(path);
     if (sockets.containsKey(key)) {
       throw StateError('Duplicate socket registered: $key');
     }
     sockets[key] = handler;
   }
 
-  SocketHandler? socketFor(String path) => sockets[normaliseSocketPath(path)];
+  SocketHandler? socketFor(String path) => sockets[RoutePath.normalize(path)];
 }
