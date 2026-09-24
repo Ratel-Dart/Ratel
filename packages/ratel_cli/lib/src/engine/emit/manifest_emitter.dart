@@ -83,7 +83,16 @@ final class ManifestEmitter {
             _invoker(controller, socket.methodName, socket.parameters);
         buffer
           ..writeln('          $_r.SocketDefinition<$type>(')
-          ..writeln('            path: ${DartLiteral.string(socket.path)},')
+          ..writeln('            path: ${DartLiteral.string(socket.path)},');
+        if (socket.isProtected) {
+          buffer.writeln('            isProtected: true,');
+        }
+        if (socket.roles.isNotEmpty) {
+          buffer.writeln(
+            '            requiredRoles: ${DartLiteral.strings(socket.roles)},',
+          );
+        }
+        buffer
           ..write(_parameters(socket.parameters, '            '))
           ..writeln('            invoke: $invoker,')
           ..writeln('          ),');

@@ -39,6 +39,23 @@ void main() {
     expect(routes['GET /items/admin/secret']!.roles, ['admin']);
   });
 
+  test('resolves protection per socket the way it does per route', () {
+    final sockets = {
+      for (final socket in named('ItemsController').sockets)
+        socket.path: socket,
+    };
+    expect(
+      sockets.keys,
+      unorderedEquals(['/items/ws', '/items/admin/ws', '/items/member/ws']),
+    );
+    expect(sockets['/items/ws']!.isProtected, isFalse);
+    expect(sockets['/items/ws']!.roles, isEmpty);
+    expect(sockets['/items/admin/ws']!.isProtected, isTrue);
+    expect(sockets['/items/admin/ws']!.roles, ['admin']);
+    expect(sockets['/items/member/ws']!.isProtected, isTrue);
+    expect(sockets['/items/member/ws']!.roles, isEmpty);
+  });
+
   test('classifies every parameter', () {
     final search = named('ItemsController')
         .routes
@@ -55,7 +72,9 @@ void main() {
       ParameterSource.multipart,
       ParameterSource.body,
     ]);
-    final socket = named('ItemsController').sockets.single;
+    final socket = named('ItemsController')
+        .sockets
+        .singleWhere((socket) => socket.methodName == 'chat');
     expect(socket.path, '/items/ws');
     expect(socket.parameters.map((parameter) => parameter.source), [
       ParameterSource.webSocket,

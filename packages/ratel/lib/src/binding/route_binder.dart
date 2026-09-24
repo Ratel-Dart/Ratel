@@ -39,14 +39,19 @@ final class RouteBinder {
     }
 
     for (final socket in definition.sockets) {
-      registry.registerSocket(socket.path, (webSocket, ctx) async {
-        final arguments = ArgumentResolver.resolveSocket(
-          socket.parameters,
-          webSocket,
-          ctx,
-        );
-        await socket.invoke(controller(), arguments);
-      });
+      registry.registerSocket(
+        socket.path,
+        (webSocket, ctx) async {
+          final arguments = ArgumentResolver.resolveSocket(
+            socket.parameters,
+            webSocket,
+            ctx,
+          );
+          await socket.invoke(controller(), arguments);
+        },
+        isProtected: socket.isProtected,
+        requiredRoles: socket.requiredRoles,
+      );
     }
   }
 

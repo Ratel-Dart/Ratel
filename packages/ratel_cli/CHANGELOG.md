@@ -1,5 +1,8 @@
 ## 2.0.0-dev.8 (unreleased)
 
+- The engine resolves @Protected and @Public on @Socket methods with the same
+  rule as routes and writes the result into the `SocketDefinition`, so protected
+  sockets are enforced.
 - The engine now rejects route methods it would call wrongly. A route parameter
   with no binding annotation reports `ratel_unbound_parameter` and lists the
   annotations it could use; before, it was given `null`. A static route method
