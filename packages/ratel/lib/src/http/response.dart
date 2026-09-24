@@ -118,7 +118,7 @@ class Response {
 
   String toJson({JsonCodecs codecs = const JsonCodecs.empty()}) {
     if (data == null) return '';
-    if (contentType != 'application/json') return data.toString();
+    if (!_isJson) return data.toString();
     final payload = data;
     if (payload is String) return payload;
     return jsonEncode(
@@ -145,21 +145,34 @@ class Response {
     bool includeBody = true,
     JsonCodecs codecs = const JsonCodecs.empty(),
   }) async {
+    final stream = events;
+    final body = includeBody && stream == null ? _encodeBody(codecs) : null;
+
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
     headers.forEach((key, value) => response.headers.set(key, value));
     response.cookies.addAll(cookies);
 
-    final stream = events;
     if (stream != null && includeBody) {
       await _stream(stream, response);
       return;
     }
 
-    if (includeBody) {
-      _writeBody(response, codecs);
+    if (body is List<int>) {
+      response.add(body);
+    } else if (body is String && body.isNotEmpty) {
+      response.write(body);
     }
     await response.close();
+  }
+
+  bool get _isJson =>
+      contentType.split(';').first.trim().toLowerCase() ==
+      ContentType.json.mimeType;
+
+  Object _encodeBody(JsonCodecs codecs) {
+    final body = data;
+    return body is List<int> ? body : toJson(codecs: codecs);
   }
 
   Future<void> _stream(Stream<String> stream, HttpResponse response) async {
@@ -171,19 +184,5 @@ class Response {
       await response.flush();
     }
     await response.close();
-  }
-
-  void _writeBody(HttpResponse response, JsonCodecs codecs) {
-    final body = data;
-    if (body is List<int>) {
-      response.add(body);
-      return;
-    }
-    final responseData = contentType == 'application/json'
-        ? toJson(codecs: codecs)
-        : body.toString();
-    if (responseData.isNotEmpty) {
-      response.write(responseData);
-    }
   }
 }
