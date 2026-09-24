@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 Route get _ping => Route(
       path: '/ping',
       method: 'GET',
-      handler: ([ctxArg]) async => Response.json(data: {'ok': true}),
+      handler: (_) async => Response.json(data: {'ok': true}),
     );
 
 void recordRun(List<String> args) {
@@ -99,17 +99,17 @@ void main() {
     await first.stop(force: true);
   });
 
-  test('runCluster runs the entry point on every isolate', () async {
+  test('RatelCluster.run runs the entry point on every isolate', () async {
     await withTempDir((dir) async {
-      await runCluster(recordRun, isolates: 3, args: [dir.path]);
+      await RatelCluster.run(recordRun, isolates: 3, args: [dir.path]);
       await waitForRuns(dir, 3);
       expect(runsIn(dir), 3);
     });
   });
 
-  test('runCluster with a single isolate spawns none', () async {
+  test('RatelCluster.run with a single isolate spawns none', () async {
     await withTempDir((dir) async {
-      await runCluster(recordRun, isolates: 1, args: [dir.path]);
+      await RatelCluster.run(recordRun, isolates: 1, args: [dir.path]);
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(runsIn(dir), 1);
     });

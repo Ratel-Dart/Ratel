@@ -64,6 +64,16 @@ void main() {
     expect(jsonDecode(body), {'message': 'Hello, Ada!'});
   }, timeout: const Timeout(Duration(minutes: 5)));
 
+  test('plain dart run refuses to serve without the CLI', () async {
+    final plain = await Process.run(
+      DartSdk.dart,
+      ['run', 'bin/server.dart'],
+      workingDirectory: app.path,
+    );
+    expect(plain.exitCode, isNot(0));
+    expect('${plain.stdout}${plain.stderr}', contains('ratel dev'));
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
   test('ratel test wires the routes where plain dart test cannot', () async {
     final wired = await cli.run(['test'], workingDirectory: app.path);
     expect(wired.exitCode, 0, reason: '${wired.stdout}${wired.stderr}');

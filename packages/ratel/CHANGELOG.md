@@ -6,6 +6,22 @@ All notable changes to this project are documented here. This project follows
 ## 2.0.0-dev.8 (unreleased)
 
 ### Removed
+- **The registration API that only generated code used** (breaking):
+  - `RatelHandler` and its statics, and `RatelRegistry.current`,
+    `runScoped` and `reset`.
+  - `RatelControllers` (use `Injector().put`), `RatelJson` (codecs travel
+    with the manifest), and `runCluster` (use `RatelCluster.run`).
+  - The top-level `coerceParam`, `cookieValue`, `readBodyLimited`,
+    `decodeBody`, `decodeJsonObject` and `readMultipart`.
+  - A `RouteHandler` is now `Future<Object?> Function(RequestContext ctx)`,
+    and `RequestContext` takes its registry explicitly.
+  - Body limits live on `RequestContext.limits` instead of the registry.
+- **A server without routes refuses to start** (breaking). `RatelServer`
+  without a `registry:` needs the route manifest the `ratel` CLI installs,
+  and a plain `dart run` fails before binding, with a message pointing at
+  `ratel dev`, instead of answering every request with 404. Pass
+  `registry: RatelRegistry()..register(Route(...))` to serve hand-built
+  routes.
 - **No more build_runner, generated files or `$registerRatel()`** (breaking).
   Controllers are discovered by `@Controller` and wired by the `ratel` CLI,
   which reads them with the Dart analyzer and keeps the wiring under

@@ -1,7 +1,6 @@
 import '../../annotations/annotations.dart';
 import '../../core/parameter_location.dart';
 import '../../core/ratel_registry.dart';
-import '../../core/request_context.dart';
 import '../../core/route_parameter.dart';
 import '../../dependency_injector/injector.dart';
 import '../runtime/controller_definition.dart';
@@ -27,8 +26,7 @@ final class RouteBinder {
             if (_isRequestParameter(parameter)) parameter,
         ],
         bodyType: _bodyType(route.parameters),
-        handler: ([ctxArg]) async {
-          final ctx = ctxArg as RequestContext;
+        handler: (ctx) async {
           final arguments = await ArgumentResolver.resolve(
             route.parameters,
             ctx,

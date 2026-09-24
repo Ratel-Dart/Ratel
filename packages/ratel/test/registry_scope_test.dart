@@ -7,21 +7,18 @@ import 'package:test/test.dart';
 Route _name(String name) => Route(
       path: '/who',
       method: 'GET',
-      handler: ([ctxArg]) async => Response.json(data: {'server': name}),
+      handler: (_) async => Response.json(data: {'server': name}),
     );
 
 Route get _limit => Route(
       path: '/limit',
       method: 'GET',
-      handler: ([ctxArg]) async {
-        final ctx = ctxArg as RequestContext;
-        return Response.json(
-          data: {
-            'limit': ctx.registry.maxRequestBodyBytes,
-            'drain': ctx.registry.maxBodyDrainBytes,
-          },
-        );
-      },
+      handler: (ctx) async => Response.json(
+        data: {
+          'limit': ctx.limits.maxRequestBodyBytes,
+          'drain': ctx.limits.maxBodyDrainBytes,
+        },
+      ),
     );
 
 void main() {
@@ -89,19 +86,6 @@ void main() {
         {'limit': 1024, 'drain': 2048});
     expect(jsonDecode(await fromBeta.transform(utf8.decoder).join()),
         {'limit': 16, 'drain': 32});
-  });
-
-  test('the ambient registry is untouched by a scoped one', () {
-    final scoped = RatelRegistry();
-    final routes = RatelRegistry.runScoped(scoped, () {
-      RatelHandler.register(_name('scoped'));
-      return RatelHandler.routes.length;
-    });
-
-    expect(routes, 1);
-    expect(scoped.routes, hasLength(1));
-    expect(RatelRegistry.current, isNot(same(scoped)));
-    expect(RatelHandler.routes, isEmpty);
   });
 
   test('an isolated injector keeps its registrations to itself', () {

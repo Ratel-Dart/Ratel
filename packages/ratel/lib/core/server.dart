@@ -5,7 +5,6 @@ import '../dependency_injector/binding.dart';
 import '../exceptions/exceptions.dart';
 import '../jwt.dart';
 import '../src/http/request_limits.dart';
-import '../src/runtime/ratel_runtime.dart';
 import 'error_handler.dart';
 import 'logger.dart';
 import 'middleware.dart';
@@ -61,21 +60,15 @@ class RatelServer {
     RatelRegistry? registry,
     int maxRequestBodyBytes = RequestLimits.defaultBytes,
     int maxBodyDrainBytes = RequestLimits.defaultBytes,
-  })  : registry = registry ?? _defaultRegistry(),
+  })  : registry = registry ?? RatelRegistry.installed(),
         limits = RequestLimits(
           maxRequestBodyBytes: maxRequestBodyBytes,
           maxBodyDrainBytes: maxBodyDrainBytes,
         ) {
-    this.registry.maxRequestBodyBytes = maxRequestBodyBytes;
-    this.registry.maxBodyDrainBytes = maxBodyDrainBytes;
     bindings?.dependencies();
   }
 
   int? get boundPort => _server?.port;
-
-  static RatelRegistry _defaultRegistry() => RatelRuntime.installed == null
-      ? RatelRegistry.current
-      : RatelRegistry.installed();
 
   Future<void> startServer() async {
     await onStartup?.call();

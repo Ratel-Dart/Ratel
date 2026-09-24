@@ -3,7 +3,6 @@ import 'dart:io';
 
 import '../exceptions/exceptions.dart';
 import '../src/serialization/json_codecs.dart';
-import 'serialization.dart';
 
 class Response {
   final int statusCode;
@@ -129,8 +128,6 @@ class Response {
   static Object? _toEncodable(dynamic object, JsonCodecs codecs) {
     final codec = codecs.forType(object.runtimeType);
     if (codec != null) return codec.encodeObject(object as Object);
-    final encode = RatelJson.encoderFor(object.runtimeType);
-    if (encode != null) return encode(object as Object);
     if (object is DateTime) return object.toIso8601String();
     if (object is Enum) return object.name;
     if (object is Uri || object is BigInt) return object.toString();
