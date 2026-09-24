@@ -1,4 +1,4 @@
-import '../../core/route_parameter.dart';
+import '../routing/route_parameter.dart';
 import 'controller_invoker.dart';
 
 final class SocketDefinition<C> {

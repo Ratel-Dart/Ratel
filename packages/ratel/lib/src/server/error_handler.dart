@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'request_context.dart';
-import 'response.dart';
+import '../http/request_context.dart';
+import '../http/response.dart';
 
 typedef ErrorHandler = FutureOr<Response> Function(
   Object error,

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../core/request_context.dart';
+import 'request_context.dart';
 
 typedef SocketHandler = Future<void> Function(
   WebSocket socket,

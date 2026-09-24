@@ -1,10 +1,10 @@
 import '../annotations/annotations.dart';
+import '../binding/route_binder.dart';
 import '../http/socket_handler.dart';
-import '../src/binding/route_binder.dart';
-import '../src/runtime/ratel_manifest.dart';
-import '../src/runtime/ratel_runtime.dart';
-import '../src/serialization/json_codecs.dart';
-import 'router.dart';
+import '../routing/router.dart';
+import '../runtime/ratel_manifest.dart';
+import '../runtime/ratel_runtime.dart';
+import '../serialization/json_codecs.dart';
 
 class RatelRegistry {
   RatelRegistry({this.codecs = const JsonCodecs.empty()});

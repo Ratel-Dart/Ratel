@@ -1,17 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 
-import '../dependency_injector/binding.dart';
+import '../auth/jwt_validator.dart';
+import '../dependency_injector/bindings.dart';
 import '../exceptions/exceptions.dart';
-import '../jwt.dart';
-import '../src/http/request_limits.dart';
+import '../http/request_context.dart';
+import '../http/request_limits.dart';
+import '../http/response.dart';
+import '../logging/ratel_logger.dart';
+import '../middleware/middleware.dart';
+import '../routing/router.dart';
 import 'error_handler.dart';
-import 'logger.dart';
-import 'middleware.dart';
 import 'ratel_registry.dart';
-import 'request_context.dart';
-import 'response.dart';
-import 'router.dart';
 
 class RatelServer {
   final int port;

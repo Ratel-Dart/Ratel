@@ -1,9 +1,9 @@
-import '../../annotations/annotations.dart';
-import '../../core/parameter_location.dart';
-import '../../core/ratel_registry.dart';
-import '../../core/route_parameter.dart';
-import '../../dependency_injector/injector.dart';
+import '../annotations/annotations.dart';
+import '../dependency_injector/injector.dart';
+import '../routing/parameter_location.dart';
+import '../routing/route_parameter.dart';
 import '../runtime/controller_definition.dart';
+import '../server/ratel_registry.dart';
 import 'argument_resolver.dart';
 
 final class RouteBinder {

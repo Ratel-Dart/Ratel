@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../../exceptions/exceptions.dart';
+import '../exceptions/exceptions.dart';
 
 abstract final class RequestParameters {
   static String? cookieValue(List<Cookie> cookies, String name) {
