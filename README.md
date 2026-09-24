@@ -21,13 +21,13 @@
 |---|---|---|
 | [`ratel`](packages/ratel) | `2.0.0-dev.8` | The HTTP framework: routing, DI, JWT and middleware. It has no database layer. |
 | [`ratel_cli`](packages/ratel_cli) | `2.0.0-dev.8` | The `ratel` command: `create`, `dev` and `build`. It discovers controllers with the Dart analyzer and keeps the wiring under `.dart_tool/`. Installed globally, released in lockstep with `ratel`. |
-| [`ratel_orm`](packages/ratel_orm) | `0.1.0-dev.1` | The driver contract, the Postgres and SQLite drivers, repositories with explicit row mapping, a query builder, dialects and migrations. It does not depend on `ratel`. |
+| [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) | `0.1.0-dev.1` | Lives in its own repository. The driver contract, the Postgres and SQLite drivers, repositories, a query builder, dialects and migrations. It does not depend on `ratel`. |
 
-The framework and the ORM are independent, like NestJS and Prisma. An HTTP app
-can talk to its database through any client, and a plain Dart program can use
-`ratel_orm` without pulling in an HTTP framework. Used together, the server's
-startup and shutdown hooks open and close the driver, and dependency injection
-hands repositories to controllers.
+The framework and the ORM are independent projects, like NestJS and Prisma, and
+live in separate repositories. An HTTP app can talk to its database through any
+client, and a plain Dart program can use `ratel_orm` without pulling in an HTTP
+framework. Used together, the server's startup and shutdown hooks open and close
+the driver, and dependency injection hands repositories to controllers.
 
 ## Quick start
 
@@ -55,7 +55,6 @@ dart pub get
 dart analyze
 (cd packages/ratel && dart test)
 (cd packages/ratel_cli && dart test)
-(cd packages/ratel_orm && dart test)
 ```
 
 The `ratel_cli` tests include end-to-end runs tagged `e2e`: they compile the
@@ -64,10 +63,7 @@ CLI, scaffold an app, build it and drive `ratel dev`. Skip them with
 are workspace members so they resolve with everything else. Requires the Dart
 SDK `3.6.0` or newer.
 
-The Postgres tests in `ratel_orm` skip themselves unless `DB_HOST` is set, and
-they are the only tests that exercise the driver's real wire protocol. CI runs
-them against a Postgres 16 service. CI also compiles the example to a native
-binary, so anything that breaks ahead-of-time compilation fails there rather
+CI compiles the example to a native binary, so anything that breaks ahead-of-time compilation fails there rather
 than in a user's deployment.
 
 `tool/hygiene` holds the code rules to a check CI runs. The rules: no comments

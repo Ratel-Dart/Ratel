@@ -1,7 +1,7 @@
 # Migration — database layer (2.0.0-dev)
 
 Ratel no longer has a database layer. Everything about databases lives in
-[`ratel_orm`](https://pub.dev/packages/ratel_orm), which does not depend on
+[`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm), which does not depend on
 `ratel`. The two work together through dependency injection and the server's
 startup and shutdown hooks, and each is usable without the other.
 

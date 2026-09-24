@@ -9,5 +9,4 @@ workspace:
   - packages/ratel_cli
   - packages/ratel_cli/test/fixtures/broken_app
   - packages/ratel_cli/test/fixtures/kitchen_sink
-  - packages/ratel_orm
   - tool/hygiene

@@ -15,7 +15,7 @@ a clean way to build RESTful APIs, with built-in support for:
   prefixes
 - **No database lock-in**: the framework has no database layer, so any client
   plugs in through dependency injection and the startup and shutdown hooks.
-  The separate [`ratel_orm`](https://pub.dev/packages/ratel_orm) package is
+  The separate [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) package is
   one option.
 - **Dependency injection**
 - **JWT authentication**
@@ -424,7 +424,7 @@ Future<void> main() async {
 
 Under `RatelCluster.run`, each isolate builds its own client inside the entry
 function. For repositories, migrations and a query builder, add
-[`ratel_orm`](https://pub.dev/packages/ratel_orm), which works with or without Ratel. Its README
+[`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm), which works with or without Ratel. Its README
 shows the same wiring with `RatelRepository`.
 
 Migrating from `RatelDatabase`? See
