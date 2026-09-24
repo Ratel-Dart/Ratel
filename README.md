@@ -70,6 +70,15 @@ them against a Postgres 16 service. CI also compiles the example to a native
 binary, so anything that breaks ahead-of-time compilation fails there rather
 than in a user's deployment.
 
+`tool/hygiene` holds the code rules to a check CI runs. The rules: no comments
+in code or configuration, one declaration per file, named after it, no
+top-level functions or variables other than `main`, and in a library package
+only export-only barrels directly under `lib/`:
+
+```sh
+dart run tool/hygiene/bin/check.dart packages/ratel_cli
+```
+
 The code carries no comments of any kind. Explanations belong in these READMEs,
 in the CHANGELOGs and in pull request descriptions.
 

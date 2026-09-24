@@ -33,7 +33,7 @@ void main() {
       contains(
           "import '../../../../../../test/http/hello_test.dart' as suite;"),
     );
-    expect(wrapper, contains("import '../../../manifest.dart';"));
+    expect(wrapper, contains("import '../../../ratel_app_manifest.dart';"));
     expect(wrapper,
         contains('r.RatelRuntime.install(RatelAppManifest.manifest);'));
     expect(wrapper, contains('  suite.main();'));
