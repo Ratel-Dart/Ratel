@@ -47,5 +47,33 @@ void main() {
       final original = Response.text(statusCode: 201, data: 'hi');
       expect(identical(Response.from(original), original), isTrue);
     });
+
+    test('passes a typed Response through unchanged', () {
+      final typed = Response<List<int>>.json(statusCode: 201, data: [1]);
+      expect(identical(Response.from(typed), typed), isTrue);
+    });
+  });
+
+  group('Response<T>', () {
+    test('types its payload', () {
+      final Response<List<int>> typed = Response.json(data: [1, 2]);
+      final List<int>? data = typed.data;
+      expect(data, [1, 2]);
+    });
+
+    test('keeps the payload type through withHeaders and withCookie', () {
+      final Response<List<int>> decorated =
+          Response<List<int>>.json(statusCode: 201, data: [1, 2])
+              .withHeaders({'x-trace': '1'}).withCookie(Cookie('s', 'v'));
+      expect(decorated.data, [1, 2]);
+      expect(decorated.statusCode, 201);
+      expect(decorated.headers['x-trace'], '1');
+      expect(decorated.cookies.single.name, 's');
+    });
+
+    test('is assignable to a raw Response', () {
+      final Response raw = Response<String>.text(data: 'hi');
+      expect(raw.toJson(), 'hi');
+    });
   });
 }
