@@ -3,12 +3,7 @@ import 'built_query.dart';
 import 'condition.dart';
 import 'order.dart';
 
-/// A small fluent SELECT builder.
-///
-/// Identifiers are quoted per the dialect and values are bound as parameters.
-/// Provide only trusted column/table names; values are always parameterized.
 class Query {
-  /// The table to select from.
   final String table;
 
   final List<String> _columns = [];
@@ -17,46 +12,38 @@ class Query {
   int? _limit;
   int? _offset;
 
-  /// Starts a query against [table].
   Query.from(this.table);
 
-  /// Restricts the selected [columns] (defaults to `*`).
   Query select(List<String> columns) {
     _columns.addAll(columns);
     return this;
   }
 
-  /// Adds an `AND` condition `column operator @param`.
   Query where(String column, String operator, Object? value) {
     _conditions.add(Condition(column, operator, value, 'AND'));
     return this;
   }
 
-  /// Adds an `OR` condition.
   Query orWhere(String column, String operator, Object? value) {
     _conditions.add(Condition(column, operator, value, 'OR'));
     return this;
   }
 
-  /// Orders by [column], ascending unless [descending].
   Query orderBy(String column, {bool descending = false}) {
     _orders.add(Order(column, descending));
     return this;
   }
 
-  /// Limits the number of rows.
   Query limit(int count) {
     _limit = count;
     return this;
   }
 
-  /// Skips [count] rows.
   Query offset(int count) {
     _offset = count;
     return this;
   }
 
-  /// Renders the query for [dialect].
   BuiltQuery build(SqlDialect dialect) {
     final parameters = <String, Object?>{};
     final buffer = StringBuffer('SELECT ');

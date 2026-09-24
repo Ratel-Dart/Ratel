@@ -81,6 +81,9 @@ All notable changes to this project are documented here. This project follows
   not drop them.
 
 ### Changed
+- **The source carries no comments, dartdoc included.** The README now documents
+  the server configuration and dependency injection that only the API reference
+  used to describe.
 - **Routes, sockets and the request body limit are held by a `RatelRegistry`
   rather than by statics on `RatelHandler`** — the prerequisite for running more
   than one server in an isolate, and for `runCluster`. A server adopts the

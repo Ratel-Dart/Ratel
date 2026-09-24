@@ -7,12 +7,6 @@ import 'package:path/path.dart' as p;
 import 'bootstrap.dart';
 import 'project.dart';
 
-/// Runs `build_runner watch` alongside the application, restarting it whenever
-/// a build completes.
-///
-/// Code generation and file watching are the same child process: reacting to
-/// `build_runner watch`'s own build completions avoids running a second watcher
-/// and avoids `build` and `watch` contending on the `.dart_tool/build` lock.
 class DevSession {
   DevSession(this.project, this.entrypoint);
 
@@ -89,10 +83,6 @@ class DevSession {
   }
 }
 
-/// Marks a successful build. `build_runner` words its completion differently
-/// when its output is piped rather than attached to a terminal, so both
-/// phrasings are matched.
 final _buildSucceeded = RegExp(r'Succeeded after|Built with build_runner in');
 
-/// Marks a failed build, after which the previous server is left running.
 final _buildFailed = RegExp(r'Failed after|Build failed');

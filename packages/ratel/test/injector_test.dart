@@ -18,8 +18,6 @@ void main() {
     });
 
     test('throws when the requested type is not registered', () {
-      // Injector is a process-wide singleton, so use a type this suite never
-      // registers.
       expect(() => Injector().get<DateTime>(), throwsA(isA<Exception>()));
     });
   });

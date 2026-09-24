@@ -53,8 +53,6 @@ void main() {
   }
 
   test('answers 413 on a connection that already served a request', () async {
-    // Regression: the oversized body left the request stream unread, so
-    // dart:io reset the socket before the client could read the response.
     await ping();
 
     final res = await post('/notes', jsonEncode({'text': 'x' * 4000}));

@@ -7,13 +7,6 @@ import '../exceptions/exceptions.dart';
 import 'middleware.dart';
 import 'response.dart';
 
-/// Serves files from [directory] for `GET` requests under [urlPrefix].
-///
-/// Requests that use another method, fall outside [urlPrefix], or name a file
-/// that does not exist fall through to the next handler, so routes and assets
-/// can share a path space. A request that resolves outside [directory] — `..`
-/// segments, or a symlink pointing out of the tree — is answered with `404`
-/// instead of being served.
 Middleware staticFiles({
   required String directory,
   String urlPrefix = '/',
@@ -45,8 +38,6 @@ Middleware staticFiles({
   };
 }
 
-/// The path of a request below [urlPrefix], or null when [path] is not served
-/// by that prefix. `/static` does not capture `/staticky/a.js`.
 String? _relativePath(String path, String urlPrefix) {
   final prefix = urlPrefix.endsWith('/') && urlPrefix.length > 1
       ? urlPrefix.substring(0, urlPrefix.length - 1)

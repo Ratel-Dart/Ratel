@@ -10,8 +10,6 @@ Route get _ping => Route(
       handler: ([ctxArg]) async => Response.json(data: {'ok': true}),
     );
 
-/// Records one run per isolate. Each isolate writes its own file, because a
-/// shared one is appended to concurrently and the writes overwrite each other.
 void recordRun(List<String> args) {
   final name = '${DateTime.now().microsecondsSinceEpoch}-${Object().hashCode}';
   File('${args.first}/$name').writeAsStringSync('.');

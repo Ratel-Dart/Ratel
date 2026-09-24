@@ -6,20 +6,13 @@ import '../dialect.dart';
 import '../orm_driver.dart';
 import 'sqlite_session.dart';
 
-/// An [OrmDriver] backed by `package:sqlite3` (in-process SQLite).
-///
-/// Canonical `@name` placeholders are bound natively. SQL runs verbatim when no
-/// parameters are supplied.
 class SqliteDriver extends OrmDriver {
-  /// The database file path, or `:memory:` for an in-memory database.
   final String path;
 
   Database? _db;
 
-  /// Opens SQLite at [path].
   SqliteDriver(this.path);
 
-  /// A transient in-memory database (handy for tests).
   factory SqliteDriver.memory() => SqliteDriver(':memory:');
 
   @override

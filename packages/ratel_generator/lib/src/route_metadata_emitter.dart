@@ -4,16 +4,12 @@ import 'annotation_checkers.dart';
 import 'constant_values.dart';
 import 'type_display.dart';
 
-/// Emits the `parameters:` list a `Route` carries, describing every input the
-/// handler reads so the routes can be documented without reflection.
 String emitRouteParameters(MethodElement method) {
   final entries = method.formalParameters.map(_emitParameter).nonNulls.toList();
   if (entries.isEmpty) return '    parameters: const [],';
   return '    parameters: const [\n${entries.join('\n')}\n    ],';
 }
 
-/// Emits the `bodyType:` of a route: the name of the `@Json` class bound to its
-/// `@Body` parameter, or `null` when it takes no body.
 String emitRouteBodyType(MethodElement method) {
   for (final param in method.formalParameters) {
     if (bodyChecker.hasAnnotationOf(param)) {

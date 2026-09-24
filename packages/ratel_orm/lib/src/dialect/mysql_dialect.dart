@@ -2,10 +2,7 @@ import 'placeholder_translator.dart';
 import 'rewritten_sql.dart';
 import 'standard_dialect.dart';
 
-/// MySQL dialect: `:name` placeholders, no `RETURNING`, backtick-quoted
-/// identifiers and `ON DUPLICATE KEY UPDATE` upserts.
 class MysqlDialect extends StandardDialect {
-  /// Creates the MySQL dialect.
   const MysqlDialect();
 
   @override

@@ -1,32 +1,19 @@
 import '../annotations/annotations.dart';
 
-/// The result of matching a request path against a [Route]: the matched [route]
-/// and the captured path [params].
 class RouteMatch {
-  /// The route that matched.
   final Route route;
 
-  /// Path parameters captured from `:name` segments.
   final Map<String, String> params;
 
-  /// Creates a match result.
   RouteMatch(this.route, this.params);
 }
 
-/// Resolves an incoming `(method, path)` to a [Route], supporting `:name` path
-/// parameters, and reports which methods a path accepts (for `405`/`Allow`).
-///
-/// Matching is currently a linear scan with per-segment comparison; it can be
-/// replaced by a trie later without changing this API.
 class Router {
   final List<_CompiledRoute> _compiled;
 
-  /// Builds a router over [routes], compiling each route's path once.
   Router(List<Route> routes)
       : _compiled = routes.map(_CompiledRoute.new).toList(growable: false);
 
-  /// Returns the route matching [method] and [path] with any captured path
-  /// parameters, or null when nothing matches.
   RouteMatch? match(String method, String path) {
     final segments = splitPath(path);
     for (final compiled in _compiled) {
@@ -49,8 +36,6 @@ class Router {
     return null;
   }
 
-  /// Returns the set of HTTP methods registered for [path] (ignoring method),
-  /// used to build the `Allow` header and decide `404` vs `405`.
   Set<String> allowedMethods(String path) {
     final segments = splitPath(path);
     final methods = <String>{};
@@ -81,10 +66,8 @@ class _CompiledRoute {
 }
 
 class _Segment {
-  /// True when this segment is a `:name` capture.
   final bool isParam;
 
-  /// The literal text, or the capture name (without the leading `:`).
   final String value;
 
   _Segment(String raw)
@@ -92,8 +75,6 @@ class _Segment {
         value = raw.startsWith(':') ? raw.substring(1) : raw;
 }
 
-/// Splits a URL [path] into its non-empty segments, ignoring leading and
-/// trailing slashes. `/` and `''` both yield an empty list.
 List<String> splitPath(String path) {
   var normalized = path;
   if (normalized.length > 1 && normalized.endsWith('/')) {
@@ -106,6 +87,4 @@ List<String> splitPath(String path) {
   return normalized.split('/');
 }
 
-/// Normalises a socket [path] so that a trailing slash, or a missing leading
-/// one, resolve to the same registration.
 String normaliseSocketPath(String path) => '/${splitPath(path).join('/')}';

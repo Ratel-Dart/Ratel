@@ -7,12 +7,6 @@ import '../exceptions/exceptions.dart';
 import 'multipart_data.dart';
 import 'uploaded_file.dart';
 
-/// Reads a `multipart/form-data` [request] body into a [MultipartData].
-///
-/// [maxBytes] caps the total size of every part together, so a stream of parts
-/// cannot outgrow the configured request limit; going over raises
-/// [PayloadTooLargeException]. A request that is not multipart, or that omits
-/// the boundary, raises [BadRequestException].
 Future<MultipartData> readMultipart(HttpRequest request, int maxBytes) async {
   final contentType = request.headers.contentType;
   if (contentType?.mimeType != 'multipart/form-data') {
@@ -61,8 +55,6 @@ Future<MultipartData> readMultipart(HttpRequest request, int maxBytes) async {
   return MultipartData(fields: fields, files: files);
 }
 
-/// Reads the `key="value"` parameter [key] out of a `Content-Disposition`
-/// header. The leading delimiter keeps `name` from matching inside `filename`.
 String? _dispositionValue(String disposition, String key) {
   final pattern = RegExp(r'(?:^|;)\s*' + RegExp.escape(key) + r'="([^"]*)"');
   return pattern.firstMatch(disposition)?.group(1);

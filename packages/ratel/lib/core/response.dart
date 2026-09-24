@@ -4,22 +4,14 @@ import 'dart:io';
 import '../exceptions/exceptions.dart';
 import 'serialization.dart';
 
-/// An HTTP response with a [statusCode], a [data] payload, and a content type.
-///
-/// Use the named constructors ([Response.json], [Response.text],
-/// [Response.html], [Response.bytes]) for a specific representation, or
-/// [Response.from] to wrap an arbitrary handler return value as JSON.
 class Response {
   final int statusCode;
   final dynamic data;
   final Map<String, String> headers;
   final String contentType;
 
-  /// Cookies sent as `Set-Cookie` headers. Attach one with [withCookie].
   final List<Cookie> cookies;
 
-  /// Server-Sent Events to stream instead of a buffered body, set by
-  /// [Response.sse].
   final Stream<String>? events;
 
   Response({
@@ -81,11 +73,6 @@ class Response {
     );
   }
 
-  /// Streams [events] as `text/event-stream` Server-Sent Events, one `data:`
-  /// frame per value. The connection stays open until [events] closes.
-  ///
-  /// Compression is declined for the stream, since a gzip buffer would hold
-  /// events back instead of delivering them as they are produced.
   factory Response.sse(Stream<String> events) {
     return Response(
       statusCode: HttpStatus.ok,
@@ -98,8 +85,6 @@ class Response {
     );
   }
 
-  /// Builds a redirect response to [location] (default `302 Found`; use `301`
-  /// for a permanent redirect).
   factory Response.redirect(String location, {int statusCode = 302}) {
     return Response(
       statusCode: statusCode,
@@ -107,9 +92,6 @@ class Response {
     );
   }
 
-  /// Returns a copy of this response with [extra] headers merged in (extra
-  /// values win on conflict). Useful for middleware that decorates responses,
-  /// e.g. CORS or security headers.
   Response withHeaders(Map<String, String> extra) {
     return Response(
       statusCode: statusCode,
@@ -121,10 +103,6 @@ class Response {
     );
   }
 
-  /// Returns a copy of this response with [cookie] appended to [cookies].
-  ///
-  /// Build the `dart:io` [Cookie] with the flags the response needs
-  /// (`httpOnly`, `secure`, `sameSite`, `maxAge`, ...).
   Response withCookie(Cookie cookie) {
     return Response(
       statusCode: statusCode,
@@ -136,13 +114,6 @@ class Response {
     );
   }
 
-  /// Serializes [data] to a JSON string.
-  ///
-  /// Primitives, `List`s and `Map`s encode natively. `@Json` classes encode
-  /// through their generated encoder; `DateTime`, `Enum`, `Uri` and `BigInt`
-  /// have built-in representations, and any other object must expose a
-  /// `toJson()` method. Anything else throws a [RatelSerializationException]
-  /// naming the offending type.
   String toJson() {
     if (data == null) return '';
     if (contentType != 'application/json') return data.toString();
@@ -164,9 +135,6 @@ class Response {
     }
   }
 
-  /// Writes this response to [response]. With [includeBody] false the status
-  /// line and headers are sent without a body, which is what a `HEAD` request
-  /// answers with.
   Future<void> send(HttpResponse response, {bool includeBody = true}) async {
     response.statusCode = statusCode;
     response.headers.set(HttpHeaders.contentTypeHeader, contentType);
@@ -210,7 +178,4 @@ class Response {
   }
 }
 
-/// An empty SSE comment, written as soon as the stream is subscribed so the
-/// client receives the response headers without waiting for the first event.
-/// Clients ignore comment lines.
 const _sseOpening = ':\n\n';

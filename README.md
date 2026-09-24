@@ -45,16 +45,29 @@ The three packages form a single [pub workspace](https://dart.dev/tools/pub/work
 so one resolve covers all of them and they see each other without path
 dependencies:
 
+Run `dart pub get` once at the root, generate code in the two packages that use
+it, then analyze the whole workspace and test each package:
+
 ```sh
-dart pub get                                                    # once, at the root
-cd packages/ratel && dart run build_runner build --delete-conflicting-outputs
-dart analyze                                                    # whole workspace
-dart test                                                       # per package
+dart pub get
+(cd packages/ratel && dart run build_runner build --delete-conflicting-outputs)
+(cd packages/ratel_orm && dart run build_runner build --delete-conflicting-outputs)
+dart analyze
+(cd packages/ratel && dart test)
 ```
 
 Generated `*.ratel.dart` files sit next to their sources and are gitignored, so
 **code generation has to run before `dart analyze` or `dart test`** on a fresh
 clone. Requires the Dart SDK `3.6.0` or newer.
+
+The Postgres tests in `ratel_orm` skip themselves unless `DB_HOST` is set, and
+they are the only tests that exercise the driver's real wire protocol. CI runs
+them against a Postgres 16 service. CI also compiles the example to a native
+binary, so anything that breaks ahead-of-time compilation fails there rather
+than in a user's deployment.
+
+The code carries no comments of any kind. Explanations belong in these READMEs,
+in the CHANGELOGs and in pull request descriptions.
 
 ## License
 

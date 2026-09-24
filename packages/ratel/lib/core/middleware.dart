@@ -5,20 +5,10 @@ import '../jwt.dart';
 import 'request_context.dart';
 import 'response.dart';
 
-/// Calls the next middleware (or the route handler) in the pipeline.
 typedef Next = Future<Response> Function();
 
-/// A request interceptor. Receives the [RequestContext] and a [Next] callback;
-/// it may short-circuit by returning a [Response] without calling [next], or
-/// call `next()` and post-process the downstream response.
 typedef Middleware = Future<Response> Function(RequestContext ctx, Next next);
 
-/// Authentication middleware: when the matched route is protected, validates the
-/// bearer token, stores the [RequestContext.claims], and enforces any required
-/// roles. Throws [UnauthorizedException] (401) or [ForbiddenException] (403).
-///
-/// [rolesClaim] names the claim that holds the caller's roles (a string or a
-/// list of strings).
 Middleware jwtAuthMiddleware(
   JwtAuthMiddleware auth, {
   String rolesClaim = 'roles',
@@ -49,9 +39,6 @@ Set<String> _rolesFrom(dynamic value) {
   return const {};
 }
 
-/// CORS middleware. Answers preflight `OPTIONS` requests with `204` and the
-/// configured headers, and decorates every other response with the same
-/// `Access-Control-*` headers.
 Middleware corsMiddleware({
   List<String> allowedOrigins = const ['*'],
   List<String> allowedMethods = const [
@@ -80,7 +67,6 @@ Middleware corsMiddleware({
   };
 }
 
-/// Adds a baseline set of security headers to every response.
 Middleware securityHeadersMiddleware({
   bool hsts = false,
   String frameOptions = 'DENY',
@@ -101,10 +87,6 @@ Middleware securityHeadersMiddleware({
   };
 }
 
-/// Fixed-window rate limiting per client IP: at most [maxRequests] requests per
-/// [window]. Once exceeded, requests get a `429` with a `Retry-After` header
-/// until the window rolls over. Useful to blunt brute-force and flood attacks;
-/// place it early in the pipeline (before auth).
 Middleware rateLimitMiddleware({
   int maxRequests = 100,
   Duration window = const Duration(minutes: 1),
@@ -114,7 +96,6 @@ Middleware rateLimitMiddleware({
     final ip = ctx.request.connectionInfo?.remoteAddress.address ?? 'unknown';
     final now = DateTime.now();
 
-    // Opportunistically evict expired windows so the map cannot grow forever.
     if (windows.length > 10000) {
       windows.removeWhere((_, w) => now.isAfter(w.resetAt));
     }

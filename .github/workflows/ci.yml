@@ -14,8 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # ratel_orm's Postgres suite self-skips without DB_HOST, and it is the only
-      # place the driver's real wire protocol is exercised.
       postgres:
         image: postgres:16
         env:
@@ -36,9 +34,7 @@ jobs:
         with:
           sdk: 3.13.2
 
-      # One resolve for the whole workspace: every package under packages/ is a
-      # member, so they see each other without path dependencies.
-      - name: Install dependencies
+      - name: Install workspace dependencies
         run: dart pub get
 
       - name: Generate code for ratel
@@ -74,8 +70,6 @@ jobs:
         run: dart test
         working-directory: packages/ratel_generator
 
-      # Guards the reason dart:mirrors was dropped: if reflection creeps back
-      # in, AOT compilation fails here rather than in a user's deployment.
-      - name: Compile a native binary
+      - name: Compile a native binary (AOT guard)
         run: dart run bin/ratel.dart build example/main.dart
         working-directory: packages/ratel

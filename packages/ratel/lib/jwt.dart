@@ -4,27 +4,15 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
 import 'core/logger.dart';
 
-/// Validates `Authorization: Bearer <token>` headers against a shared [secret].
-///
-/// Returns the decoded claims on success, or `null` when the token is missing,
-/// malformed, expired, or fails [issuer]/[audience] checks. By default a token
-/// **must** carry an `exp` claim ([requireExpiry]); the underlying library only
-/// checks expiry when the claim is present, so a token without one would
-/// otherwise never expire.
 class JwtAuthMiddleware {
-  /// The shared HMAC secret used to verify tokens.
   final String secret;
 
-  /// When set, the token's `iss` claim must equal this value.
   final String? issuer;
 
-  /// When set, the token's `aud` claim must contain this value.
   final String? audience;
 
-  /// When true (the default), tokens without an `exp` claim are rejected.
   final bool requireExpiry;
 
-  /// Creates a middleware that verifies HS-signed tokens with [secret].
   JwtAuthMiddleware(
     this.secret, {
     this.issuer,
@@ -32,8 +20,6 @@ class JwtAuthMiddleware {
     this.requireExpiry = true,
   });
 
-  /// Extracts the bearer token from [request] and validates it. Returns the
-  /// claims, or `null` when the header is absent or not a bearer token.
   Future<Map<String, dynamic>?> validate(HttpRequest request) async {
     final authHeader = request.headers.value(HttpHeaders.authorizationHeader);
     if (authHeader == null || !authHeader.startsWith('Bearer ')) {
@@ -42,10 +28,6 @@ class JwtAuthMiddleware {
     return validateToken(authHeader.substring('Bearer '.length));
   }
 
-  /// Validates a raw JWT [token], returning its claims or `null` when invalid.
-  ///
-  /// Distinct failure modes are logged separately so attacks can be observed,
-  /// rather than collapsing every case into an indistinguishable `null`.
   Map<String, dynamic>? validateToken(String token) {
     try {
       final jwt = JWT.verify(
