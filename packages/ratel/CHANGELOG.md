@@ -170,6 +170,12 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- `Response.send` now encodes the body before writing any headers. A body the
+  serializer cannot encode, such as an object with no JSON codec and no
+  `toJson`, now gets a 500 with a logged correlation id instead of leaving the
+  client hanging. JSON bodies are recognised even when the content type carries
+  parameters such as `; charset=utf-8`, and a null body is no longer sent as the
+  text `null`.
 - A missing required path, query, header or cookie parameter now gets a 400 that
   names the parameter instead of a 500. A JSON body whose field types do not
   match the model (for example `"id":"x"` for an int field) now gets a 400 that

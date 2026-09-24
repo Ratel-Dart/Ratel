@@ -24,6 +24,15 @@ void main() {
       final r = Response.json(statusCode: 200, data: null);
       expect(r.toJson(), '');
     });
+
+    test('encodes JSON when the content type carries parameters', () {
+      final r = Response(
+        statusCode: 200,
+        data: {'a': 1},
+        contentType: 'application/json; charset=utf-8',
+      );
+      expect(r.toJson(), '{"a":1}');
+    });
   });
 
   group('Response.from', () {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import '../auth/jwt_validator.dart';
@@ -170,11 +171,21 @@ class RatelServer {
       ctx.pathParams = match.params;
     }
     final response = await _runChain(ctx, chain);
-    await response.send(
-      request.response,
-      includeBody: ctx.method != 'HEAD',
-      codecs: registry.codecs,
-    );
+    final includeBody = ctx.method != 'HEAD';
+    try {
+      await response.send(
+        request.response,
+        includeBody: includeBody,
+        codecs: registry.codecs,
+      );
+    } on JsonUnsupportedObjectError catch (e, stackTrace) {
+      final correlationId = _logUnhandled(ctx, e.cause ?? e, stackTrace);
+      await _internalServerError(correlationId).send(
+        request.response,
+        includeBody: includeBody,
+        codecs: registry.codecs,
+      );
+    }
   }
 
   RouteMatch? _getRouteForHead(RequestContext ctx) {
@@ -200,21 +211,31 @@ class RatelServer {
         headers: e.headers,
       );
     } catch (e, stackTrace) {
-      final correlationId = _nextCorrelationId();
-      RatelLogger.instance.severe(
-        'Unhandled error [$correlationId] ${ctx.method} ${ctx.path}',
-        e,
-        stackTrace,
-      );
+      final correlationId = _logUnhandled(ctx, e, stackTrace);
       return await _handleError(e, stackTrace, ctx) ??
-          Response(
-            statusCode: HttpStatus.internalServerError,
-            data: {
-              'error': 'Internal Server Error',
-              'correlationId': correlationId
-            },
-          );
+          _internalServerError(correlationId);
     }
+  }
+
+  String _logUnhandled(
+    RequestContext ctx,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    final correlationId = _nextCorrelationId();
+    RatelLogger.instance.severe(
+      'Unhandled error [$correlationId] ${ctx.method} ${ctx.path}',
+      error,
+      stackTrace,
+    );
+    return correlationId;
+  }
+
+  static Response _internalServerError(String correlationId) {
+    return Response(
+      statusCode: HttpStatus.internalServerError,
+      data: {'error': 'Internal Server Error', 'correlationId': correlationId},
+    );
   }
 
   Future<Response?> _handleError(
