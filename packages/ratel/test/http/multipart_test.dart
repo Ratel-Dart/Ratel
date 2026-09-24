@@ -6,6 +6,7 @@ import 'package:ratel/runtime.dart';
 import 'package:test/test.dart';
 
 import '../support/fixtures/definitions/multipart_upload_controller_definition.dart';
+import '../support/fixtures/definitions/ping_controller_definition.dart';
 
 void main() {
   final server = RatelServer(
@@ -13,7 +14,10 @@ void main() {
     maxRequestBodyBytes: 512,
     registry: RatelRegistry.fromManifest(
       const RatelManifest(
-        controllers: [MultipartUploadControllerDefinition.value],
+        controllers: [
+          MultipartUploadControllerDefinition.value,
+          PingControllerDefinition.value,
+        ],
       ),
     ),
   );
@@ -43,6 +47,18 @@ void main() {
 
   String part(String headers, String content) =>
       '--RATEL\r\n$headers\r\n\r\n$content\r\n';
+
+  Future<void> ping() async {
+    final res =
+        await (await client.getUrl(Uri.parse('http://127.0.0.1:$port/ping')))
+            .close();
+    expect(res.statusCode, 200);
+    await res.drain<void>();
+  }
+
+  String oversized() =>
+      '${part('content-disposition: form-data; name="big"; filename="big.txt"', 'x' * (900 * 1024))}'
+      '--RATEL--\r\n';
 
   test('parses fields and files', () async {
     final res = await post(
@@ -82,5 +98,29 @@ void main() {
     );
     expect(res.statusCode, 413);
     await res.drain<void>();
+  });
+
+  test('answers 413 to a multipart body well over the limit', () async {
+    await ping();
+
+    final res = await post(oversized());
+    final body = jsonDecode(await utf8.decodeStream(res));
+
+    expect(res.statusCode, 413);
+    expect(body['error'], 'Multipart body exceeds the limit of 512 bytes');
+  });
+
+  test('keeps serving the same connection after a multipart 413', () async {
+    await ping();
+    final rejected = await post(oversized());
+    expect(rejected.statusCode, 413);
+    await rejected.drain<void>();
+
+    final accepted = await post(
+      '${part('content-disposition: form-data; name="title"', 'ok')}'
+      '--RATEL--\r\n',
+    );
+    expect(accepted.statusCode, 200);
+    expect(jsonDecode(await utf8.decodeStream(accepted))['title'], 'ok');
   });
 }
