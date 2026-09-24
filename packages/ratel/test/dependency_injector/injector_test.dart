@@ -1,7 +1,7 @@
 import 'package:ratel/ratel.dart';
 import 'package:test/test.dart';
 
-import 'support/fakes/fake_service.dart';
+import '../support/fakes/fake_service.dart';
 
 void main() {
   group('Injector', () {

@@ -6,7 +6,7 @@ import 'package:ratel_cli/src/engine/project_analyzer.dart';
 import 'package:ratel_cli/src/process/dart_sdk.dart';
 import 'package:test/test.dart';
 
-import 'support/engine_harness.dart';
+import '../support/engine_harness.dart';
 
 void main() {
   String versionOf(String pubspecPath) =>
