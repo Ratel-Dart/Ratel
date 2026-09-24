@@ -37,11 +37,6 @@ jobs:
       - name: Install workspace dependencies
         run: dart pub get
 
-      - name: Generate code for ratel
-        run: dart run build_runner build
-        working-directory: packages/ratel
-
-
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
 
