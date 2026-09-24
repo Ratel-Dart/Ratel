@@ -1,6 +1,3 @@
-/// Rewrites `@name` placeholders in [sql] using [render], skipping string
-/// literals, comments and `::` casts so operators like `@>`/`@@` and `@` inside
-/// strings are left intact.
 String translatePlaceholders(String sql, String Function(String name) render) {
   final out = StringBuffer();
   var i = 0;

@@ -4,18 +4,13 @@ import 'package:path/path.dart' as p;
 
 import 'pubspec.dart';
 
-/// A Ratel application on disk: its [root] directory and package [name].
 class RatelProject {
-  /// The directory holding `pubspec.yaml`.
   final Directory root;
 
-  /// The package name declared in `pubspec.yaml`.
   final String name;
 
   RatelProject._(this.root, this.name);
 
-  /// Walks up from [from] looking for a `pubspec.yaml`, or null when there is
-  /// none.
   static RatelProject? locate(Directory from) {
     var dir = from.absolute;
     while (true) {
@@ -31,11 +26,8 @@ class RatelProject {
     }
   }
 
-  /// The directory the CLI generates into.
   Directory get workDir => Directory(p.join(root.path, '.dart_tool', 'ratel'));
 
-  /// Resolves the application entrypoint from an explicit [candidate], falling
-  /// back to `bin/server.dart` or a lone file in `bin/`. Null when ambiguous.
   File? resolveEntrypoint(String? candidate) {
     if (candidate != null) {
       final file = File(p.join(root.path, candidate));
@@ -53,11 +45,9 @@ class RatelProject {
     return candidates.length == 1 ? candidates.first : null;
   }
 
-  /// Guidance shown when the entrypoint cannot be resolved.
   String entrypointHelp() => 'Could not find the application entrypoint.\n'
       'Create bin/server.dart, or pass one explicitly: ratel dev <path>';
 
-  /// Every generated library exposing a `\$registerRatel()`.
   List<File> generatedLibraries() {
     final found = <File>[];
     for (final dirName in const ['lib', 'bin', 'example']) {
@@ -75,8 +65,6 @@ class RatelProject {
     return found;
   }
 
-  /// Adds `build_runner` and `ratel_generator` to `dev_dependencies` when they
-  /// are missing, so the application never has to declare them by hand.
   Future<int> ensureCodegenDependencies() async {
     final pubspec = File(p.join(root.path, 'pubspec.yaml')).readAsStringSync();
     final missing = <String>[
@@ -94,7 +82,6 @@ class RatelProject {
     return process.exitCode;
   }
 
-  /// Runs `dart run build_runner <args>` in this project.
   Future<int> runBuildRunner(List<String> args) async {
     final process = await Process.start(
       Platform.resolvedExecutable,

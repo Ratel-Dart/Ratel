@@ -2,10 +2,6 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-/// The CLI hardcodes two version constants: one as a fallback for when it
-/// cannot resolve its own pubspec, and one for the constraint `ratel create`
-/// pins for `ratel_generator`. Both silently go stale on the next bump, so
-/// they are pinned down here rather than trusted.
 String _constant(String source, String name) =>
     RegExp("const $name = '([^']+)';").firstMatch(source)!.group(1)!;
 

@@ -10,9 +10,7 @@ import 'dev_session.dart';
 import 'template.dart';
 import 'usage.dart';
 
-/// Entry point for the `ratel` command line tool.
 class RatelCliRunner {
-  /// Runs [args], returning the process exit code.
   Future<int> run(List<String> args) async {
     if (args.isEmpty) {
       stdout.writeln(usage);

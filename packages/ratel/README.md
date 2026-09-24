@@ -62,8 +62,9 @@ class HelloController extends RatelHandler {
 }
 ```
 
+The entrypoint in `bin/server.dart` only starts the server:
+
 ```dart
-// bin/server.dart
 Future<void> main() async {
   final server = RatelServer(port: 8080);
   await server.startServer();
@@ -182,7 +183,8 @@ final server = RatelServer(
 ## Authentication
 
 Mark a controller or method `@Protected` and pass a `jwtKey` to the server.
-Protected routes require an `Authorization: Bearer <token>` header.
+Protected routes require an `Authorization: Bearer <token>` header. `@Public`
+opts a single route out of a protected controller.
 
 ```dart
 @Protected()
@@ -190,7 +192,7 @@ class AccountController extends RatelHandler {
   @Get('/me')
   Future<Response> me() async => Response.json(data: {});
 
-  @Public() // opt a single route out of protection
+  @Public()
   @Get('/health')
   Future<Response> health() async => Response.json(data: {});
 }
@@ -274,6 +276,49 @@ final server = RatelServer(
   middlewares: [staticFiles(directory: 'public', urlPrefix: '/assets')],
 );
 ```
+
+## Configuration
+
+`RatelServer` takes its whole configuration in the constructor:
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `port` | `8080` | Port to bind. `0` lets the OS pick a free one; read it back from `boundPort`. |
+| `jwtKey` | none | HMAC secret that turns on JWT auth. Without it no route is protected. |
+| `securityContext` | none | Serves over TLS. With `jwtKey` set and no TLS, a warning is logged because bearer tokens would travel in cleartext. |
+| `middlewares` | `[]` | Run in order around every request. The JWT middleware is appended after them. |
+| `bindings` | none | Dependency registrations, run once when the server is constructed. |
+| `onStartup` | none | Runs before the port is bound. A throw aborts `startServer`. |
+| `onShutdown` | none | Runs during `stop()`, after the socket is closed. |
+| `onError` | none | Maps an unhandled error to a response (see [Errors](#errors)). |
+| `gzip` | `true` | Compresses responses for clients that send `Accept-Encoding: gzip`. |
+| `idleTimeout` | `dart:io` default | Keep-alive idle timeout. |
+| `shared` | `false` | Binds the port shared, for `runCluster`. |
+| `maxRequestBodyBytes` | 1 MiB | Larger bodies are answered with `413`. |
+| `maxBodyDrainBytes` | 1 MiB | How much of an oversized body is read and discarded so the `413` still reaches the client. |
+
+## Dependency injection
+
+`Injector` holds lazily built singletons. Register factories in a `Bindings`
+subclass and pass it to the server. A controller whose constructor takes
+arguments is registered with `RatelControllers.register`:
+
+```dart
+class AppBindings extends Bindings {
+  @override
+  void dependencies() {
+    Injector().put<UserService>(() => UserService());
+    RatelControllers.register<UserController>(
+      () => UserController(Injector().get<UserService>()),
+    );
+  }
+}
+
+final server = RatelServer(port: 8080, bindings: AppBindings());
+```
+
+`Injector()` returns the ambient injector. A test builds an isolated one with
+`Injector.scoped()` and installs it as `Injector.ambient`.
 
 ## Database
 

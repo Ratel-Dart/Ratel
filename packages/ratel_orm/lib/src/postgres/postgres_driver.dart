@@ -10,37 +10,23 @@ import 'postgres_session.dart';
 import 'query_result_mapper.dart';
 import 'ssl_mode.dart';
 
-/// An [OrmDriver] backed by `package:postgres`.
-///
-/// This is the only place in the ecosystem that imports `package:postgres`.
-/// SQL is executed verbatim: named-parameter parsing (`@name`) is applied only
-/// when [parameters] are supplied.
 class PostgresDriver extends OrmDriver {
-  /// Database host name.
   final String host;
 
-  /// Database port.
   final int port;
 
-  /// Name of the database to connect to.
   final String databaseName;
 
-  /// Authentication user name.
   final String username;
 
-  /// Authentication password.
   final String password;
 
-  /// TLS mode for the connection. Defaults to [SslMode.require].
   final SslMode sslMode;
 
-  /// Maximum number of pooled connections. Defaults to 10. With multi-isolate
-  /// serving the real total is `maxConnections * isolates`.
   final int maxConnections;
 
   Pool? _pool;
 
-  /// Creates a Postgres driver.
   PostgresDriver({
     required this.host,
     this.port = 5432,
@@ -51,10 +37,6 @@ class PostgresDriver extends OrmDriver {
     this.maxConnections = 10,
   });
 
-  /// Builds the driver from environment variables: `DB_HOST`, `DB_PORT`
-  /// (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSL_MODE`
-  /// (`require` | `verify_full` | `disable`, default `require`) and
-  /// `DB_POOL_MAX` (default `10`).
   factory PostgresDriver.fromEnv() {
     final env = Platform.environment;
 

@@ -11,8 +11,6 @@ class Greeter {
   final String greeting;
 }
 
-/// Takes its dependency through the constructor, so it has no no-argument
-/// constructor and generated code cannot build it on its own.
 @Controller('/di')
 class InjectedController extends RatelHandler {
   InjectedController(this.greeter);
@@ -23,7 +21,6 @@ class InjectedController extends RatelHandler {
       Response.json(data: {'greeting': greeter.greeting});
 }
 
-/// Buildable without help, so generated code registers its default.
 @Controller('/plain')
 class PlainController extends RatelHandler {
   @Get('/hello')

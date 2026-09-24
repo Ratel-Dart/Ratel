@@ -1,5 +1,3 @@
-library ratel;
-
 export 'annotations/annotations.dart';
 export 'core/server.dart';
 export 'core/response.dart';

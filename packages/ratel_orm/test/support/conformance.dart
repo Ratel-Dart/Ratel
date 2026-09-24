@@ -1,11 +1,6 @@
 import 'package:ratel/ratel.dart' show QueryResult, RatelDriver;
 import 'package:test/test.dart';
 
-/// Reusable conformance suite that any [RatelDriver] must satisfy.
-///
-/// [create] returns a fresh driver for each test. Drivers that need a live
-/// database supply a probe [query] that returns at least one row (default
-/// `SELECT 1`); the in-memory fake ignores it and returns an empty result.
 void runDriverConformanceTests(
   RatelDriver Function() create, {
   String probeQuery = 'SELECT 1',

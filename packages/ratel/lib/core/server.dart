@@ -14,68 +14,31 @@ import 'request_context.dart';
 import 'response.dart';
 import 'router.dart';
 
-/// The application entry point: binds an HTTP server, wires dependency
-/// [bindings], and dispatches each request through the [middlewares] pipeline
-/// to its matching route.
-///
-/// Routes come from generated code (`$registerRatel()`, wired in by the `ratel`
-/// CLI), so controllers need not be passed here.
-///
-/// JWT auth is added automatically as the innermost middleware when [jwtKey] is
-/// set, enforcing protection and roles on routes. Provide a [securityContext]
-/// to serve over HTTPS. Unexpected errors are logged server-side and answered
-/// with a generic 500 (plus a correlation id) so no internal detail leaks.
 class RatelServer {
-  /// Port to listen on. Use `0` to let the OS pick a free port (handy in tests;
-  /// read the chosen port via [boundPort]).
   final int port;
 
-  /// Optional database driver. When provided, the server configures it as the
-  /// active driver and manages its lifecycle (`open` at startup, `close` at
-  /// shutdown). Raw SQL is then available through [db].
   final RatelDriver? database;
 
-  /// HMAC secret enabling JWT auth; when null, no routes are protected.
   final String? jwtKey;
 
-  /// Optional dependency registrations, run once at startup.
   final Bindings? bindings;
 
-  /// When provided, the server listens over TLS via `bindSecure`.
   final SecurityContext? securityContext;
 
-  /// Global middleware run, in order, around every request (e.g. CORS, security
-  /// headers). The auth middleware is appended after these automatically.
   final List<Middleware> middlewares;
 
-  /// Run once after binding, before serving begins.
   final Future<void> Function()? onStartup;
 
-  /// Run once during [stop], after the socket is closed.
   final Future<void> Function()? onShutdown;
 
-  /// Whether to gzip responses when the client advertises `Accept-Encoding:
-  /// gzip` (HttpServer auto-compression). Defaults to true.
   final bool gzip;
 
-  /// Idle keep-alive timeout for connections. When null, the `dart:io` default
-  /// applies.
   final Duration? idleTimeout;
 
-  /// Whether to bind the port with `shared: true`, so several isolates can
-  /// listen on it and the OS spreads connections across them. Set it on every
-  /// server of a [runCluster] cluster.
   final bool shared;
 
-  /// The routes, sockets and body limit this server runs with. Defaults to the
-  /// ambient [RatelRegistry.current], which is where generated code registers.
-  /// Pass one explicitly to run two servers with different routes in a single
-  /// isolate.
   final RatelRegistry registry;
 
-  /// Maps an error no route handled onto a [Response], e.g. to translate a
-  /// domain exception. Errors are still logged with their correlation id before
-  /// the hook runs, and a hook that throws falls back to the generic 500.
   final ErrorHandler? onError;
 
   HttpServer? _server;
@@ -83,10 +46,6 @@ class RatelServer {
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
   int _errorCounter = 0;
 
-  /// Creates a server. [maxRequestBodyBytes] caps request body size (413 when
-  /// exceeded) and [maxBodyDrainBytes] bounds how much of an oversized body is
-  /// read and discarded so the 413 still reaches the client; both default to
-  /// 1 MiB.
   RatelServer({
     this.port = 8080,
     this.database,
@@ -109,18 +68,10 @@ class RatelServer {
     bindings?.dependencies();
   }
 
-  /// The port the server is actually bound to, or null before [startServer].
   int? get boundPort => _server?.port;
 
-  /// Raw-SQL access to the configured [database] driver.
-  ///
-  /// SQL passes through verbatim. Throws `DatabaseNotConfiguredException` when
-  /// no [database] was provided.
   Db get db => Db(database);
 
-  /// Binds the socket and starts serving in the background. Completes once the
-  /// server is listening; the process stays alive via the active socket until
-  /// [stop] is called.
   Future<void> startServer() async {
     final driver = database;
     if (driver != null) {
@@ -164,8 +115,6 @@ class RatelServer {
     unawaited(_serve(server, chain));
   }
 
-  /// Stops accepting connections and runs [onShutdown]. With [force] true,
-  /// in-flight requests are aborted instead of drained.
   Future<void> stop({bool force = false}) async {
     for (final sub in _signalSubs) {
       await sub.cancel();
@@ -195,11 +144,6 @@ class RatelServer {
     }
   }
 
-  /// Accepts a WebSocket upgrade on a path registered with @Socket.
-  ///
-  /// Upgrades do not run the middleware chain: it produces a [Response], which
-  /// an upgraded connection has no place for. A socket authenticates itself
-  /// inside its handler.
   Future<void> _upgrade(HttpRequest request) async {
     final handler = registry.socketFor(request.uri.path);
     if (handler == null) {
@@ -231,8 +175,6 @@ class RatelServer {
     await response.send(request.response, includeBody: ctx.method != 'HEAD');
   }
 
-  /// The `GET` route standing in for a `HEAD` request, so a controller does not
-  /// have to declare both. The handler still runs; only the body is dropped.
   RouteMatch? _getRouteForHead(RequestContext ctx) {
     if (ctx.method != 'HEAD') return null;
     return _router!.match('GET', ctx.path);

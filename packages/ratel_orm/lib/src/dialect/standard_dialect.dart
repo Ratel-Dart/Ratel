@@ -1,10 +1,7 @@
 import 'rewritten_sql.dart';
 import 'sql_dialect.dart';
 
-/// A PostgreSQL-like default dialect: `@name` placeholders, `RETURNING`,
-/// double-quoted identifiers and `ON CONFLICT` upserts.
 class StandardDialect implements SqlDialect {
-  /// Creates the default dialect.
   const StandardDialect();
 
   @override

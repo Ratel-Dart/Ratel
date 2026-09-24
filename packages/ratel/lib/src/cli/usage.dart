@@ -1,4 +1,3 @@
-/// The help text printed by `ratel help` and `ratel --help`.
 const usage = '''
 Ratel — annotation-driven backend framework for Dart.
 

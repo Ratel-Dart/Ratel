@@ -1,22 +1,6 @@
 import '../annotations/annotations.dart';
 import 'route_parameter.dart';
 
-/// Builds an [OpenAPI 3](https://spec.openapis.org/oas/v3.0.0) document from
-/// [routes], typically `server.registry.routes`.
-///
-/// Everything it needs is already on the route: the generator resolved each
-/// handler's inputs at build time, so nothing here reflects over anything.
-/// `:id` path segments become `{id}`, each [RouteParameter] becomes an
-/// operation parameter, a route with a `@Body` gains a JSON request body, and a
-/// protected route carries a `bearerAuth` requirement.
-///
-/// Serve it from a route:
-///
-/// ```dart
-/// @Get('/openapi.json')
-/// Future<Response> spec(RequestContext ctx) async =>
-///     Response.json(data: openApiSpec(ctx.registry.routes, title: 'Orders'));
-/// ```
 Map<String, dynamic> openApiSpec(
   List<Route> routes, {
   String title = 'API',

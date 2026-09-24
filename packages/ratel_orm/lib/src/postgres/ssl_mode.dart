@@ -1,9 +1,5 @@
 import 'package:postgres/postgres.dart';
 
-/// Parses the `DB_SSL_MODE` environment value into an [SslMode].
-///
-/// Accepts `disable`, `verify_full` and `require`; a missing value means
-/// [SslMode.require].
 SslMode parseSslMode(String? value) {
   switch (value) {
     case 'disable':
