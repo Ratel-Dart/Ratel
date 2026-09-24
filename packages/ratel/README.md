@@ -13,6 +13,8 @@ a clean way to build RESTful APIs, with built-in support for:
 - **HTTP routing** via `@Get` / `@Post` / `@Put` / `@Delete` / `@Patch` /
   `@Head` / `@Options`, with path parameters (`/users/:id`) and `@Controller`
   prefixes
+- **JSON bodies without boilerplate**: request and response classes are
+  converted by code generated from the route signatures, with no annotation
 - **No database lock-in**: the framework has no database layer, so any client
   plugs in through dependency injection and the startup and shutdown hooks.
   The separate [`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm) package is
@@ -41,37 +43,32 @@ cd my_api
 ratel dev
 ```
 
-A JSON model and a controller, each in its own file, are all the code there is.
-`lib/models/greeting.dart`:
+A DTO and a controller, each in its own file, are all the code there is.
+`lib/dtos/greeting.dart`:
 
 ```dart
-import 'package:ratel/ratel.dart';
+final class Greeting {
+  const Greeting({required this.message});
 
-@Json()
-class Greeting {
-  Greeting({this.message = ''});
-
-  String message;
+  final String message;
 }
 ```
 
 `lib/controllers/hello_controller.dart`:
 
 ```dart
-import 'package:my_api/models/greeting.dart';
+import 'package:my_api/dtos/greeting.dart';
 import 'package:ratel/ratel.dart';
 
 @Controller()
 class HelloController {
   @Get('/hello')
-  Future<Response> hello(@Param() String? name) async {
-    return Response.json(data: Greeting(message: 'Hello, ${name ?? 'world'}!'));
-  }
+  Future<Greeting> hello(@Param() String? name) async =>
+      Greeting(message: 'Hello, ${name ?? 'world'}!');
 
   @Post('/echo')
-  Future<Response> echo(@Body() Greeting body) async {
-    return Response.json(data: body);
-  }
+  Future<Response<Greeting>> echo(@Body() Greeting body) async =>
+      Response.json(statusCode: 201, data: body);
 }
 ```
 
@@ -84,13 +81,13 @@ Future<void> main() async {
 }
 ```
 
-```sh
-curl "http://localhost:8080/hello?name=Ada"   # {"message":"Hello, Ada!"}
-```
+`curl "http://localhost:8080/hello?name=Ada"` answers
+`{"message":"Hello, Ada!"}`. `Greeting` needs no annotation: Ratel converts
+it because a route returns it and takes it as `@Body()` (see [JSON](#json)).
 
 `ratel dev` restarts the server on every change. A complete runnable version
 lives in [`example/`](example): `main.dart` starts the server, and the
-controller and the model sit in their own folders, found without any import.
+controller and the DTO sit in their own folders, found without any import.
 
 ## Commands
 
@@ -176,7 +173,7 @@ Future<Response> avatar(MultipartData form) async {
 A handler returns a value, which is sent as a `200` JSON response, or a
 `Response` when it needs another status, headers or representation.
 `Response<T>` carries the payload type, the way Spring's `ResponseEntity<T>`
-does:
+does, so Ratel still knows which class to encode (see [JSON](#json)):
 
 ```dart
 @Post('/')
@@ -206,6 +203,134 @@ stream closes.
 @Get('/prices')
 Future<Response> prices() async => Response.sse(priceTicks.map(jsonEncode));
 ```
+
+## JSON
+
+Ratel converts bodies to and from JSON with code the CLI generates from the
+route signatures, the way Spring does with Jackson. There is no annotation, and
+no `toJson` or `fromJson` to write. The generated code starts from:
+
+- the type of every `@Body()` parameter, which is decoded from the request;
+- the return type of every route, which is encoded into the response. Ratel
+  looks through `Future<T>`, `FutureOr<T>`, `Response<T>` and the elements
+  of a `List`, `Set`, `Iterable` or `Map<String, T>`.
+
+From there it follows the fields of each class, however deep they nest:
+
+```dart
+enum Status { draft, published }
+
+final class Tag {
+  const Tag({required this.name});
+
+  final String name;
+}
+
+final class Article {
+  const Article({
+    required this.id,
+    required this.title,
+    this.tags = const [],
+    this.status = Status.draft,
+    this.publishedAt,
+  });
+
+  final int id;
+  final String title;
+  final List<Tag> tags;
+  final Status status;
+  final DateTime? publishedAt;
+
+  String get slug => title.toLowerCase().replaceAll(' ', '-');
+}
+
+@Controller('/articles')
+class ArticleController {
+  @Get('/:id')
+  Future<Article> byId(@PathParam('id') int id) async =>
+      Article(id: id, title: 'Hello Ratel');
+
+  @Get('/')
+  Future<List<Article>> all() async => const [];
+
+  @Post('/')
+  Future<Response<Article>> create(@Body() Article article) async =>
+      Response.json(statusCode: 201, data: article);
+}
+```
+
+`GET /articles/1` answers:
+
+```json
+{"id":1,"title":"Hello Ratel","tags":[],"status":"draft","publishedAt":null,"slug":"hello-ratel"}
+```
+
+**Types.** `String`, `int`, `double`, `num` and `bool` map to their JSON
+counterparts, `DateTime` to an ISO-8601 string, `Uri` and `BigInt` to strings,
+and an enum to its `name`. `List`, `Set` and `Iterable` become arrays,
+`Map<String, T>` becomes an object, and `Object` or `dynamic` passes through
+as is. Every one of them may be nullable. Records, functions, streams, maps
+with keys other than `String`, abstract and sealed classes, and a generic
+class that nests itself with growing type arguments (a `Node<List<T>>` field
+inside `Node<T>`) are build errors that name the path to the field. A record
+field `range` on `Article` would report:
+
+```
+ArticleController.byId -> Article.range has type (int, int), which Ratel cannot convert to JSON.
+```
+
+**Encoding.** Every public field and getter, inherited ones included, becomes
+a key of the same name, so `slug` above is part of the response.
+
+**Decoding.** Ratel calls the public unnamed constructor, which may be a
+factory, and passes each parameter the key of the field it sets: `this.id`,
+`super.id`, or a plain parameter named like a field. That makes immutable
+DTOs, with final fields and a `const` constructor, the natural shape. When a
+key is missing:
+
+- a required, non-nullable parameter answers `400`;
+- a nullable parameter gets `null`;
+- an optional parameter gets its default value. A non-nullable one also gets
+  it when the key holds `null`.
+
+A public mutable field the constructor does not set is assigned when its key
+is present. A `late` field without an initializer is always assigned, so a
+missing key answers `400` unless the field is nullable. A class that only
+travels out needs no constructor at all.
+
+**Your own `toJson` and `fromJson`.** A class that declares a `toJson()`
+method is encoded by calling it, and one with a `fromJson(Map<String, dynamic>
+json)` constructor is decoded through it, so classes from `json_serializable`
+or `freezed` keep their key names. Such a class may be abstract.
+
+**Errors.** A body that does not fit answers `400` and names the field:
+
+```
+{"error":"Field \"id\" is required"}
+{"error":"Field \"id\" must be an integer"}
+{"error":"Field \"status\" must be one of draft, published"}
+```
+
+**Forms.** `application/x-www-form-urlencoded` and `multipart/form-data`
+fields are strings, so a scalar is also read from a string: `"3"` is an
+`int`, `"1.5"` a `double`, and `"true"` or a checked checkbox's `"on"` a
+`bool`. A blank value for a number, `bool`, `DateTime`, `BigInt` or enum
+counts as a missing key, so an empty optional input leaves the field `null`
+or at its default. The same DTO serves a JSON body and a form. The uploaded
+files of a multipart body need a `MultipartData` parameter next to the
+`@Body()` one.
+
+**`Response<T>`.** Return the DTO itself for a `200`, and `Response<T>` when
+the route needs a status or headers. A raw `Response` still sends maps, lists
+and strings, but it hides the payload type, so no encoder comes from it: a
+class that only ever travels in a raw `Response` fails with a
+`RatelSerializationException` unless it declares its own `toJson()`. The
+encoder is chosen by the exact runtime class, so return the class the
+signature declares rather than a subclass.
+
+**Generics.** Each instantiation a signature uses gets its own codec:
+`Future<Page<Article>>` generates one for `Page<Article>`, with the `items`
+of a `final List<T> items` field encoded as `Article`s.
 
 ## Errors
 

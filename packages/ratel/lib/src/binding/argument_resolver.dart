@@ -85,6 +85,14 @@ abstract final class ArgumentResolver {
     MultipartData? multipart,
   ) async {
     if (multipart != null) return Map<String, dynamic>.from(multipart.fields);
+    if (ctx.request.headers.contentType?.mimeType == 'multipart/form-data') {
+      final form = await MultipartParser.read(
+        ctx.request,
+        ctx.limits.maxRequestBodyBytes,
+        maxDrainBytes: ctx.limits.maxBodyDrainBytes,
+      );
+      return Map<String, dynamic>.from(form.fields);
+    }
     final body = await RequestBodyReader.readLimited(
       ctx.request,
       ctx.limits.maxRequestBodyBytes,

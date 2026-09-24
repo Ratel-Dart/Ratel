@@ -78,6 +78,17 @@ void main() {
     expect(manifestDeclarations.single, isA<ClassDeclaration>());
   });
 
+  test('generates a codec for every DTO the route signatures reach', () {
+    final source = File(manifest).readAsStringSync();
+    for (final type in ['Item', 'Tag', r'Page<i\d+\.Item>']) {
+      expect(
+        source,
+        matches(RegExp('JsonCodecDefinition<i\\d+\\.$type>\\(')),
+        reason: type,
+      );
+    }
+  });
+
   group('the generated program', () {
     late Process process;
     late int port;
@@ -151,15 +162,181 @@ void main() {
           {'trace': 't-1', 'session': 's-1', 'path': '/items'});
     });
 
-    test('decodes a JSON body with the generated codec', () async {
+    Future<(int, Object?)> post(
+      String body, {
+      String contentType = 'application/json',
+    }) async {
+      final (status, response) = await send(
+        'POST',
+        '/items',
+        headers: {'content-type': contentType},
+        body: utf8.encode(body),
+      );
+      return (status, jsonDecode(response));
+    }
+
+    test('decodes and encodes a nested body with the generated codecs',
+        () async {
+      final item = {
+        'id': 3,
+        'name': 'lamp',
+        'tags': [
+          {'name': 'light'},
+          {'name': 'desk'},
+        ],
+        'status': 'published',
+        'createdAt': '2026-01-02T03:04:05.000Z',
+      };
+      final (status, body) = await post(jsonEncode(item));
+      expect(status, 201);
+      expect(body, {...item, 'label': '3:lamp'});
+    });
+
+    test('applies constructor defaults for missing keys', () async {
+      final (status, body) = await post('{"id":3,"name":"lamp"}');
+      expect(status, 201);
+      expect(body, {
+        'id': 3,
+        'name': 'lamp',
+        'tags': <Object?>[],
+        'status': 'draft',
+        'createdAt': null,
+        'label': '3:lamp',
+      });
+    });
+
+    test('answers 400 naming a field of the wrong type', () async {
+      final (status, body) = await post('{"id":"x"}');
+      expect(status, 400);
+      expect(body, {'error': 'Field "id" must be an integer'});
+    });
+
+    test('answers 400 naming a missing required field', () async {
+      final (status, body) = await post('{}');
+      expect(status, 400);
+      expect(body, {'error': 'Field "id" is required'});
+    });
+
+    test('answers 400 naming an unknown enum value', () async {
+      final (status, body) =
+          await post('{"id":3,"name":"lamp","status":"lost"}');
+      expect(status, 400);
+      expect(body, {
+        'error': 'Field "status" must be one of draft, published, archived',
+      });
+    });
+
+    test('decodes a form body into the same DTO', () async {
+      final (status, body) = await post(
+        'id=3&name=lamp',
+        contentType: 'application/x-www-form-urlencoded',
+      );
+      expect(status, 201);
+      expect(body, containsPair('id', 3));
+      expect(body, containsPair('label', '3:lamp'));
+    });
+
+    test('treats a blank form field as a missing one', () async {
+      final (status, body) = await post(
+        'id=3&name=lamp&createdAt=&status=',
+        contentType: 'application/x-www-form-urlencoded',
+      );
+      expect(status, 201);
+      expect(body, containsPair('createdAt', null));
+      expect(body, containsPair('status', 'draft'));
+    });
+
+    List<int> multipart(Map<String, String> fields, {String? file}) =>
+        utf8.encode([
+          for (final MapEntry(:key, :value) in fields.entries) ...[
+            '--RATEL',
+            'Content-Disposition: form-data; name="$key"',
+            '',
+            value,
+          ],
+          if (file != null) ...[
+            '--RATEL',
+            'Content-Disposition: form-data; name="file"; filename="$file"',
+            'Content-Type: text/plain',
+            '',
+            'hello',
+          ],
+          '--RATEL--',
+          '',
+        ].join('\r\n'));
+
+    test('decodes a multipart body into the DTO next to its files', () async {
+      final (status, body) = await send(
+        'POST',
+        '/items/upload',
+        headers: {'content-type': 'multipart/form-data; boundary=RATEL'},
+        body: multipart(
+          {'id': '3', 'name': 'lamp', 'status': 'published'},
+          file: 'a.txt',
+        ),
+      );
+      expect(status, 200);
+      expect(jsonDecode(body), {'files': 1, 'name': 'lamp'});
+    });
+
+    test('decodes a multipart body into a DTO-only route', () async {
       final (status, body) = await send(
         'POST',
         '/items',
-        headers: {'content-type': 'application/json'},
-        body: utf8.encode('{"id":3,"name":"lamp"}'),
+        headers: {'content-type': 'multipart/form-data; boundary=RATEL'},
+        body: multipart({'id': '3', 'name': 'lamp', 'status': 'published'}),
       );
       expect(status, 201);
-      expect(jsonDecode(body), {'id': 3, 'name': 'lamp', 'label': '3:lamp'});
+      expect(jsonDecode(body), containsPair('status', 'published'));
+    });
+
+    test('answers HEAD on a route that returns a DTO without a body', () async {
+      final (status, body) = await send('HEAD', '/catalog/featured');
+      expect(status, 200);
+      expect(body, isEmpty);
+    });
+
+    test('encodes a DTO a route returns directly', () async {
+      final (status, body) = await send('GET', '/catalog/featured');
+      expect(status, 200);
+      expect(jsonDecode(body), {
+        'id': 1,
+        'name': 'lamp',
+        'tags': [
+          {'name': 'light'},
+          {'name': 'desk'},
+        ],
+        'status': 'published',
+        'createdAt': '2026-01-02T03:04:05.000Z',
+        'label': '1:lamp',
+      });
+    });
+
+    test('encodes a list of DTOs a route returns', () async {
+      final (status, body) = await send('GET', '/catalog/all');
+      expect(status, 200);
+      expect(
+        (jsonDecode(body) as List).map((item) => (item as Map)['label']),
+        ['1:lamp', '2:chair'],
+      );
+    });
+
+    test('encodes a generic DTO a route returns', () async {
+      final (status, body) = await send('GET', '/catalog/page');
+      expect(status, 200);
+      expect(jsonDecode(body), {
+        'items': [
+          {
+            'id': 1,
+            'name': 'lamp',
+            'tags': <Object?>[],
+            'status': 'draft',
+            'createdAt': null,
+            'label': '1:lamp',
+          },
+        ],
+        'total': 7,
+      });
     });
 
     test('keeps protected routes behind the JWT middleware', () async {

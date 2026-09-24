@@ -1,0 +1,18 @@
+enum JsonKind {
+  integer,
+  real,
+  number,
+  string,
+  boolean,
+  dateTime,
+  uri,
+  bigInt,
+  enumeration,
+  opaque,
+  list,
+  set,
+  iterable,
+  map,
+  dto,
+  unsupported,
+}

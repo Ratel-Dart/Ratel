@@ -133,6 +133,7 @@ class Response<T> {
     if (object is DateTime) return object.toIso8601String();
     if (object is Enum) return object.name;
     if (object is Uri || object is BigInt) return object.toString();
+    if (object is Iterable) return object.toList();
     try {
       return object.toJson();
     } on NoSuchMethodError {

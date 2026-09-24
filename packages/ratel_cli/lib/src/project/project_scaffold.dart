@@ -9,7 +9,7 @@ abstract final class ProjectScaffold {
     _write(target, 'pubspec.yaml', _pubspec(name, ratelVersion));
     _write(target, 'analysis_options.yaml', _analysisOptions);
     _write(target, '.gitignore', _gitignore);
-    _write(target, p.join('lib', 'models', 'greeting.dart'), _greeting);
+    _write(target, p.join('lib', 'dtos', 'greeting.dart'), _greeting);
     _write(
       target,
       p.join('lib', 'controllers', 'hello_controller.dart'),
@@ -66,26 +66,22 @@ pubspec.lock
 ''';
 
   static const _greeting = '''
-import 'package:ratel/ratel.dart';
+final class Greeting {
+  const Greeting({required this.message});
 
-@Json()
-class Greeting {
-  Greeting({this.message = ''});
-
-  String message;
+  final String message;
 }
 ''';
 
   static String _helloController(String name) => '''
-import 'package:$name/models/greeting.dart';
+import 'package:$name/dtos/greeting.dart';
 import 'package:ratel/ratel.dart';
 
 @Controller('/hello')
 class HelloController {
   @Get('/')
-  Future<Response> hello(@Param() String? name) async {
-    return Response.json(data: Greeting(message: 'Hello, \${name ?? 'world'}!'));
-  }
+  Future<Greeting> hello(@Param() String? name) async =>
+      Greeting(message: 'Hello, \${name ?? 'world'}!');
 }
 ''';
 
@@ -146,7 +142,9 @@ Then open `http://localhost:8080/hello?name=Ada`. The server restarts whenever
 a file changes. Set `PORT` to listen elsewhere.
 
 Start the app through `ratel`, not `dart run`: the CLI discovers the
-`@Controller` classes and wires their routes before `main` runs.
+`@Controller` classes and wires their routes before `main` runs. It also
+converts the classes a route takes as `@Body()` or returns, like `Greeting`,
+to and from JSON.
 
 ## Test
 

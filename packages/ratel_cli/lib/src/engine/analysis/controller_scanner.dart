@@ -163,6 +163,7 @@ abstract final class ControllerScanner {
         isProtected: effective != null,
         roles: ConstantValues.strings(effective, 'roles'),
         parameters: ParameterScanner.route(method),
+        returnType: method.returnType,
       ));
     }
     return routes;

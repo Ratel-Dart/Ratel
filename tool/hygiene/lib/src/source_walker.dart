@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 abstract final class SourceWalker {
-  static const _skipped = {'.dart_tool', '.git', 'build', '.idea', '.vscode'};
+  static const _skipped = {'.dart_tool', '.git', '.idea', '.vscode'};
+  static const _output = 'build';
   static const _configNames = {'.gitignore', '.gitattributes'};
 
   static List<String> files(List<String> roots) {
@@ -20,8 +21,7 @@ abstract final class SourceWalker {
           in directory.listSync(recursive: true, followLinks: false)) {
         if (entity is! File) continue;
         final path = p.normalize(entity.path);
-        final segments = p.split(p.relative(path, from: absolute));
-        if (segments.any(_skipped.contains)) continue;
+        if (_isSkipped(absolute, path)) continue;
         if (_isChecked(path)) found.add(path);
       }
     }
@@ -33,6 +33,20 @@ abstract final class SourceWalker {
     return name.endsWith('.yaml') ||
         name.endsWith('.yml') ||
         _configNames.contains(name);
+  }
+
+  static bool _isSkipped(String root, String path) {
+    final segments = p.split(p.relative(path, from: root));
+    var directory = root;
+    for (final segment in segments.take(segments.length - 1)) {
+      if (_skipped.contains(segment)) return true;
+      if (segment == _output &&
+          File(p.join(directory, 'pubspec.yaml')).existsSync()) {
+        return true;
+      }
+      directory = p.join(directory, segment);
+    }
+    return false;
   }
 
   static bool _isChecked(String path) =>
