@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/element/type.dart';
 
+import '../analysis/element_queries.dart';
 import '../analysis/json_types.dart';
 import '../model/json_kind.dart';
 import 'import_allocator.dart';
@@ -80,7 +81,9 @@ final class JsonExpressionEmitter {
       case JsonKind.bigInt:
         return '$source.toString()';
       case JsonKind.enumeration:
-        return _declaresName(type) ? 'EnumName($source).name' : '$source.name';
+        return ElementQueries.declaresName(type)
+            ? 'EnumName($source).name'
+            : '$source.name';
       case JsonKind.dto:
         return '${_codec(_encoders, type)}($source)';
       case JsonKind.list:
@@ -141,12 +144,6 @@ final class JsonExpressionEmitter {
       default:
         throw StateError('No JSON decoding for ${type.getDisplayString()}.');
     }
-  }
-
-  static bool _declaresName(DartType type) {
-    if (type is! InterfaceType) return false;
-    final getter = type.lookUpGetter('name', type.element.library);
-    return getter != null && !getter.library.uri.isScheme('dart');
   }
 
   bool _isLoose(DartType type) =>

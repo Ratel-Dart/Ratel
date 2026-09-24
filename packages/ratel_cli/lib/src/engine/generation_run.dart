@@ -3,13 +3,17 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/diagnostic/diagnostic.dart';
 import 'package:path/path.dart' as p;
 
+import '../project/project_runtimes.dart';
 import 'analysis/controller_scanner.dart';
 import 'analysis/dto_collector.dart';
+import 'analysis/entity_scanner.dart';
 import 'analysis/entry_signature_reader.dart';
+import 'analysis/repository_checks.dart';
 import 'diagnostics/diagnostic_codes.dart';
 import 'diagnostics/diagnostic_severity.dart';
 import 'diagnostics/ratel_diagnostic.dart';
 import 'emit/dev_watchdog_emitter.dart';
+import 'emit/entity_manifest_emitter.dart';
 import 'emit/entry_emitter.dart';
 import 'emit/import_uris.dart';
 import 'emit/manifest_emitter.dart';
@@ -18,6 +22,8 @@ import 'generation_result.dart';
 import 'model/entry_signature.dart';
 import 'model/generation_mode.dart';
 import 'model/scanned_app.dart';
+import 'model/scanned_controller.dart';
+import 'model/scanned_entity.dart';
 import 'project_analyzer.dart';
 import 'scan_scope.dart';
 
@@ -26,6 +32,7 @@ final class GenerationRun {
     required this.analyzer,
     required this.packageName,
     required this.mode,
+    required this.runtimes,
     String? entrypoint,
   }) : entrypoint =
             entrypoint == null ? null : p.normalize(p.absolute(entrypoint));
@@ -33,6 +40,7 @@ final class GenerationRun {
   final ProjectAnalyzer analyzer;
   final String packageName;
   final GenerationMode mode;
+  final ProjectRuntimes runtimes;
   final String? entrypoint;
 
   String get root => analyzer.root;
@@ -47,13 +55,22 @@ final class GenerationRun {
   Future<GenerationResult> run() async {
     final diagnostics = <RatelDiagnostic>[];
     final libraries = await _libraries();
-    final controllers = [
-      for (final library in libraries)
-        ...ControllerScanner.scan(library, diagnostics),
+    final controllers = <ScannedController>[
+      if (runtimes.framework)
+        for (final library in libraries)
+          ...ControllerScanner.scan(library, diagnostics),
     ];
+    final entities = <ScannedEntity>[];
+    if (runtimes.orm) {
+      entities.addAll(EntityScanner.scan(libraries, diagnostics));
+      RepositoryChecks.check(libraries, entities, diagnostics);
+    }
     final app = ScannedApp(
       controllers: controllers,
-      dtos: DtoCollector.collect(controllers, diagnostics),
+      dtos: runtimes.framework
+          ? DtoCollector.collect(controllers, diagnostics)
+          : const [],
+      entities: entities,
     );
 
     final entry = entrypoint;
@@ -68,7 +85,7 @@ final class GenerationRun {
     }
     diagnostics.addAll(await _analyzerErrors(roots));
 
-    if (app.controllers.isEmpty) {
+    if (runtimes.framework && app.controllers.isEmpty) {
       diagnostics.add(RatelDiagnostic(
         code: DiagnosticCodes.noControllers,
         message: 'No @Controller classes were found in lib/ or next to the '
@@ -87,16 +104,23 @@ final class GenerationRun {
 
     final uris = ImportUris(outputDirectory);
     final files = [
-      GeneratedFile(
-        EntryEmitter.manifestFile,
-        ManifestEmitter(uris).emit(app),
-      ),
+      if (runtimes.framework)
+        GeneratedFile(
+          ManifestEmitter.file,
+          ManifestEmitter(uris, entities: runtimes.orm).emit(app),
+        ),
+      if (runtimes.orm)
+        GeneratedFile(
+          EntityManifestEmitter.file,
+          EntityManifestEmitter(uris).emit(app.entities),
+        ),
       if (entry != null && signature != null && mode != GenerationMode.test)
         GeneratedFile(
           entryFileName,
           EntryEmitter.emit(
             entrypointImport: _importFor(entry, uris),
             signature: signature,
+            runtimes: runtimes,
             watchdog: mode == GenerationMode.dev,
           ),
         ),
@@ -174,6 +198,12 @@ final class GenerationRun {
         diagnostic.diagnosticCode.lowerCaseName.startsWith('undefined')) {
       return '$message @Json was removed: Ratel generates JSON codecs from '
           'route signatures; delete the annotation.';
+    }
+    if (message.contains("'RatelRepository'") &&
+        diagnostic.diagnosticCode.lowerCaseName
+            .startsWith('wrong_number_of_type_arguments')) {
+      return '$message RatelRepository now takes <T, ID>, e.g. '
+          'RatelRepository<User, int>; rows are mapped from @Entity.';
     }
     return message;
   }

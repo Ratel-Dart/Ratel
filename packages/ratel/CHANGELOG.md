@@ -113,6 +113,11 @@ All notable changes to this project are documented here. This project follows
 - `@Controller()` takes an optional prefix, `Injector.contains<T>()` reports a
   registration, and `RatelCluster.run` forwards the installed manifest to every
   isolate (`runCluster` delegates to it).
+- `RatelManifest.isolateSetup` lists `void Function()` hooks that
+  `RatelRuntime.install` runs once per isolate, on the first install, so every
+  `RatelCluster.run` isolate runs them too. The `ratel` CLI uses it to install
+  the `ratel_orm` entity manifest next to the route manifest; `ratel` itself
+  knows nothing about the ORM.
 - Request body limits travel on `RequestContext.limits` as `RequestLimits`,
   owned by the server that set them.
 - **OpenAPI 3 generation.** `openApiSpec(routes)` builds a spec document from

@@ -9,6 +9,7 @@ import 'package:ratel_cli/src/process/dart_sdk.dart';
 import 'package:test/test.dart';
 
 import '../support/cli_harness.dart';
+import '../support/scratch_entities.dart';
 
 void main() {
   late Directory workspace;
@@ -141,5 +142,85 @@ void main() {
       () async => await CliHarness.get(port, '/hello') == null,
       timeout: const Duration(seconds: 20),
     );
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
+  test('ratel dev keeps refusing source changes while the runtime check fails',
+      () async {
+    final stub = Directory(p.join(workspace.path, 'orm_stub'));
+    for (final MapEntry(key: path, value: contents)
+        in ScratchEntities.ormStub.entries) {
+      File(p.join(stub.path, path))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(contents);
+    }
+    File(p.join(stub.path, 'pubspec.yaml')).writeAsStringSync(
+      'name: ratel_orm\n\nenvironment:\n  sdk: ^3.6.0\n',
+    );
+    final script = Directory(p.join(workspace.path, 'stub_script'));
+    final main = File(p.join(script.path, 'bin', 'main.dart'))
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync("void main() {\n  print('first run');\n}\n");
+    final pubspec = File(p.join(script.path, 'pubspec.yaml'))
+      ..writeAsStringSync(
+        'name: stub_script\npublish_to: none\n\nenvironment:\n'
+        '  sdk: ^3.6.0\n\ndependencies:\n  ratel_orm:\n'
+        '    path: ../orm_stub\n',
+      );
+    final resolved = await Process.run(
+      DartSdk.dart,
+      ['pub', 'get', '--offline'],
+      workingDirectory: script.path,
+    );
+    expect(resolved.exitCode, 0,
+        reason: '${resolved.stdout}${resolved.stderr}');
+
+    final dev = await cli.start(['dev'], workingDirectory: script.path);
+    final output = StringBuffer();
+    dev.stdout.transform(utf8.decoder).listen(output.write);
+    dev.stderr.transform(utf8.decoder).listen(output.write);
+    addTearDown(() => CliHarness.kill(dev));
+
+    Future<void> settled() async {
+      var seen = output.length;
+      var since = DateTime.now();
+      await CliHarness.until(() async {
+        if (output.length != seen) {
+          seen = output.length;
+          since = DateTime.now();
+        }
+        return DateTime.now().difference(since) > const Duration(seconds: 4);
+      });
+    }
+
+    await CliHarness.until(
+      () async => '$output'.contains('exited with code 0'),
+    );
+    expect('$output', contains('first run'));
+
+    final runtime = File(p.join(stub.path, 'lib', 'runtime.dart'));
+    final compatible = runtime.readAsStringSync();
+    runtime.writeAsStringSync(
+      compatible.replaceFirst('contract = 1', 'contract = 2'),
+    );
+    pubspec.writeAsStringSync('${pubspec.readAsStringSync()}\n');
+    const refusal = 'a ratel_orm with contract 2';
+    await CliHarness.until(() async => '$output'.contains(refusal));
+    await settled();
+
+    final before = output.length;
+    final refusals = refusal.allMatches('$output').length;
+    main.writeAsStringSync("void main() {\n  print('second run');\n}\n");
+    await CliHarness.until(
+      () async => refusal.allMatches('$output').length > refusals,
+      timeout: const Duration(seconds: 60),
+    );
+    await settled();
+    final afterEdit = '$output'.substring(before);
+    expect(afterEdit, isNot(contains('[ratel] starting')));
+    expect(afterEdit, isNot(contains('second run')));
+
+    runtime.writeAsStringSync(compatible);
+    pubspec.writeAsStringSync('${pubspec.readAsStringSync()}\n');
+    await CliHarness.until(() async => '$output'.contains('second run'));
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

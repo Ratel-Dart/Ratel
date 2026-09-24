@@ -14,7 +14,8 @@ startup and shutdown hooks, and each is usable without the other.
 
 | Concern | Import |
 |---|---|
-| `RatelDriver`, `RatelSession`, `QueryResult`, `DatabaseException` and its subclasses, `RatelRepository<T>`, `MappingException`, `Query`, `Migrator` | `package:ratel_orm/ratel_orm.dart` |
+| `RatelDriver`, `RatelSession`, `QueryResult`, `DatabaseException` and its subclasses, `RatelRepository<T, ID>`, `@Entity`, `@Id`, `@Column`, `@Transient`, `MappingException`, `Query`, `Migrator` | `package:ratel_orm/ratel_orm.dart` |
+| `RatelOrmRuntime` and `EntityManifest`, to install the entity mapping in an isolate you spawn yourself | `package:ratel_orm/runtime.dart` |
 | `PostgresDriver`, `SslMode` | `package:ratel_orm/postgres.dart` |
 | `SqliteDriver` | `package:ratel_orm/sqlite.dart` |
 | `FakeDriver` | `package:ratel_orm/testing.dart` |
@@ -33,7 +34,7 @@ dart pub add ratel_orm
 | `RatelDatabase.fromEnv()` | `PostgresDriver.fromEnv()` |
 | `RatelServer(database: ratelDatabase)` | `RatelServer(onStartup: driver.open, onShutdown: driver.close, bindings: ...)` |
 | `server.db.query(...)` | `driver.query(...)` on the driver you created |
-| `@Column` fields mapped by reflection | a `fromRow` override on the repository |
+| `@Column` fields mapped by reflection | an `@Entity` class mapped by code the `ratel` CLI generates (see [Entities](#entities)) |
 | a repository that found the driver on its own | a repository that takes the driver in its constructor: `UserRepository(driver)` |
 | `repository.connection` (a `postgres` `Connection`) | removed; use `execute(...)` or `driver.query(...)` |
 | `catch` of `package:postgres` exceptions | `catch` of `DatabaseException` and its subclasses |
@@ -67,6 +68,40 @@ Future<void> main() async {
   await server.startServer();
 }
 ```
+
+## Entities
+
+`@Column` fields used to be read through reflection. Now a class marked
+`@Entity()` is a table: every public instance field is a column unless it is
+marked `@Transient()`, and exactly one field is the `@Id()`. The `ratel` CLI
+generates the code that builds an entity from a row and reads it back, and
+checks those rules before the app starts:
+
+```dart
+import 'package:ratel_orm/ratel_orm.dart';
+
+@Entity(table: 'users')
+final class User {
+  const User({this.id, required this.email});
+
+  @Id()
+  final int? id;
+  @Column(name: 'email_address')
+  final String email;
+}
+
+final class UserRepository extends RatelRepository<User, int> {
+  UserRepository(super.driver);
+}
+```
+
+- `RatelRepository<T>` became `RatelRepository<T, ID>`, where `ID` is the type
+  of the `@Id()` field.
+- Repositories no longer map rows themselves: remove any `fromRow` override.
+- Run the app with `ratel dev`, compile it with `ratel build` and test it with
+  `ratel test`, with or without `ratel` in the project. Plain `dart run`,
+  `dart compile exe` and `dart test` skip generation, so the first repository
+  they construct fails with a message that says so.
 
 ## Behavior change: `RETURNING *` is no longer implicit
 

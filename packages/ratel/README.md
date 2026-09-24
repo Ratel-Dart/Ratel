@@ -558,9 +558,48 @@ Future<void> main() async {
 ```
 
 Under `RatelCluster.run`, each isolate builds its own client inside the entry
-function. For repositories, migrations and a query builder, add
-[`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm), which works with or without Ratel. Its README
-shows the same wiring with `RatelRepository`.
+function.
+
+For repositories, migrations and a query builder, add
+[`ratel_orm`](https://github.com/Ratel-Dart/ratel_orm), which works with or
+without Ratel. Mark a class `@Entity()` and give it a repository; the `ratel`
+CLI generates the row mapping when it runs, builds or tests the app:
+
+```dart
+import 'package:ratel/ratel.dart';
+import 'package:ratel_orm/ratel_orm.dart';
+
+@Entity(table: 'users')
+final class User {
+  const User({this.id, required this.name});
+
+  @Id()
+  final int? id;
+  final String name;
+}
+
+final class UserRepository extends RatelRepository<User, int> {
+  UserRepository(super.driver);
+}
+
+@Controller('/users')
+class UserController {
+  UserController(this.users);
+
+  final UserRepository users;
+
+  @Get('/:id')
+  Future<User> byId(@PathParam('id') int id) async =>
+      await users.findById(id) ?? (throw const NotFoundException());
+}
+```
+
+Wire it like the example above: register
+`UserController(UserRepository(driver))` in `Bindings`, and pass
+`onStartup: driver.open` and `onShutdown: driver.close` for a `PostgresDriver`
+or `SqliteDriver`. Every `RatelCluster.run` isolate gets the entity mapping
+along with the routes. The ORM's README covers columns, naming and
+migrations.
 
 Migrating from `RatelDatabase`? See
 [`doc/migration-2.0-database.md`](doc/migration-2.0-database.md).

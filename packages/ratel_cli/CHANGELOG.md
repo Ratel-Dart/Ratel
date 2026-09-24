@@ -1,5 +1,34 @@
 ## 2.0.0-dev.8 (unreleased)
 
+- The CLI generates the entity mapping for `ratel_orm`. It finds the `@Entity`
+  classes in `lib/` and next to the entrypoint, checks them against the ORM's
+  rules and writes `ratel_entity_manifest.dart`, with a typed `fromRow` and
+  `toRow` for each entity. The entry and every `ratel test` wrapper install it
+  with `RatelOrmRuntime.install` before any code runs. When the project uses
+  `ratel` too, the route manifest's `isolateSetup` installs it in every
+  `RatelCluster.run` isolate.
+- New diagnostics for entities and repositories: `ratel_entity_abstract`,
+  `ratel_entity_generic`, `ratel_entity_no_id`, `ratel_entity_multiple_ids`,
+  `ratel_entity_not_constructible`, `ratel_entity_unsettable_field`,
+  `ratel_entity_unsupported_type`, `ratel_entity_private_field` (a warning,
+  and an error on a private field marked `@Column()` or `@Id()`),
+  `ratel_entity_empty_name`, `ratel_entity_column_clash`,
+  `ratel_entity_table_clash` (a warning), `ratel_orm_annotation_misplaced`,
+  `ratel_repository_not_entity` and `ratel_repository_id_mismatch`. Table and
+  column names are worked out the way `ratel_orm` does at run time, so an
+  empty name or two fields on one column fail before the app starts instead of
+  in `RatelOrmRuntime.install`. A `RatelRepository` with one type argument
+  gets a hint that it now takes `<T, ID>`.
+- Projects that depend on `ratel_orm` without `ratel` work with `ratel dev`,
+  `ratel build` and `ratel test`; the CLI scans them for entities only. It
+  checks the `ratel_orm` runtime contract next to the `ratel` one and prints
+  both with `--version`. A project that depends on neither is told which one
+  to add.
+- `ratel dev` lets a script that finishes exit, reports
+  `<entrypoint> exited with code N` and runs it again on the next change. The
+  watchdog that stops the app together with the CLI now runs in its own
+  isolate. A change to `pubspec.yaml` makes it check the runtimes again, so
+  adding `ratel_orm` takes effect without a restart.
 - JSON codecs come from the route signatures instead of `@Json`. The engine
   starts from each `@Body()` parameter type and each route's return type,
   looking through `Future`, `FutureOr`, `Response<T>`, `List`, `Set`,

@@ -55,11 +55,17 @@ final class DevSession {
     if (_stopping) return;
     final changed = {..._pending};
     _pending.clear();
+    final String? incompatibility;
     if (changed.any(ProjectWatcher.isConfig)) {
       await PubGet.ensure(prepared.project);
-      await prepared.reopen();
-    } else if (changed.isNotEmpty) {
-      await prepared.analyzer.changed(changed);
+      incompatibility = await prepared.reopen();
+    } else {
+      incompatibility = await prepared.changed(changed);
+    }
+    if (incompatibility != null) {
+      stderr.writeln(incompatibility);
+      stdout.writeln('[ratel] ${_waiting()}.');
+      return;
     }
 
     final run = prepared.generation(GenerationMode.dev);
@@ -73,8 +79,7 @@ final class DevSession {
       final errors =
           result.diagnostics.where((diagnostic) => diagnostic.isError).length;
       stdout.writeln(
-        '[ratel] $errors ${errors == 1 ? 'error' : 'errors'}; '
-        '${_server == null ? 'waiting for a fix' : 'the previous server is still running'}.',
+        '[ratel] $errors ${errors == 1 ? 'error' : 'errors'}; ${_waiting()}.',
       );
       return;
     }
@@ -82,14 +87,21 @@ final class DevSession {
     if (_stopping) return;
     await _server?.stop();
     final entrypoint = prepared.entrypoint!;
-    stdout.writeln(
-      '[ratel] starting ${p.relative(entrypoint.path, from: prepared.project.root)}',
-    );
+    final label = p.relative(entrypoint.path, from: prepared.project.root);
+    stdout.writeln('[ratel] starting $label');
     _server = await ServerProcess.start(
       entry: run.entryPath,
+      label: label,
       arguments: arguments,
       workingDirectory: prepared.project.root,
     );
+  }
+
+  String _waiting() {
+    if (!(_server?.isRunning ?? false)) return 'waiting for a fix';
+    return prepared.runtimes.framework
+        ? 'the previous server is still running'
+        : 'the previous run is still going';
   }
 
   void _stop(int code) {

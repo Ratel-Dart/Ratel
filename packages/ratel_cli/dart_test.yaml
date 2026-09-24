@@ -1,3 +1,8 @@
+exclude_tags: fixture
+
 tags:
   e2e:
+    timeout: 5m
+  fixture:
+  orm:
     timeout: 5m

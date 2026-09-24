@@ -40,9 +40,26 @@ jobs:
         run: dart test
         working-directory: packages/ratel
 
+      - name: Install SQLite
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
       - name: Test ratel_cli
         run: dart test
         working-directory: packages/ratel_cli
+
+      - name: Check hygiene of an ORM app build
+        run: |
+          app="$RUNNER_TEMP/orm_app"
+          cp -r packages/ratel_cli/test/fixtures/orm_app "$app"
+          printf '\ndependency_overrides:\n  ratel:\n    path: %s\n' "$GITHUB_WORKSPACE/packages/ratel" >> "$app/pubspec.yaml"
+          dart compile exe packages/ratel_cli/bin/ratel.dart -o "$RUNNER_TEMP/ratel"
+          (cd "$app" && "$RUNNER_TEMP/ratel" build)
+          test -f "$app/.dart_tool/ratel/build/server.dart"
+          test -f "$app/.dart_tool/ratel/build/ratel_app_manifest.dart"
+          test -f "$app/.dart_tool/ratel/build/ratel_entity_manifest.dart"
+          dart run tool/hygiene/bin/check.dart "$app/.dart_tool/ratel"
 
       - name: Compile a native binary (AOT guard)
         run: dart run ../ratel_cli/bin/ratel.dart build example/main.dart
@@ -74,7 +91,7 @@ jobs:
         working-directory: packages/ratel
 
       - name: Test ratel_cli
-        run: dart test
+        run: dart test -x orm
         working-directory: packages/ratel_cli
 
       - name: Compile a native binary (AOT guard)

@@ -4,6 +4,8 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:path/path.dart' as p;
 
+import '../../project/project_runtimes.dart';
+import 'entity_manifest_emitter.dart';
 import 'entry_emitter.dart';
 import 'import_allocator.dart';
 import 'manifest_emitter.dart';
@@ -15,6 +17,7 @@ abstract final class SuiteWrapperEmitter {
     required String suite,
     required String wrapperDirectory,
     required String manifestDirectory,
+    required ProjectRuntimes runtimes,
   }) {
     final unit = parseString(
       content: File(suite).readAsStringSync(),
@@ -23,7 +26,6 @@ abstract final class SuiteWrapperEmitter {
     final annotations = _libraryAnnotations(unit);
     final annotationImports = _importsFor(annotations, unit);
     final main = _main(unit);
-    const r = ImportAllocator.runtimePrefix;
 
     final buffer = StringBuffer();
     if (annotations.isNotEmpty) {
@@ -34,20 +36,26 @@ abstract final class SuiteWrapperEmitter {
         ..writeln('library;')
         ..writeln();
     }
-    buffer.writeln("import '${ImportAllocator.runtimeUri}' as $r;");
+    for (final directive in ImportAllocator.runtimeDirectives(runtimes)) {
+      buffer.writeln(directive);
+    }
     for (final directive in annotationImports) {
       buffer.writeln(directive);
     }
     buffer
       ..writeln()
-      ..writeln("import '${_relative(suite, wrapperDirectory)}' as suite;")
-      ..writeln(
-        "import '${_relative(p.join(manifestDirectory, EntryEmitter.manifestFile), wrapperDirectory)}';",
-      )
+      ..writeln("import '${_relative(suite, wrapperDirectory)}' as suite;");
+    for (final manifest in [
+      if (runtimes.framework) ManifestEmitter.file,
+      if (runtimes.orm) EntityManifestEmitter.file,
+    ]) {
+      final path = p.join(manifestDirectory, manifest);
+      buffer.writeln("import '${_relative(path, wrapperDirectory)}';");
+    }
+    buffer
       ..writeln()
       ..writeln('Future<void> main() async {')
-      ..writeln(
-          '  $r.RatelRuntime.install(${ManifestEmitter.className}.manifest);')
+      ..write(EntryEmitter.installs(runtimes))
       ..writeln('  ${main.returnsFuture ? 'await ' : ''}suite.main();')
       ..writeln('}');
     return buffer.toString();
