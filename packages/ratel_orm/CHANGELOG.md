@@ -1,5 +1,11 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- SqliteDriver now reports 0 affected rows and a null insert id for read-only
+  statements such as SELECT, instead of the previous write's values. A
+  driver-level query waits for an open transaction to finish instead of joining
+  it and being rolled back with it; a query made from inside the transaction
+  body, such as a repository call, still runs in the transaction. A failing
+  open() throws DriverConnectionException with the SqliteException as its cause.
 - The unused MySQL path is gone: `MysqlDialect`, the placeholder translator,
   `RewrittenSql` and `SqlDialect.rewrite`, `upsert` and `encode`, none of
   which any driver called. `applyReturningClause` is gone as well; it
