@@ -1,5 +1,10 @@
 ## 0.1.0-dev.1 (unreleased)
 
+- PostgresDriver.transaction now rethrows an exception thrown by your action
+  unchanged after rolling back, as SqliteDriver does, instead of wrapping it in
+  a QueryExecutionException with empty SQL. Queries run through the transaction
+  session now report database errors as a QueryExecutionException with the
+  failing SQL, and failures of BEGIN or COMMIT name that statement.
 - A Query with only `offset()` now runs on SQLite, which rejects a bare
   `OFFSET`: `SqliteDialect` now renders `LIMIT -1 OFFSET n`, while Postgres
   still renders `OFFSET n` alone. `applyReturning` now looks for `RETURNING` as
