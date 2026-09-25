@@ -3,9 +3,13 @@ import 'dart:io';
 import 'package:ratel/ratel.dart';
 
 import '../models/plain_value.dart';
+import '../models/unprintable_value.dart';
 
 final class ResponseBodyController {
   Future<Response> unencodable() async => Response.json(data: PlainValue());
+
+  Future<Response> unprintable() async =>
+      Response.text(data: UnprintableValue());
 
   Future<Response> emptyText() async => Response.text();
 

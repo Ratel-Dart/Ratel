@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../exceptions/ratel_serialization_exception.dart';
 import '../serialization/json_codecs.dart';
+import 'utf8_content_type.dart';
 
 class Response<T> {
   static const _sseOpening = ':\n\n';
@@ -20,9 +21,9 @@ class Response<T> {
     required this.statusCode,
     this.data,
     this.headers = const {
-      HttpHeaders.contentTypeHeader: 'application/json',
+      HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
     },
-    this.contentType = 'application/json',
+    this.contentType = 'application/json; charset=utf-8',
     this.cookies = const [],
     this.events,
   });
@@ -31,9 +32,9 @@ class Response<T> {
     this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
-      HttpHeaders.contentTypeHeader: 'application/json',
+      HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
     },
-  })  : contentType = 'application/json',
+  })  : contentType = 'application/json; charset=utf-8',
         cookies = const [],
         events = null;
 
@@ -41,9 +42,9 @@ class Response<T> {
     this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
-      HttpHeaders.contentTypeHeader: 'text/plain',
+      HttpHeaders.contentTypeHeader: 'text/plain; charset=utf-8',
     },
-  })  : contentType = 'text/plain',
+  })  : contentType = 'text/plain; charset=utf-8',
         cookies = const [],
         events = null;
 
@@ -51,9 +52,9 @@ class Response<T> {
     this.statusCode = HttpStatus.ok,
     this.data,
     this.headers = const {
-      HttpHeaders.contentTypeHeader: 'text/html',
+      HttpHeaders.contentTypeHeader: 'text/html; charset=utf-8',
     },
-  })  : contentType = 'text/html',
+  })  : contentType = 'text/html; charset=utf-8',
         cookies = const [],
         events = null;
 
@@ -78,7 +79,7 @@ class Response<T> {
   factory Response.sse(Stream<String> events) {
     return Response(
       statusCode: HttpStatus.ok,
-      contentType: 'text/event-stream',
+      contentType: 'text/event-stream; charset=utf-8',
       headers: const {
         HttpHeaders.cacheControlHeader: 'no-cache',
         HttpHeaders.contentEncodingHeader: 'identity',
@@ -146,44 +147,68 @@ class Response<T> {
     bool includeBody = true,
     JsonCodecs codecs = const JsonCodecs.empty(),
   }) async {
-    final stream = events;
-    final body = includeBody && stream == null ? _encodeBody(codecs) : null;
+    final stream = includeBody ? events : null;
+    final body = includeBody && events == null ? _encodeBody(codecs) : null;
 
-    response.statusCode = statusCode;
-    response.headers.set(HttpHeaders.contentTypeHeader, contentType);
-    headers.forEach((key, value) => response.headers.set(key, value));
-    response.cookies.addAll(cookies);
+    try {
+      response.statusCode = statusCode;
+      headers.forEach((key, value) {
+        if (!_isContentTypeHeader(key)) response.headers.set(key, value);
+      });
+      response.headers.set(HttpHeaders.contentTypeHeader, _contentTypeHeader);
+      response.cookies.addAll(cookies);
 
-    if (stream != null && includeBody) {
-      await _stream(stream, response);
-      return;
+      if (stream != null) {
+        await _stream(stream, response);
+      } else if (body != null && body.isNotEmpty) {
+        response.add(body);
+      }
+    } finally {
+      await response.close();
     }
-
-    if (body is List<int>) {
-      response.add(body);
-    } else if (body is String && body.isNotEmpty) {
-      response.write(body);
-    }
-    await response.close();
   }
 
   bool get _isJson =>
       contentType.split(';').first.trim().toLowerCase() ==
       ContentType.json.mimeType;
 
-  Object _encodeBody(JsonCodecs codecs) {
+  bool get _hasBytes => events == null && data is List<int>;
+
+  String get _contentTypeHeader {
+    var declared = contentType;
+    headers.forEach((key, value) {
+      if (_isContentTypeHeader(key)) declared = value;
+    });
+    return _hasBytes
+        ? Utf8ContentType.forBytes(declared)
+        : Utf8ContentType.forText(declared);
+  }
+
+  static bool _isContentTypeHeader(String name) =>
+      name.toLowerCase() == HttpHeaders.contentTypeHeader;
+
+  List<int> _encodeBody(JsonCodecs codecs) {
     final body = data;
-    return body is List<int> ? body : toJson(codecs: codecs);
+    if (body is List<int>) return body;
+    try {
+      return utf8.encode(toJson(codecs: codecs));
+    } on JsonUnsupportedObjectError {
+      rethrow;
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        JsonUnsupportedObjectError(body, cause: error),
+        stackTrace,
+      );
+    }
   }
 
   Future<void> _stream(Stream<String> stream, HttpResponse response) async {
     response.bufferOutput = false;
-    response.write(_sseOpening);
+    response.add(utf8.encode(_sseOpening));
     await response.flush();
     await for (final event in stream) {
-      response.write('data: $event\n\n');
+      response.add(utf8.encode('data: $event\n\n'));
       await response.flush();
     }
-    await response.close();
   }
 }

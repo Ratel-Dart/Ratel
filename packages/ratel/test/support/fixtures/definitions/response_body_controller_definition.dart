@@ -13,6 +13,11 @@ abstract final class ResponseBodyControllerDefinition {
       ),
       RouteDefinition<ResponseBodyController>(
         method: 'GET',
+        path: '/unprintable',
+        invoke: _unprintable,
+      ),
+      RouteDefinition<ResponseBodyController>(
+        method: 'GET',
         path: '/empty-text',
         invoke: _emptyText,
       ),
@@ -29,6 +34,12 @@ abstract final class ResponseBodyControllerDefinition {
     List<Object?> arguments,
   ) =>
       controller.unencodable();
+
+  static Object? _unprintable(
+    ResponseBodyController controller,
+    List<Object?> arguments,
+  ) =>
+      controller.unprintable();
 
   static Object? _emptyText(
     ResponseBodyController controller,

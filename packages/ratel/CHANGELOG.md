@@ -217,6 +217,11 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- Text responses are now always sent as UTF-8: JSON, text, HTML and Server-Sent
+  Events declare `charset=utf-8`, and any `text/*`, JSON or `+json` content type
+  you set gets it too. Before, characters such as "ã" arrived garbled and
+  characters outside Latin-1 (for example "日本" or emoji) could leave the request
+  hanging; a response whose headers or event stream fail is now always closed.
 - @Protected now applies to @Socket routes. A socket on a @Protected controller,
   or with its own @Protected, was upgraded for anyone. `SocketDefinition` takes
   `isProtected` and `requiredRoles`, and when `jwtKey` is set `RatelServer`
