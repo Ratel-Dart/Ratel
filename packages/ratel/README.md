@@ -416,6 +416,11 @@ final server = RatelServer(
 );
 ```
 
+A middleware's `next()` always resolves to a response. When a handler, argument
+binding, the JWT middleware or an inner middleware throws, the error is turned
+into its response at that point, so outer middleware still decorate it: a `401`,
+`400`, `404`, `405` or `500` carries the CORS and security headers too.
+
 Role-based access uses `@Protected(roles: ['admin'])`; the caller's `roles` JWT
 claim is checked, returning 403 when the role is missing.
 

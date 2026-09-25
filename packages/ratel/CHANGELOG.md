@@ -217,6 +217,11 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- Error responses (401, 400, 404, 405, 500 and onError responses) now pass back
+  through the middleware chain, so CorsMiddleware and SecurityHeadersMiddleware
+  add their headers to them and browser clients see the real status instead of a
+  CORS failure. Inside a middleware, next() now resolves to the error response
+  instead of throwing.
 - **`@Protected` requires an authenticator** (breaking). A `RatelServer` without
   `jwtKey` now refuses to start while any route or socket is `@Protected`, and
   the error lists them; before, they were served to anyone. Pass `jwtKey`, or
