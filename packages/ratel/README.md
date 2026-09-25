@@ -480,7 +480,7 @@ final server = RatelServer(
 | `idleTimeout` | `dart:io` default | Keep-alive idle timeout. |
 | `shared` | `false` | Binds the port shared, for `RatelCluster.run`. |
 | `maxRequestBodyBytes` | 1 MiB | Larger bodies are answered with `413`. |
-| `maxBodyDrainBytes` | 1 MiB | How much of an oversized body is read and discarded so the `413` still reaches the client. |
+| `maxBodyDrainBytes` | 1 MiB | How much of an oversized body, or of a malformed multipart body, is read and discarded so the `413` or `400` still reaches the client. |
 
 ## Dependency injection
 

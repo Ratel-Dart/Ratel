@@ -51,6 +51,24 @@ void main() {
       expect(delivered, 24);
     });
 
+    test('rejects a body that is not valid UTF-8', () async {
+      final stream = Stream<List<int>>.fromIterable([
+        [0x61, 0xff, 0x62],
+      ]);
+      await expectLater(
+        RequestBodyReader.readLimited(
+          stream,
+          1024,
+          maxDrainBytes: RequestLimits.defaultBytes,
+        ),
+        throwsA(isA<BadRequestException>().having(
+          (e) => e.message,
+          'message',
+          'Request body is not valid UTF-8',
+        )),
+      );
+    });
+
     test('closes the connection when the drain limit is passed', () async {
       final stream = Stream<List<int>>.fromIterable([
         utf8.encode('a' * 8),
@@ -67,6 +85,25 @@ void main() {
         ),
       );
     });
+  });
+
+  group('RequestBodyReader.decodeForm', () {
+    test('decodes form pairs', () {
+      expect(
+        RequestBodyReader.decodeForm('name=ada+l&city=r%C3%ADo'),
+        {'name': 'ada l', 'city': 'río'},
+      );
+    });
+
+    for (final body in ['a=%zz', 'a=%F', 'a=%FF']) {
+      test('rejects the malformed body "$body"', () {
+        expect(
+          () => RequestBodyReader.decodeForm(body),
+          throwsA(isA<BadRequestException>()
+              .having((e) => e.message, 'message', 'Malformed form body')),
+        );
+      });
+    }
   });
 
   group('RequestBodyReader.decodeJsonObject', () {

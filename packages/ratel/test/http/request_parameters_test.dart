@@ -35,4 +35,21 @@ void main() {
       expect(RequestParameters.coerce('q', 'hello', String), 'hello');
     });
   });
+
+  group('RequestParameters.queryValue', () {
+    test('returns the decoded value of a query parameter', () {
+      expect(
+        RequestParameters.queryValue(Uri.parse('/s?q=a%20b'), 'q'),
+        'a b',
+      );
+    });
+
+    test('rejects a percent-escape that is not UTF-8', () {
+      expect(
+        () => RequestParameters.queryValue(Uri.parse('/s?q=%FF'), 'q'),
+        throwsA(isA<BadRequestException>()
+            .having((e) => e.message, 'message', 'Malformed query string')),
+      );
+    });
+  });
 }

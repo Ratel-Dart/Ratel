@@ -34,9 +34,13 @@ void main() {
     await server.stop(force: true);
   });
 
-  Future<HttpClientResponse> post(String body, {String? contentType}) async {
-    final req =
-        await client.postUrl(Uri.parse('http://127.0.0.1:$port/upload'));
+  Future<HttpClientResponse> post(
+    String body, {
+    String? contentType,
+    HttpClient? via,
+  }) async {
+    final req = await (via ?? client)
+        .postUrl(Uri.parse('http://127.0.0.1:$port/upload'));
     req.headers.set(
       HttpHeaders.contentTypeHeader,
       contentType ?? 'multipart/form-data; boundary=RATEL',
@@ -59,6 +63,9 @@ void main() {
   String oversized() =>
       '${part('content-disposition: form-data; name="big"; filename="big.txt"', 'x' * (900 * 1024))}'
       '--RATEL--\r\n';
+
+  String garbled() =>
+      '${part('not a header', 'x' * (900 * 1024))}--RATEL--\r\n';
 
   test('parses fields and files', () async {
     final res = await post(
@@ -121,6 +128,36 @@ void main() {
       '--RATEL--\r\n',
     );
     expect(accepted.statusCode, 200);
+    expect(jsonDecode(await utf8.decodeStream(accepted))['title'], 'ok');
+  });
+
+  test('answers 400 to a large garbled multipart body', () async {
+    await ping();
+
+    final res = await post(garbled());
+    final body = jsonDecode(await utf8.decodeStream(res));
+
+    expect(res.statusCode, 400);
+    expect(body['error'], 'Malformed multipart body');
+  });
+
+  test('keeps serving the same connection after a garbled body', () async {
+    final single = HttpClient()..maxConnectionsPerHost = 1;
+    addTearDown(() => single.close(force: true));
+    final rejected = await post(garbled(), via: single);
+    expect(rejected.statusCode, 400);
+    await rejected.drain<void>();
+
+    final accepted = await post(
+      '${part('content-disposition: form-data; name="title"', 'ok')}'
+      '--RATEL--\r\n',
+      via: single,
+    );
+    expect(accepted.statusCode, 200);
+    expect(
+      accepted.connectionInfo!.localPort,
+      rejected.connectionInfo!.localPort,
+    );
     expect(jsonDecode(await utf8.decodeStream(accepted))['title'], 'ok');
   });
 }

@@ -56,7 +56,7 @@ abstract final class ArgumentResolver {
           _coerce(parameter, ctx.pathParams[parameter.name]),
         ParameterLocation.query => _coerce(
             parameter,
-            ctx.request.uri.queryParameters[parameter.name],
+            RequestParameters.queryValue(ctx.request.uri, parameter.name),
           ),
         ParameterLocation.header => _coerce(
             parameter,
