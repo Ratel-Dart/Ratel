@@ -10,6 +10,14 @@ abstract final class RequestParameters {
     return null;
   }
 
+  static String? queryValue(Uri uri, String name) {
+    try {
+      return uri.queryParameters[name];
+    } on FormatException {
+      throw const BadRequestException('Malformed query string');
+    }
+  }
+
   static Object? coerce(String name, String? value, Type targetType) {
     if (value == null) return null;
     if (targetType == int) {

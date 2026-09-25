@@ -217,6 +217,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- Malformed request input now answers 400 instead of logging SEVERE and
+  answering 500. This covers a body that is not valid UTF-8, a bad
+  percent-escape in a form body or query parameter, and a truncated or garbled
+  multipart body, which could also hang the request or throw an uncaught error.
 - Text responses are now always sent as UTF-8: JSON, text, HTML and Server-Sent
   Events declare `charset=utf-8`, and any `text/*`, JSON or `+json` content type
   you set gets it too. Before, characters such as "ã" arrived garbled and

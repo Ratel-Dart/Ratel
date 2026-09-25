@@ -32,15 +32,29 @@ abstract final class RequestBodyReader {
         drained ? const {} : const {HttpHeaders.connectionHeader: 'close'},
       );
     }
-    return utf8.decode(bytes);
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      throw const BadRequestException('Request body is not valid UTF-8');
+    }
   }
 
   static Map<String, dynamic> decode(HttpRequest request, String body) {
     final mimeType = request.headers.contentType?.mimeType;
     if (mimeType == 'application/x-www-form-urlencoded') {
-      return Map<String, dynamic>.from(Uri.splitQueryString(body));
+      return decodeForm(body);
     }
     return decodeJsonObject(body);
+  }
+
+  static Map<String, dynamic> decodeForm(String body) {
+    try {
+      return Map<String, dynamic>.from(Uri.splitQueryString(body));
+    } on FormatException {
+      throw const BadRequestException('Malformed form body');
+    } on ArgumentError {
+      throw const BadRequestException('Malformed form body');
+    }
   }
 
   static Map<String, dynamic> decodeJsonObject(String body) {
