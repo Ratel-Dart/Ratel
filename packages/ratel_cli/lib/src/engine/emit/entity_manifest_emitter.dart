@@ -32,6 +32,7 @@ final class EntityManifestEmitter {
   final List<String> _members = [];
 
   static const _o = ImportAllocator.ormPrefix;
+  static final _typedData = Uri.parse('dart:typed_data');
 
   String emit(List<ScannedEntity> entities) {
     final definitions = [for (final entity in entities) _definition(entity)];
@@ -144,13 +145,23 @@ final class EntityManifestEmitter {
         '      };\n';
   }
 
-  static String _write(ScannedColumn column) {
+  String _write(ScannedColumn column) {
     final source = 'entity.${column.field}';
+    final nullable = ColumnTypes.isNullable(column.type);
+    if (column.kind == ColumnKind.bytes && column.type.isDartCoreList) {
+      final bytes = '${_imports.prefixFor(_typedData)}.Uint8List';
+      final cases = [
+        if (nullable) 'null => null',
+        'final $bytes value => value',
+        'final value => $bytes.fromList(value)',
+      ];
+      return 'switch ($source) { ${cases.join(', ')} }';
+    }
     if (column.kind != ColumnKind.enumeration) return source;
     String named(String value) => ElementQueries.declaresName(column.type)
         ? 'EnumName($value).name'
         : '$value.name';
-    if (!ColumnTypes.isNullable(column.type)) return named(source);
+    if (!nullable) return named(source);
     return 'switch ($source) { null => null, final value => ${named('value')} }';
   }
 }

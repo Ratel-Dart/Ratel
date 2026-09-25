@@ -1,5 +1,8 @@
 ## 2.0.0-dev.8 (unreleased)
 
+- The generated entity toRow now writes a List<int> column as a Uint8List, so it
+  is stored as bytes on every driver. Before, the Postgres driver bound it as an
+  integer array, which failed or stored the wrong value on a bytea column.
 - The CLI generates the entity mapping for `ratel_orm`. It finds the `@Entity`
   classes in `lib/` and next to the entrypoint, checks them against the ORM's
   rules and writes `ratel_entity_manifest.dart`, with a typed `fromRow` and

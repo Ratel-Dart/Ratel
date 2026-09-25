@@ -11,6 +11,7 @@ abstract final class NotesSchema {
             'status TEXT NOT NULL, '
             'created_on TEXT NOT NULL, '
             'body TEXT, '
+            'attachment BLOB, '
             'archived INTEGER NOT NULL)',
       ],
     ),

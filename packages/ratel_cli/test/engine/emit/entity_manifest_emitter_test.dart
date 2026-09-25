@@ -34,6 +34,7 @@ void main() {
         'published',
         'createdAt',
         'pages',
+        'thumbnail',
         'note',
         'copies',
       ],
@@ -50,6 +51,7 @@ void main() {
         'published': true,
         'createdAt': '2026-01-02T03:04:05.000Z',
         'pages': [3, 4],
+        'thumbnail': [5, 6],
         'note': 'n',
         'copies': 2,
       },
@@ -59,6 +61,12 @@ void main() {
       'fields': ['code', 'label', 'weight', 'grade'],
       'row': {'code': 'sf', 'label': 'Sci-fi', 'weight': null, 'grade': 'low'},
     },
+    'written': {
+      'cover': 'Uint8List',
+      'pages': 'Uint8List',
+      'thumbnail': 'Uint8List',
+    },
+    'kept': {'pages': true, 'thumbnail': true, 'absent': null},
   };
 
   Future<(ScratchProject, GenerationResult)> generate(
@@ -158,6 +166,27 @@ void main() {
             '{ null => null, final value => EnumName(value).name },\n'),
       );
       expect(source, contains("        'createdAt': entity.createdAt,\n"));
+    });
+
+    test('writes List<int> columns as a Uint8List, copying only other lists',
+        () {
+      final typedData =
+          RegExp(r"import 'dart:typed_data' as (i\d+);").firstMatch(source);
+      expect(typedData, isNotNull, reason: source);
+      final bytes = '${typedData![1]}.Uint8List';
+      expect(source, contains("        'cover': entity.cover,\n"));
+      expect(
+        source,
+        contains("        'pages': switch (entity.pages) "
+            '{ final $bytes value => value, '
+            'final value => $bytes.fromList(value) },\n'),
+      );
+      expect(
+        source,
+        contains("        'thumbnail': switch (entity.thumbnail) "
+            '{ null => null, final $bytes value => value, '
+            'final value => $bytes.fromList(value) },\n'),
+      );
     });
 
     test('generates code that analyzes cleanly, one class, no comments',

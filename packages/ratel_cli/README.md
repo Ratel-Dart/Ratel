@@ -56,7 +56,9 @@ The CLI applies the ORM's rules and reports every break of them:
   are.
 - An entity has exactly one `@Id()` field.
 - A column is an `int`, `double`, `num`, `String`, `bool`, `DateTime`,
-  `Uint8List`, `List<int>` or an enum, each possibly nullable.
+  `Uint8List`, `List<int>` or an enum, each possibly nullable. `toRow` turns a
+  `List<int>` into a `Uint8List`, so every driver stores it as bytes, keeping
+  the low eight bits of each element.
 - A column is named by `@Column(name:)` or else by the snake_case of its field
   (`createdAt` is `created_at`), and a table by `@Entity(table:)` or else by
   the snake_case of the class, as `ratel_orm` names them at run time. No name

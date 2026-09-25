@@ -76,6 +76,7 @@ void main() {
       'published',
       'createdAt',
       'pages',
+      'thumbnail',
       'note',
       'copies',
     ]);
@@ -104,6 +105,7 @@ void main() {
       'published': ColumnKind.boolean,
       'createdAt': ColumnKind.dateTime,
       'pages': ColumnKind.bytes,
+      'thumbnail': ColumnKind.bytes,
       'note': ColumnKind.text,
       'copies': ColumnKind.integer,
     });
@@ -125,6 +127,7 @@ void main() {
         'published',
         'createdAt',
         'pages',
+        'thumbnail',
       ],
     );
     expect(

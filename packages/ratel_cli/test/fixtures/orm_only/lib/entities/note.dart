@@ -10,6 +10,7 @@ final class Note {
     this.status = NoteStatus.open,
     required this.createdAt,
     this.body,
+    this.attachment,
     this.selected = false,
   });
 
@@ -20,6 +21,7 @@ final class Note {
   @Column(name: 'created_on')
   final DateTime createdAt;
   final String? body;
+  final List<int>? attachment;
   bool archived = false;
   @Transient()
   final bool selected;
@@ -32,5 +34,6 @@ final class Note {
         status: next,
         createdAt: createdAt,
         body: body,
+        attachment: attachment,
       )..archived = archived;
 }
