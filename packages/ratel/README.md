@@ -195,6 +195,11 @@ Future<Response> signIn() async => Response.json(data: {'ok': true}).withCookie(
     );
 ```
 
+Text is always sent as UTF-8. The JSON, text, HTML and event-stream responses
+declare `charset=utf-8`, a `text/*`, JSON or `+json` content type of your own
+gets it too, and a string body is labelled UTF-8 whatever charset was given. To
+send another encoding, encode the body yourself and return it as bytes.
+
 A handler streams Server-Sent Events by returning `Response.sse`. Each value of
 the stream is sent as one `data:` frame and the connection stays open until the
 stream closes.

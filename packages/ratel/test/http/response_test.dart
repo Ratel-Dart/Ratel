@@ -39,7 +39,7 @@ void main() {
     test('wraps a plain value as a 200 JSON response', () {
       final r = Response.from({'ok': true});
       expect(r.statusCode, HttpStatus.ok);
-      expect(r.contentType, 'application/json');
+      expect(r.contentType, 'application/json; charset=utf-8');
       expect(r.toJson(), '{"ok":true}');
     });
 

@@ -45,7 +45,10 @@ void main() {
 
   test('streams events as text/event-stream', () async {
     final res = await open('/events');
-    expect(res.headers.value('content-type'), 'text/event-stream');
+    expect(
+      res.headers.value('content-type'),
+      'text/event-stream; charset=utf-8',
+    );
     expect(res.headers.value('cache-control'), 'no-cache');
     expect(
       await res.transform(utf8.decoder).join(),
@@ -96,7 +99,10 @@ void main() {
     final res = await req.close().timeout(const Duration(seconds: 5));
 
     expect(res.statusCode, 200);
-    expect(res.headers.value('content-type'), 'text/event-stream');
+    expect(
+      res.headers.value('content-type'),
+      'text/event-stream; charset=utf-8',
+    );
     expect(await res.transform(utf8.decoder).join(), isEmpty);
   });
 }
