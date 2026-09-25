@@ -11,9 +11,20 @@ abstract final class BoomControllerDefinition {
         path: '/boom',
         invoke: _boom,
       ),
+      RouteDefinition<BoomController>(
+        method: 'GET',
+        path: '/unprintable',
+        invoke: _unprintable,
+      ),
     ],
   );
 
   static Object? _boom(BoomController controller, List<Object?> arguments) =>
       controller.boom();
+
+  static Object? _unprintable(
+    BoomController controller,
+    List<Object?> arguments,
+  ) =>
+      controller.unprintable();
 }

@@ -11,6 +11,7 @@ void main() {
   const manifest = RatelManifest(controllers: [BoomControllerDefinition.value]);
   final mapped = RatelServer(
     port: 0,
+    logToConsole: false,
     registry: RatelRegistry.fromManifest(manifest),
     onError: (error, stackTrace, ctx) => Response(
       statusCode: HttpStatus.serviceUnavailable,
@@ -23,6 +24,7 @@ void main() {
   );
   final failing = RatelServer(
     port: 0,
+    logToConsole: false,
     registry: RatelRegistry.fromManifest(manifest),
     onError: (error, stackTrace, ctx) => throw StateError('the hook failed'),
   );

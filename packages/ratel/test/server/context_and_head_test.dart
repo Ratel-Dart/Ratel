@@ -11,6 +11,7 @@ import '../support/fixtures/definitions/session_controller_definition.dart';
 void main() {
   final server = RatelServer(
     port: 0,
+    logToConsole: false,
     jwtKey: 'secret',
     registry: RatelRegistry.fromManifest(
       const RatelManifest(controllers: [SessionControllerDefinition.value]),

@@ -51,6 +51,8 @@ class RatelServer {
 
   final ErrorHandler? onError;
 
+  final bool logToConsole;
+
   HttpServer? _server;
   Router? _router;
   final List<StreamSubscription<ProcessSignal>> _signalSubs = [];
@@ -70,6 +72,7 @@ class RatelServer {
     this.idleTimeout,
     this.onError,
     this.shared = false,
+    this.logToConsole = true,
     RatelRegistry? registry,
     int maxRequestBodyBytes = RequestLimits.defaultBytes,
     int maxBodyDrainBytes = RequestLimits.defaultBytes,
@@ -92,6 +95,7 @@ class RatelServer {
   int? get boundPort => _server?.port;
 
   Future<void> startServer() async {
+    if (logToConsole) RatelLogger.attachConsole();
     await onStartup?.call();
     registry.verifyControllers();
     _requireAuthenticator();

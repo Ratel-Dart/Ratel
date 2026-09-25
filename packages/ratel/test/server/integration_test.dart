@@ -11,6 +11,7 @@ import '../support/fixtures/definitions/secured_api_controller_definition.dart';
 void main() {
   final server = RatelServer(
     port: 0,
+    logToConsole: false,
     jwtKey: 'secret',
     middlewares: [CorsMiddleware.create(), SecurityHeadersMiddleware.create()],
     registry: RatelRegistry.fromManifest(
