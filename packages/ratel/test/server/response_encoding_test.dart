@@ -12,6 +12,7 @@ import '../support/http_probe.dart';
 void main() {
   final server = RatelServer(
     port: 0,
+    logToConsole: false,
     registry: RatelRegistry.fromManifest(
       const RatelManifest(
         controllers: [ResponseBodyControllerDefinition.value],

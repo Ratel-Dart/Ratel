@@ -348,7 +348,9 @@ of a `final List<T> items` field encoded as `Article`s.
 Throwing an `HttpStatusException` — `BadRequestException`, `NotFoundException`,
 `ForbiddenException` and the rest — answers with that status and message. Any
 other error is logged with a correlation id and answered with a generic `500`,
-so internal detail never reaches the client.
+so internal detail never reaches the client. By default the same id is printed
+with the error and its stack trace on the server's stderr (see
+[Logging](#logging)).
 
 `onError` maps those unexpected errors onto a response of your own, which is
 where a domain exception becomes an HTTP status. The error is still logged
@@ -506,6 +508,7 @@ final server = RatelServer(
 | `gzip` | `true` | Compresses responses for clients that send `Accept-Encoding: gzip`. |
 | `idleTimeout` | `dart:io` default | Keep-alive idle timeout. |
 | `shared` | `false` | Binds the port shared, for `RatelCluster.run`. |
+| `logToConsole` | `true` | Prints the `ratel` logger's records to stdout and stderr. Pass `false` when the app attaches its own handler (see [Logging](#logging)). |
 | `maxRequestBodyBytes` | 1 MiB | Larger bodies are answered with `413`. |
 | `maxBodyDrainBytes` | 1 MiB | How much of an oversized body, or of a malformed multipart body, is read and discarded so the `413` or `400` still reaches the client. |
 
@@ -638,14 +641,48 @@ Migrating from `RatelDatabase`? See
 
 ## Logging
 
-Ratel logs through the [`logging`](https://pub.dev/packages/logging) package.
-Attach a handler to receive its output:
+Ratel logs through the [`logging`](https://pub.dev/packages/logging) package,
+under the `ratel` logger. By default `RatelServer` prints those records to the
+console: one line with the UTC time, the level, the logger name and the
+message, followed by the error and its stack trace when the record has one.
+`WARNING` and above go to stderr, the rest to stdout. The correlation id of a
+`500` therefore leads to the failure in the server output:
+
+```text
+2026-09-24T10:15:30.123456Z SEVERE ratel: Unhandled error [m1q2w3e4-0] GET /boom
+Bad state: kaboom
+#0      BoomController.boom (package:my_api/controllers/boom_controller.dart:9:5)
+...
+```
+
+The handler is attached once per isolate, when the first server with
+`logToConsole` on starts, and prints `INFO` and above unless
+`Logger.root.level` says otherwise. The handler never throws: an error whose
+`toString` throws prints as `Instance of 'TheType'`, and a stdout or stderr
+that is closed, bound to another stream or no longer read, such as a pipe the
+parent process closed, drops the output instead of ending the process.
+Records still reach `Logger.root`, so an app that attaches its own handler
+passes `logToConsole: false`, or every record prints twice:
 
 ```dart
-import 'package:logging/logging.dart';
+import 'dart:io';
 
-Logger.root.level = Level.INFO;
-Logger.root.onRecord.listen((r) => stdout.writeln('${r.level.name}: ${r.message}'));
+import 'package:logging/logging.dart';
+import 'package:ratel/ratel.dart';
+
+Future<void> main() async {
+  Logger.root.level = Level.INFO;
+  Logger.root.onRecord.listen((record) {
+    final sink = record.level >= Level.WARNING ? stderr : stdout;
+    sink.writeln('${record.time} ${record.level.name} ${record.loggerName}: '
+        '${record.message}');
+    if (record.error != null) sink.writeln(record.error);
+    if (record.stackTrace != null) sink.writeln(record.stackTrace);
+  });
+
+  final server = RatelServer(port: 8080, logToConsole: false);
+  await server.startServer();
+}
 ```
 
 ## License

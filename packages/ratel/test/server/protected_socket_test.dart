@@ -30,7 +30,12 @@ void main() {
       );
 
   group('with a JWT key', () {
-    final server = RatelServer(port: 0, jwtKey: 'secret', registry: registry());
+    final server = RatelServer(
+      port: 0,
+      jwtKey: 'secret',
+      logToConsole: false,
+      registry: registry(),
+    );
     late int port;
 
     Future<WebSocket> connect(String path, {String? token}) =>

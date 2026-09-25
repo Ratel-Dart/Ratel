@@ -217,6 +217,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- RatelServer now prints Ratel's log records to the console by default, so the
+  correlation id of a 500 leads to the error and its stack trace (WARNING and
+  above on stderr, the rest on stdout). If your app attaches its own handler to
+  Logger.root, pass logToConsole: false to avoid printing each record twice.
 - Error responses (401, 400, 404, 405, 500 and onError responses) now pass back
   through the middleware chain, so CorsMiddleware and SecurityHeadersMiddleware
   add their headers to them and browser clients see the real status instead of a
