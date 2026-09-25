@@ -235,11 +235,7 @@ class RatelServer {
       JwtAuthorizer.requireRoles(claims, route.requiredRoles);
       return null;
     } on HttpStatusException catch (e) {
-      return Response(
-        statusCode: e.statusCode,
-        data: {'error': e.message},
-        headers: e.headers,
-      );
+      return _statusResponse(e);
     }
   }
 
@@ -290,25 +286,35 @@ class RatelServer {
     RequestContext ctx,
     List<Middleware> chain,
     BadRequestException? routingError,
-  ) async {
-    Next next = () => _terminal(ctx, routingError);
+  ) {
+    var next = _answering(ctx, () => _terminal(ctx, routingError));
     for (final middleware in chain.reversed) {
       final downstream = next;
-      next = () => middleware(ctx, downstream);
+      next = _answering(ctx, () => middleware(ctx, downstream));
     }
-    try {
-      return await next();
-    } on HttpStatusException catch (e) {
-      return Response(
-        statusCode: e.statusCode,
-        data: {'error': e.message},
-        headers: e.headers,
-      );
-    } catch (e, stackTrace) {
-      final correlationId = _logUnhandled(ctx, e, stackTrace);
-      return await _handleError(e, stackTrace, ctx) ??
-          _internalServerError(correlationId);
-    }
+    return next();
+  }
+
+  Next _answering(RequestContext ctx, Next step) {
+    return () async {
+      try {
+        return await step();
+      } on HttpStatusException catch (e) {
+        return _statusResponse(e);
+      } catch (e, stackTrace) {
+        final correlationId = _logUnhandled(ctx, e, stackTrace);
+        return await _handleError(e, stackTrace, ctx) ??
+            _internalServerError(correlationId);
+      }
+    };
+  }
+
+  static Response _statusResponse(HttpStatusException e) {
+    return Response(
+      statusCode: e.statusCode,
+      data: {'error': e.message},
+      headers: e.headers,
+    );
   }
 
   String _logUnhandled(
