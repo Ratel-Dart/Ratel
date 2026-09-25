@@ -5,6 +5,7 @@ import 'dart:io';
 import '../auth/jwt_authorizer.dart';
 import '../auth/jwt_validator.dart';
 import '../dependency_injector/bindings.dart';
+import '../exceptions/bad_request_exception.dart';
 import '../exceptions/http_status_exception.dart';
 import '../exceptions/method_not_allowed_exception.dart';
 import '../exceptions/not_found_exception.dart';
@@ -202,12 +203,8 @@ class RatelServer {
     List<Middleware> chain,
   ) async {
     final ctx = RequestContext(request, registry: registry, limits: limits);
-    final match = _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
-    if (match != null) {
-      ctx.route = match.route;
-      ctx.pathParams = match.params;
-    }
-    final response = await _runChain(ctx, chain);
+    final routingError = _matchRoute(ctx);
+    final response = await _runChain(ctx, chain, routingError);
     final includeBody = ctx.method != 'HEAD';
     try {
       await response.send(
@@ -225,6 +222,20 @@ class RatelServer {
     }
   }
 
+  BadRequestException? _matchRoute(RequestContext ctx) {
+    try {
+      final match =
+          _router!.match(ctx.method, ctx.path) ?? _getRouteForHead(ctx);
+      if (match != null) {
+        ctx.route = match.route;
+        ctx.pathParams = match.params;
+      }
+      return null;
+    } on BadRequestException catch (e) {
+      return e;
+    }
+  }
+
   RouteMatch? _getRouteForHead(RequestContext ctx) {
     if (ctx.method != 'HEAD') return null;
     return _router!.match('GET', ctx.path);
@@ -233,8 +244,9 @@ class RatelServer {
   Future<Response> _runChain(
     RequestContext ctx,
     List<Middleware> chain,
+    BadRequestException? routingError,
   ) async {
-    Next next = () => _terminal(ctx);
+    Next next = () => _terminal(ctx, routingError);
     for (final middleware in chain.reversed) {
       final downstream = next;
       next = () => middleware(ctx, downstream);
@@ -290,7 +302,11 @@ class RatelServer {
     }
   }
 
-  Future<Response> _terminal(RequestContext ctx) async {
+  Future<Response> _terminal(
+    RequestContext ctx,
+    BadRequestException? routingError,
+  ) async {
+    if (routingError != null) throw routingError;
     final route = ctx.route;
     if (route == null) {
       final allowed = _router!.allowedMethods(ctx.path);

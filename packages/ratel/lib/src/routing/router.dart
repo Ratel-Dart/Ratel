@@ -10,42 +10,22 @@ final class Router {
   final List<CompiledRoute> _compiled;
 
   RouteMatch? match(String method, String path) {
-    final segments = RoutePath.split(path);
+    final segments = RoutePath.decode(path);
+    CompiledRoute? best;
     for (final compiled in _compiled) {
-      if (compiled.segments.length != segments.length) continue;
-      final params = <String, String>{};
-      var matched = true;
-      for (var i = 0; i < segments.length; i++) {
-        final segment = compiled.segments[i];
-        if (segment.isParam) {
-          params[segment.value] = segments[i];
-        } else if (segment.value != segments[i]) {
-          matched = false;
-          break;
-        }
-      }
-      if (matched && compiled.route.method == method) {
-        return RouteMatch(compiled.route, params);
-      }
+      if (compiled.route.method != method) continue;
+      if (!compiled.matches(segments)) continue;
+      if (best == null || compiled.isMoreSpecificThan(best)) best = compiled;
     }
-    return null;
+    if (best == null) return null;
+    return RouteMatch(best.route, best.capture(segments));
   }
 
   Set<String> allowedMethods(String path) {
-    final segments = RoutePath.split(path);
-    final methods = <String>{};
-    for (final compiled in _compiled) {
-      if (compiled.segments.length != segments.length) continue;
-      var matched = true;
-      for (var i = 0; i < segments.length; i++) {
-        final segment = compiled.segments[i];
-        if (!segment.isParam && segment.value != segments[i]) {
-          matched = false;
-          break;
-        }
-      }
-      if (matched) methods.add(compiled.route.method);
-    }
-    return methods;
+    final segments = RoutePath.decode(path);
+    return {
+      for (final compiled in _compiled)
+        if (compiled.matches(segments)) compiled.route.method,
+    };
   }
 }
