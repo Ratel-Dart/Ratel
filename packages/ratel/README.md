@@ -132,6 +132,12 @@ Routes are declared by annotating controller methods. A class-level
 `@Controller` adds a shared prefix, `:name` segments become path parameters
 (bound with `@PathParam`), and `@Param` reads the query string. A request to a
 known path with an unsupported method returns `405` with an `Allow` header.
+When several routes match a path, the most specific one wins: a literal
+segment beats a `:name` segment, so `/users/me` reaches its own route even if
+`/users/:id` is declared first. Path segments are percent-decoded before they
+are matched, in the request and in the route, and a path whose escapes do not
+decode to valid UTF-8 answers `400`. A decoded parameter can contain `/` and
+`..` (from `..%2Fsecret`), so check it before using it in a file path.
 
 ```dart
 @Controller('/api/v1')

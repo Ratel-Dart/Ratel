@@ -217,6 +217,10 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- The router now picks the most specific matching route, so `/users/me` reaches
+  its own route even when `/users/:name` is declared first. Path parameters
+  arrive percent-decoded (`/users/Jo%C3%A3o` gives `João`), and a malformed
+  escape in the path answers `400`.
 - Malformed request input now answers 400 instead of logging SEVERE and
   answering 500. This covers a body that is not valid UTF-8, a bad
   percent-escape in a form body or query parameter, and a truncated or garbled
