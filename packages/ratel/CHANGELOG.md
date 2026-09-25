@@ -217,6 +217,11 @@ All notable changes to this project are documented here. This project follows
   `RatelHandler.maxBodyDrainBytes` stays as a facade over the ambient registry.
 
 ### Fixed
+- **`@Protected` requires an authenticator** (breaking). A `RatelServer` without
+  `jwtKey` now refuses to start while any route or socket is `@Protected`, and
+  the error lists them; before, they were served to anyone. Pass `jwtKey`, or
+  `allowUnauthenticated: true` to serve them without a token when a gateway in
+  front already authenticates.
 - The router now picks the most specific matching route, so `/users/me` reaches
   its own route even when `/users/:name` is declared first. Path parameters
   arrive percent-decoded (`/users/Jo%C3%A3o` gives `João`), and a malformed

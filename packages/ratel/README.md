@@ -384,6 +384,20 @@ class AccountController {
 final server = RatelServer(port: 8080, jwtKey: 'your-secret');
 ```
 
+Protection is denied by default. A server without a `jwtKey` refuses to start
+while any route or socket is `@Protected`, and the error lists them
+(`GET /me, socket /chat`). When something in front of the server already
+authenticates, such as a gateway, pass `allowUnauthenticated: true` to serve
+them without a token; the server logs a warning listing them. An app that checks
+`@Protected` routes with its own middleware, such as `JwtAuthMiddleware.create`
+with a custom `rolesClaim` or a `JwtValidator` with an issuer and audience,
+also passes `allowUnauthenticated: true`. Its `@Protected` sockets are then not
+checked, because upgrades skip the middleware chain.
+
+```dart
+final server = RatelServer(port: 8080, allowUnauthenticated: true);
+```
+
 ## Middleware
 
 Cross-cutting concerns are composable middleware. Register global middleware on
@@ -409,8 +423,9 @@ claim is checked, returning 403 when the role is missing.
 
 `@Socket` binds a method to WebSocket upgrades on a path. The method receives
 the upgraded socket, and the `RequestContext` if it asks for one. Socket paths
-match exactly, and upgrades do not run the middleware chain — authenticate
-inside the handler, from the query string or the first message.
+match exactly, and upgrades do not run the middleware chain. A `@Protected`
+socket checks the bearer token and roles like a route before it upgrades, and
+the claims are on its `RequestContext`.
 
 ```dart
 @Controller()
@@ -475,7 +490,8 @@ final server = RatelServer(
 | Parameter | Default | Meaning |
 | --- | --- | --- |
 | `port` | `8080` | Port to bind. `0` lets the OS pick a free one; read it back from `boundPort`. |
-| `jwtKey` | none | HMAC secret that turns on JWT auth. Without it no route is protected. |
+| `jwtKey` | none | HMAC secret that turns on JWT auth; an empty key throws `ArgumentError`. Without it the server refuses to start while a route or socket is `@Protected`. |
+| `allowUnauthenticated` | `false` | Starts without `jwtKey` anyway and serves `@Protected` routes and sockets without a token, for apps behind an authenticating gateway. |
 | `securityContext` | none | Serves over TLS. With `jwtKey` set and no TLS, a warning is logged because bearer tokens would travel in cleartext. |
 | `middlewares` | `[]` | Run in order around every request. The JWT middleware is appended after them. |
 | `bindings` | none | Dependency registrations, run once when the server is constructed. |
