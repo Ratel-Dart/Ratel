@@ -255,6 +255,7 @@ class Book extends Audited with Versioned {
     this.published = false,
     required this.createdAt,
     this.pages = const [],
+    this.thumbnail,
     this.selected = false,
   });
 
@@ -270,6 +271,7 @@ class Book extends Audited with Versioned {
   final bool published;
   final DateTime createdAt;
   final List<int> pages;
+  final List<int>? thumbnail;
   String? note;
   late int copies;
   @Transient()
@@ -362,6 +364,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:library/entities/book.dart';
 import 'package:ratel_orm/runtime.dart';
 
 import '../.dart_tool/ratel/build/ratel_entity_manifest.dart';
@@ -380,6 +383,7 @@ void main() {
       'published': true,
       'created_at': '2026-01-02T03:04:05.000Z',
       'pages': [3, 4],
+      'thumbnail': [5, 6],
       'note': 'n',
       'copies': 2,
       'changed_at': null,
@@ -398,6 +402,36 @@ void main() {
       'row': row,
     };
   }
+  final books = RatelEntityManifest.manifest.entities
+      .singleWhere((definition) => definition.name == 'Book');
+  final written = books.rowOf(Book(
+    title: 'Dune',
+    createdAt: DateTime.utc(2026),
+    cover: Uint8List.fromList([1]),
+    pages: [3, 4],
+    thumbnail: [5],
+  )..copies = 1);
+  mapped['written'] = {
+    for (final field in ['cover', 'pages', 'thumbnail'])
+      field: switch (written[field]) {
+        Uint8List() => 'Uint8List',
+        final value => '${value.runtimeType}',
+      },
+  };
+  final kept = Uint8List.fromList([7]);
+  final reused = books.rowOf(Book(
+    title: 'Dune',
+    createdAt: DateTime.utc(2026),
+    pages: kept,
+    thumbnail: kept,
+  )..copies = 1);
+  final empty = books.rowOf(
+      Book(title: 'Dune', createdAt: DateTime.utc(2026))..copies = 1);
+  mapped['kept'] = {
+    'pages': identical(reused['pages'], kept),
+    'thumbnail': identical(reused['thumbnail'], kept),
+    'absent': empty['thumbnail'],
+  };
   stdout.writeln(jsonEncode(mapped, toEncodable: (value) => switch (value) {
         DateTime() => value.toUtc().toIso8601String(),
         Uint8List() => [...value],
