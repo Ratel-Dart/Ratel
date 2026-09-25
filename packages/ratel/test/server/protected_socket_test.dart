@@ -88,7 +88,29 @@ void main() {
   });
 
   group('without a JWT key', () {
-    final server = RatelServer(port: 0, registry: registry());
+    test('refuses to start while a socket is protected', () async {
+      final server = RatelServer(port: 0, registry: registry());
+
+      await expectLater(
+        server.startServer(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('socket /ws/member, socket /ws/admin'),
+          ),
+        ),
+      );
+      expect(server.boundPort, isNull);
+    });
+  });
+
+  group('with allowUnauthenticated', () {
+    final server = RatelServer(
+      port: 0,
+      allowUnauthenticated: true,
+      registry: registry(),
+    );
     late int port;
 
     setUpAll(() async {

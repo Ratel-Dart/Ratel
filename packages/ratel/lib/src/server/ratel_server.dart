@@ -27,6 +27,8 @@ class RatelServer {
 
   final String? jwtKey;
 
+  final bool allowUnauthenticated;
+
   final Bindings? bindings;
 
   final SecurityContext? securityContext;
@@ -58,6 +60,7 @@ class RatelServer {
   RatelServer({
     this.port = 8080,
     this.jwtKey,
+    this.allowUnauthenticated = false,
     this.bindings,
     this.securityContext,
     this.middlewares = const [],
@@ -75,6 +78,14 @@ class RatelServer {
           maxRequestBodyBytes: maxRequestBodyBytes,
           maxBodyDrainBytes: maxBodyDrainBytes,
         ) {
+    if (jwtKey?.isEmpty ?? false) {
+      throw ArgumentError.value(
+        jwtKey,
+        'jwtKey',
+        'must not be empty, because a token signed with an empty key would '
+            'pass',
+      );
+    }
     bindings?.dependencies();
   }
 
@@ -83,6 +94,7 @@ class RatelServer {
   Future<void> startServer() async {
     await onStartup?.call();
     registry.verifyControllers();
+    _requireAuthenticator();
 
     final jwtValidator = jwtKey != null ? JwtValidator(jwtKey!) : null;
     final server = securityContext != null
@@ -117,6 +129,30 @@ class RatelServer {
     ];
 
     unawaited(_serve(server, chain, jwtValidator));
+  }
+
+  void _requireAuthenticator() {
+    if (jwtKey != null) return;
+    final exposed = [
+      for (final route in registry.routes)
+        if (route.isProtected) '${route.method} ${route.path}',
+      for (final socket in registry.sockets.values)
+        if (socket.isProtected) 'socket ${socket.path}',
+    ].join(', ');
+    if (exposed.isEmpty) return;
+    if (allowUnauthenticated) {
+      RatelLogger.instance.warning(
+        'Serving @Protected endpoints without Ratel\'s JWT check because '
+        'allowUnauthenticated is set: $exposed.',
+      );
+      return;
+    }
+    throw StateError(
+      'RatelServer has no jwtKey, so nothing authenticates these @Protected '
+      'endpoints: $exposed. Pass jwtKey to require a bearer token on them, or '
+      'allowUnauthenticated: true to serve them without authentication, for '
+      'example behind a gateway that authenticates.',
+    );
   }
 
   Future<void> stop({bool force = false}) =>
@@ -183,7 +219,16 @@ class RatelServer {
     RequestContext ctx,
     JwtValidator? jwtValidator,
   ) async {
-    if (jwtValidator == null || !route.isProtected) return null;
+    if (!route.isProtected) return null;
+    if (jwtValidator == null) {
+      if (allowUnauthenticated) return null;
+      final correlationId = _nextCorrelationId();
+      RatelLogger.instance.severe(
+        'Refused socket ${route.path} [$correlationId]: it is @Protected and '
+        'RatelServer has no jwtKey',
+      );
+      return _internalServerError(correlationId);
+    }
     try {
       final claims = await JwtAuthorizer.claims(jwtValidator, ctx.request);
       ctx.claims = claims;

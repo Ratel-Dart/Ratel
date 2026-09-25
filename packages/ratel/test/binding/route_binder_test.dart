@@ -19,6 +19,7 @@ void main() {
     setUpAll(() async {
       server = RatelServer(
         port: 0,
+        jwtKey: 'secret',
         registry: RatelRegistry.fromManifest(
           const RatelManifest(
             controllers: [BindingControllerDefinition.value],
